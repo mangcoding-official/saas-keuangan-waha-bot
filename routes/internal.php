@@ -1,0 +1,36 @@
+<?php
+
+use App\Http\Controllers\Internal\Auth\PlatformAdminSessionController;
+use App\Http\Controllers\Internal\DashboardController;
+use App\Http\Controllers\Internal\ResourcePageController;
+use Illuminate\Support\Facades\Route;
+
+Route::prefix(config('platform.route_prefixes.internal'))
+    ->as('internal.')
+    ->group(function (): void {
+        Route::middleware('guest:platform_admin')->group(function (): void {
+            Route::get('/login', [PlatformAdminSessionController::class, 'create'])->name('login.create');
+            Route::post('/login', [PlatformAdminSessionController::class, 'store'])->name('login.store');
+        });
+
+        Route::middleware('auth:platform_admin')->group(function (): void {
+            Route::post('/logout', [PlatformAdminSessionController::class, 'destroy'])->name('logout');
+            Route::get('/', DashboardController::class)->name('dashboard');
+
+            foreach ([
+                'tenants' => 'tenants.index',
+                'users' => 'users.index',
+                'verification' => 'verification.index',
+                'sessions' => 'sessions.index',
+                'transactions' => 'transactions.index',
+                'attachments' => 'attachments.index',
+                'waha' => 'waha.index',
+                'audit/tenant-facing' => 'audit.tenant-facing.index',
+                'audit/platform' => 'audit.platform.index',
+            ] as $uri => $name) {
+                Route::get('/'.$uri, [ResourcePageController::class, 'show'])
+                    ->defaults('page', $name)
+                    ->name($name);
+            }
+        });
+    });
