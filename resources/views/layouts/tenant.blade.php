@@ -1,23 +1,31 @@
 @extends('layouts.base', ['bodyClass' => 'page-tenant'])
 
 @section('body')
+    @php
+        $searchLabel = $toolbar['search_label'] ?? 'Cari data tenant';
+        $searchPlaceholder = $toolbar['search_placeholder'] ?? 'Search tenant workspace';
+        $secondaryAction = $toolbar['secondary_action'] ?? null;
+        $primaryAction = $toolbar['primary_action'] ?? null;
+    @endphp
+
     <section class="shell-grid">
         <aside class="sidebar" data-sidebar>
-            <div>
-                <span class="eyebrow">Tenant App</span>
-                <h2 class="panel-title">{{ $authUser->tenant->name }}</h2>
-                <p class="panel-copy">{{ ucfirst($authUser->role->value) }} · {{ $authUser->email }}</p>
+            <div class="sidebar-brand">
+                <span class="sidebar-eyebrow">{{ strtoupper('Tenant '.$authUser->role->value) }}</span>
+                <h2 class="sidebar-title">{{ $authUser->tenant->name }}</h2>
+                <p class="sidebar-copy">Akses penuh tenant dashboard</p>
             </div>
 
             <nav class="sidebar-nav">
                 @foreach ($navigation as $item)
                     <a href="{{ route($item['route']) }}" class="sidebar-link {{ request()->routeIs($item['pattern']) ? 'is-active' : '' }}">
+                        <span class="sidebar-link-icon" aria-hidden="true"></span>
                         <span>{{ $item['label'] }}</span>
                     </a>
                 @endforeach
             </nav>
 
-            <form action="{{ route('tenant.logout') }}" method="post">
+            <form action="{{ route('tenant.logout') }}" method="post" class="sidebar-footer">
                 @csrf
                 <button class="button button-ghost" type="submit">Logout</button>
             </form>
@@ -26,22 +34,31 @@
         <div class="content-shell">
             <header class="topbar">
                 <div class="topbar-meta">
-                    <span class="eyebrow">{{ $page['eyebrow'] ?? 'Tenant' }}</span>
                     <h1 class="page-title">{{ $page['title'] ?? '' }}</h1>
                     <p class="page-copy">{{ $page['description'] ?? '' }}</p>
                 </div>
 
-                <div class="button-row">
-                    <button class="button button-secondary sidebar-toggle" type="button" data-sidebar-toggle>Navigation</button>
-                    <button class="button button-primary" type="button" data-modal-open="tenant-contract">Milestone Contract</button>
+                <div class="topbar-toolbar">
+                    <label class="dashboard-search">
+                        <span class="dashboard-search-label">{{ $searchLabel }}</span>
+                        <input type="text" class="dashboard-search-input" placeholder="{{ $searchPlaceholder }}">
+                    </label>
+
+                    <div class="button-row">
+                        <button class="button button-secondary sidebar-toggle" type="button" data-sidebar-toggle>Menu</button>
+
+                        @if ($secondaryAction)
+                            <x-ui.button :href="$secondaryAction['href']" :variant="$secondaryAction['variant']">{{ $secondaryAction['label'] }}</x-ui.button>
+                        @endif
+
+                        @if ($primaryAction)
+                            <x-ui.button :href="$primaryAction['href']" :variant="$primaryAction['variant']">{{ $primaryAction['label'] }}</x-ui.button>
+                        @endif
+                    </div>
                 </div>
             </header>
 
             @yield('content')
         </div>
     </section>
-
-    <x-ui.modal id="tenant-contract" title="Tenant Foundation Contract">
-        Route, guard, dan layout tenant sudah final. Milestone berikutnya tinggal mengisi form logic dan modul bisnis di shell yang sama.
-    </x-ui.modal>
 @endsection

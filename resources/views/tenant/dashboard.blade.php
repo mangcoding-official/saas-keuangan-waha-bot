@@ -1,71 +1,125 @@
 @extends('layouts.tenant')
 
 @section('content')
-    <section class="stat-grid">
-        @foreach ($stats as $stat)
-            <x-ui.card>
-                <x-ui.badge :tone="$stat['tone']">{{ $stat['label'] }}</x-ui.badge>
-                <h2 class="page-title">{{ $stat['value'] }}</h2>
-            </x-ui.card>
+    <section class="dashboard-kpi-grid">
+        @foreach ($kpis as $item)
+            <article class="dashboard-kpi-card {{ $item['tone'] === 'alert' ? 'is-alert' : '' }}">
+                <p class="dashboard-kpi-label">{{ $item['label'] }}</p>
+                <h2 class="dashboard-kpi-value">{{ $item['value'] }}</h2>
+                <p class="dashboard-kpi-note">{{ $item['note'] }}</p>
+            </article>
         @endforeach
     </section>
 
-    <div class="card-grid">
-        <x-ui.card title="Tenant Summary" description="Data ini berasal dari tenant dan owner yang sedang login, bukan placeholder seed layout.">
-            <div class="table-meta">
-                <p class="panel-copy"><strong>Tenant</strong>: {{ $tenantSummary['tenant_name'] }}</p>
-                <p class="panel-copy"><strong>Type</strong>: {{ ucfirst($tenantSummary['tenant_type']) }}</p>
-                <p class="panel-copy"><strong>Timezone</strong>: {{ $tenantSummary['timezone'] }}</p>
-                <p class="panel-copy"><strong>Email Owner</strong>: {{ $tenantSummary['owner_email'] }}</p>
-                <p class="panel-copy"><strong>WhatsApp Owner</strong>: {{ $tenantSummary['owner_whatsapp'] }}</p>
-            </div>
-        </x-ui.card>
+    <section class="dashboard-content-grid">
+        <div class="dashboard-main-column">
+            <article class="dashboard-card dashboard-flow-card">
+                <h2 class="dashboard-section-title">Recent transaction flow</h2>
 
-        <x-ui.card title="Verification State" description="Owner dashboard tetap bisa diakses, tetapi akses bot baru penuh setelah nomor berhasil diverifikasi via activation code.">
-            <div class="table-meta">
-                <x-ui.badge :tone="$tenantSummary['verification_status'] === 'verified' ? 'success' : 'warning'">{{ $tenantSummary['verification_status'] }}</x-ui.badge>
-                @if ($tenantSummary['active_code_last4'])
-                    <p class="panel-copy"><strong>Activation Code Last4</strong>: {{ $tenantSummary['active_code_last4'] }}</p>
-                    <p class="panel-copy"><strong>Expired At</strong>: {{ \Illuminate\Support\Carbon::parse($tenantSummary['active_code_expires_at'])->timezone($tenantSummary['timezone'])->format('d M Y H:i') }}</p>
-                    <p class="panel-copy">Kode aktivasi penuh hanya ditampilkan sekali saat registrasi sukses. Dashboard hanya menampilkan petunjuk status dan last4 untuk verifikasi operasional.</p>
+                @if ($transactionFlow !== [])
+                    <div class="dashboard-flow-list">
+                        @foreach ($transactionFlow as $item)
+                            <p class="dashboard-flow-item">{{ $item['stamp'] }} {{ $item['summary'] }} {{ $item['amount'] }}</p>
+                        @endforeach
+                    </div>
                 @else
-                    <p class="panel-copy">Belum ada activation code aktif untuk user ini.</p>
+                    <p class="dashboard-empty-copy">Belum ada transaksi masuk. Owner baru selesai onboarding tenant.</p>
                 @endif
-            </div>
-        </x-ui.card>
+            </article>
 
-        <x-ui.card title="Dashboard Boundary" description="{{ $tenantSummary['dashboard_role_note'] }}">
-            <div class="table-meta">
-                <x-ui.badge :tone="$tenantSummary['service_status'] === 'active' ? 'success' : 'danger'">{{ $tenantSummary['service_status'] }}</x-ui.badge>
-                <p class="panel-copy">Tenant scoping sekarang aktif berdasarkan `tenant_id` dari sesi login.</p>
-            </div>
-        </x-ui.card>
-    </div>
+            <article class="dashboard-card dashboard-table-card">
+                <table class="dashboard-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Recorder</th>
+                            <th>Type</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($transactionRows as $row)
+                            <tr>
+                                <td>{{ $row['date'] }}</td>
+                                <td>{{ $row['description'] }}</td>
+                                <td>{{ $row['recorder'] }}</td>
+                                <td>{{ $row['type'] }}</td>
+                                <td>{{ $row['amount'] }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="dashboard-empty-cell">Belum ada transaksi yang bisa ditampilkan.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </article>
 
-    <x-ui.table-shell title="Milestone 1 readiness" description="Flow website registration dan owner login sudah berjalan dengan data onboarding nyata.">
-        <thead>
-            <tr>
-                <th>Flow</th>
-                <th>Status</th>
-                <th>Catatan</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>Website Registration</td>
-                <td><x-ui.badge tone="success">Live</x-ui.badge></td>
-                <td>Registrasi sekarang membuat tenant, owner, activation code, akun Cash default, dan kategori template.</td>
-            </tr>
-            <tr>
-                <td>Tenant Login</td>
-                <td><x-ui.badge tone="success">Live</x-ui.badge></td>
-                <td>Auth guard `tenant_users` aktif dan owner baru bisa login ke dashboard tenant.</td>
-            </tr>
-            <tr>
-                <td>Tenant Scoping</td>
-                <td><x-ui.badge tone="success">Ready</x-ui.badge></td>
-                <td>Dashboard hanya membaca data tenant milik user yang sedang login.</td>
-            </tr>
-        </tbody>
-    </x-ui.table-shell>
+            <article class="dashboard-card dashboard-table-card">
+                <table class="dashboard-table">
+                    <thead>
+                        <tr>
+                            <th>Akun</th>
+                            <th>Saldo</th>
+                            <th>Status</th>
+                            <th>Note</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($accountRows as $row)
+                            <tr>
+                                <td>{{ $row['name'] }}</td>
+                                <td>{{ $row['balance'] }}</td>
+                                <td>{{ $row['status'] }}</td>
+                                <td>{{ $row['note'] }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="dashboard-empty-cell">Belum ada akun tenant yang bisa ditampilkan.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </article>
+        </div>
+
+        <aside class="dashboard-side-column">
+            <article class="dashboard-card">
+                <h2 class="dashboard-section-title">Member status</h2>
+
+                <div class="dashboard-stat-list">
+                    @foreach ($memberStatus as $row)
+                        <p><span>{{ $row['label'] }}</span><span>{{ $row['value'] }}</span></p>
+                    @endforeach
+                </div>
+            </article>
+
+            @if ($pendingBadge)
+                <div class="dashboard-inline-badge">
+                    <x-ui.badge tone="warning">{{ $pendingBadge }}</x-ui.badge>
+                </div>
+            @endif
+
+            <article class="dashboard-card">
+                <h2 class="dashboard-section-title">Quick actions</h2>
+
+                <div class="dashboard-link-list">
+                    @foreach ($quickActions as $action)
+                        <a href="{{ $action['href'] }}">{{ $action['label'] }}</a>
+                    @endforeach
+                </div>
+            </article>
+
+            <article class="dashboard-card">
+                <h2 class="dashboard-section-title">Alerts</h2>
+
+                <div class="dashboard-alert-list">
+                    @foreach ($alerts as $alert)
+                        <p>{{ $alert }}</p>
+                    @endforeach
+                </div>
+            </article>
+        </aside>
+    </section>
 @endsection

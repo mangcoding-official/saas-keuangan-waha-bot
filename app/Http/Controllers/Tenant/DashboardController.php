@@ -2,11 +2,16 @@
 
 namespace App\Http\Controllers\Tenant;
 
+use App\Enums\TransactionStatus;
+use App\Enums\TransactionType;
 use App\Enums\UserRole;
+use App\Enums\UserStatus;
+use App\Enums\VerificationStatus;
 use App\Http\Controllers\Controller;
 use App\Models\TenantUser;
 use App\Support\Navigation\TenantNavigation;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
@@ -15,41 +20,249 @@ class DashboardController extends Controller
     {
         /** @var TenantUser $user */
         $user = auth('web')->user();
+        $tenantId = $user->tenant_id;
+        $now = now()->timezone($user->tenant->timezone);
+        $monthStart = $now->copy()->startOfMonth()->toDateString();
+        $monthEnd = $now->copy()->endOfMonth()->toDateString();
+
         $latestActivationCode = DB::table('activation_codes')
             ->where('tenant_user_id', $user->id)
             ->where('status', 'active')
             ->latest('created_at')
             ->first(['code_last4', 'expires_at']);
 
+        $activeAccountsCount = (int) DB::table('accounts')
+            ->where('tenant_id', $tenantId)
+            ->where('is_active', true)
+            ->count();
+
+        $totalBalance = (float) DB::table('accounts')
+            ->where('tenant_id', $tenantId)
+            ->where('is_active', true)
+            ->sum('opening_balance');
+
+        $monthlyIncome = (float) DB::table('transactions')
+            ->where('tenant_id', $tenantId)
+            ->where('status', TransactionStatus::COMPLETED->value)
+            ->where('type', TransactionType::INCOME->value)
+            ->whereBetween('transaction_date', [$monthStart, $monthEnd])
+            ->sum('amount');
+
+        $monthlyExpense = (float) DB::table('transactions')
+            ->where('tenant_id', $tenantId)
+            ->where('status', TransactionStatus::COMPLETED->value)
+            ->where('type', TransactionType::EXPENSE->value)
+            ->whereBetween('transaction_date', [$monthStart, $monthEnd])
+            ->sum('amount');
+
+        $membersTotal = (int) DB::table('tenant_users')
+            ->where('tenant_id', $tenantId)
+            ->count();
+
+        $membersActive = (int) DB::table('tenant_users')
+            ->where('tenant_id', $tenantId)
+            ->where('user_status', UserStatus::ACTIVE->value)
+            ->count();
+
+        $membersPending = (int) DB::table('tenant_users')
+            ->where('tenant_id', $tenantId)
+            ->where('verification_status', VerificationStatus::PENDING_VERIFICATION->value)
+            ->count();
+
+        $membersInactive = (int) DB::table('tenant_users')
+            ->where('tenant_id', $tenantId)
+            ->where('user_status', UserStatus::INACTIVE->value)
+            ->count();
+
+        $recentTransactions = DB::table('transactions')
+            ->leftJoin('tenant_users', 'tenant_users.id', '=', 'transactions.recorded_by_user_id')
+            ->where('transactions.tenant_id', $tenantId)
+            ->where('transactions.status', TransactionStatus::COMPLETED->value)
+            ->orderByDesc('transactions.transaction_date')
+            ->orderByDesc('transactions.id')
+            ->limit(4)
+            ->get([
+                'transactions.transaction_date',
+                'transactions.created_at',
+                'transactions.description',
+                'transactions.type',
+                'transactions.amount',
+                'tenant_users.name as recorder_name',
+            ])
+            ->map(fn (object $transaction): array => [
+                'date' => Carbon::parse($transaction->transaction_date)->format('d M'),
+                'flow_stamp' => Carbon::parse($transaction->created_at)->timezone($user->tenant->timezone)->format('d M H:i'),
+                'description' => $transaction->description ?: self::defaultTransactionDescription($transaction->type),
+                'recorder' => $transaction->recorder_name ?: 'System',
+                'type' => ucfirst($transaction->type),
+                'amount' => self::formatCurrency((float) $transaction->amount),
+            ])
+            ->all();
+
+        $transactionFlow = array_slice(array_map(
+            fn (array $transaction): array => [
+                'stamp' => $transaction['flow_stamp'],
+                'summary' => $transaction['description'],
+                'amount' => $transaction['amount'],
+            ],
+            $recentTransactions
+        ), 0, 3);
+
+        $accountRows = DB::table('accounts')
+            ->where('tenant_id', $tenantId)
+            ->orderByDesc('is_default')
+            ->orderByDesc('is_active')
+            ->orderBy('name')
+            ->limit(4)
+            ->get(['name', 'opening_balance', 'is_active', 'is_default'])
+            ->map(fn (object $account): array => [
+                'name' => $account->name,
+                'balance' => self::formatCurrency((float) $account->opening_balance),
+                'status' => $account->is_active ? 'Active' : 'Inactive',
+                'note' => $account->is_default ? 'Default account' : 'Manual account',
+            ])
+            ->all();
+
+        $attentionItems = $membersPending + $membersInactive + ($user->verification_status === VerificationStatus::PENDING_VERIFICATION ? 1 : 0);
+        $attentionNotes = [];
+
+        if ($membersPending > 0) {
+            $attentionNotes[] = $membersPending.' pending verification';
+        }
+
+        if ($membersInactive > 0) {
+            $attentionNotes[] = $membersInactive.' inactive';
+        }
+
+        if ($user->verification_status === VerificationStatus::PENDING_VERIFICATION) {
+            $attentionNotes[] = 'owner belum verified';
+        }
+
+        $alerts = [];
+
+        if ($membersPending > 0) {
+            $alerts[] = $membersPending.' member masih menunggu verifikasi.';
+        }
+
+        if ($latestActivationCode && $user->verification_status === VerificationStatus::PENDING_VERIFICATION) {
+            $alerts[] = 'Kode aktivasi owner aktif sampai '.Carbon::parse($latestActivationCode->expires_at)->timezone($user->tenant->timezone)->format('d M Y H:i').'.';
+        }
+
+        if ($monthlyExpense > $monthlyIncome && $monthlyExpense > 0) {
+            $alerts[] = 'Pengeluaran bulan ini lebih tinggi dari pemasukan.';
+        }
+
+        if ($activeAccountsCount === 0) {
+            $alerts[] = 'Belum ada akun aktif untuk menerima transaksi.';
+        }
+
+        if ($recentTransactions === []) {
+            $alerts[] = 'Belum ada transaksi tercatat. Onboarding tenant masih di tahap awal.';
+        }
+
+        if ($alerts === []) {
+            $alerts[] = 'Tidak ada alert operasional untuk tenant ini.';
+        }
+
         return view('tenant.dashboard', [
             'page' => [
                 'title' => 'Tenant overview',
-                'description' => 'Dashboard ini sudah memakai tenant scoping dari data login nyata, termasuk status owner, akun default, kategori onboarding, dan readiness activation code.',
+                'description' => 'Ringkasan tenant, transaksi terbaru, dan area yang perlu tindakan owner.',
                 'eyebrow' => strtoupper($user->role->value),
+            ],
+            'toolbar' => [
+                'search_label' => 'Cari transaksi, akun, kategori, atau member',
+                'search_placeholder' => 'Search transaction, account, category, or member',
+                'secondary_action' => [
+                    'label' => 'Export',
+                    'href' => route('tenant.transactions.index'),
+                    'variant' => 'secondary',
+                ],
+                'primary_action' => [
+                    'label' => $user->role === UserRole::OWNER ? 'Add member' : 'Open profile',
+                    'href' => $user->role === UserRole::OWNER
+                        ? route('tenant.members.index')
+                        : route('tenant.profile.show'),
+                    'variant' => 'primary',
+                ],
             ],
             'navigation' => TenantNavigation::items($user),
             'authUser' => $user,
-            'stats' => [
-                ['label' => 'Users', 'value' => (string) DB::table('tenant_users')->where('tenant_id', $user->tenant_id)->count(), 'tone' => 'neutral'],
-                ['label' => 'Accounts', 'value' => (string) DB::table('accounts')->where('tenant_id', $user->tenant_id)->count(), 'tone' => 'success'],
-                ['label' => 'Categories', 'value' => (string) DB::table('categories')->where('tenant_id', $user->tenant_id)->count(), 'tone' => 'neutral'],
-                ['label' => 'Transactions', 'value' => (string) DB::table('transactions')->where('tenant_id', $user->tenant_id)->count(), 'tone' => 'success'],
-                ['label' => 'Active Sessions', 'value' => (string) DB::table('conversation_sessions')->where('tenant_id', $user->tenant_id)->where('status', 'active')->count(), 'tone' => 'warning'],
+            'kpis' => [
+                [
+                    'label' => 'Saldo total',
+                    'value' => self::formatCompactCurrency($totalBalance),
+                    'note' => $activeAccountsCount.' akun aktif',
+                    'tone' => 'neutral',
+                ],
+                [
+                    'label' => 'Pemasukan bulan ini',
+                    'value' => self::formatCompactCurrency($monthlyIncome),
+                    'note' => 'Akumulasi transaksi income bulan berjalan',
+                    'tone' => 'neutral',
+                ],
+                [
+                    'label' => 'Pengeluaran bulan ini',
+                    'value' => self::formatCompactCurrency($monthlyExpense),
+                    'note' => 'Operasional dan biaya admin tenant',
+                    'tone' => 'neutral',
+                ],
+                [
+                    'label' => 'Butuh perhatian',
+                    'value' => $attentionItems.' item',
+                    'note' => $attentionNotes === [] ? 'Tidak ada antrian tindakan owner' : implode(', ', $attentionNotes),
+                    'tone' => $attentionItems > 0 ? 'alert' : 'neutral',
+                ],
             ],
-            'tenantSummary' => [
-                'tenant_name' => $user->tenant->name,
-                'tenant_type' => $user->tenant->tenant_type->value,
-                'timezone' => $user->tenant->timezone,
-                'service_status' => $user->tenant->service_status->value,
-                'verification_status' => $user->verification_status->value,
-                'owner_email' => $user->email,
-                'owner_whatsapp' => $user->whatsapp_number,
-                'active_code_last4' => $latestActivationCode?->code_last4,
-                'active_code_expires_at' => $latestActivationCode?->expires_at,
-                'dashboard_role_note' => $user->role === UserRole::OWNER
-                    ? 'Owner melihat seluruh konteks tenant miliknya sendiri.'
-                    : 'Member hanya melihat konteks transaksi dan profil miliknya sendiri.',
+            'transactionFlow' => $transactionFlow,
+            'transactionRows' => $recentTransactions,
+            'accountRows' => $accountRows,
+            'memberStatus' => [
+                ['label' => 'Total member', 'value' => (string) $membersTotal],
+                ['label' => 'Active', 'value' => (string) $membersActive],
+                ['label' => 'Pending verification', 'value' => (string) $membersPending],
+                ['label' => 'Inactive', 'value' => (string) $membersInactive],
             ],
+            'pendingBadge' => $membersPending > 0 ? $membersPending.' pending verification' : null,
+            'quickActions' => [
+                ['label' => 'Tambah member', 'href' => route('tenant.members.index')],
+                ['label' => 'Catat transaksi', 'href' => route('tenant.transactions.index')],
+                ['label' => 'Kelola akun', 'href' => route('tenant.accounts.index')],
+                ['label' => 'Review audit log', 'href' => route('tenant.audit.index')],
+            ],
+            'alerts' => $alerts,
         ]);
+    }
+
+    private static function defaultTransactionDescription(string $type): string
+    {
+        return match ($type) {
+            TransactionType::INCOME->value => 'Pemasukan baru',
+            TransactionType::EXPENSE->value => 'Pengeluaran baru',
+            TransactionType::TRANSFER->value => 'Transfer antar akun',
+            default => 'Aktivitas transaksi',
+        };
+    }
+
+    private static function formatCurrency(float $amount): string
+    {
+        return 'Rp '.number_format($amount, 0, ',', '.');
+    }
+
+    private static function formatCompactCurrency(float $amount): string
+    {
+        if ($amount >= 1000000000) {
+            return 'Rp '.number_format($amount / 1000000000, 1, ',', '.').' M';
+        }
+
+        if ($amount >= 1000000) {
+            return 'Rp '.number_format($amount / 1000000, 1, ',', '.').' jt';
+        }
+
+        if ($amount >= 1000) {
+            return 'Rp '.number_format($amount / 1000, 1, ',', '.').' rb';
+        }
+
+        return 'Rp '.number_format($amount, 0, ',', '.');
     }
 }
