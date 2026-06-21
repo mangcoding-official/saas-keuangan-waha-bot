@@ -5,7 +5,7 @@
         <article class="dashboard-kpi-card">
             <p class="dashboard-kpi-label">Total event</p>
             <h2 class="dashboard-kpi-value">{{ $summary['total'] }}</h2>
-            <p class="dashboard-kpi-note">50 log perubahan transaksi terbaru</p>
+            <p class="dashboard-kpi-note">Log terbaru</p>
         </article>
 
         <article class="dashboard-kpi-card">
