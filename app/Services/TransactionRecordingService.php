@@ -13,7 +13,12 @@ class TransactionRecordingService
     /**
      * @param  array<string, mixed>  $payload
      */
-    public function record(TenantUser $tenantUser, array $payload, ?string $sourceMessageId = null): Transaction
+    public function record(
+        TenantUser $tenantUser,
+        array $payload,
+        ?string $sourceMessageId = null,
+        ?int $conversationSessionId = null
+    ): Transaction
     {
         $type = $payload['type'];
         $transactionDate = $payload['transaction_date'];
@@ -21,7 +26,7 @@ class TransactionRecordingService
         return Transaction::query()->create([
             'tenant_id' => $tenantUser->tenant_id,
             'recorded_by_user_id' => $tenantUser->id,
-            'conversation_session_id' => null,
+            'conversation_session_id' => $conversationSessionId,
             'type' => $type,
             'amount' => $payload['amount'],
             'description' => $payload['description'],
@@ -44,7 +49,9 @@ class TransactionRecordingService
     private function resolveSourceAccountId(string $type, array $payload): ?int
     {
         return match ($type) {
-            TransactionType::EXPENSE->value => (int) $payload['account_id'],
+            TransactionType::EXPENSE->value => isset($payload['source_account_id'])
+                ? (int) $payload['source_account_id']
+                : (int) $payload['account_id'],
             TransactionType::TRANSFER->value => (int) $payload['source_account_id'],
             default => null,
         };
@@ -56,7 +63,9 @@ class TransactionRecordingService
     private function resolveDestinationAccountId(string $type, array $payload): ?int
     {
         return match ($type) {
-            TransactionType::INCOME->value => (int) $payload['account_id'],
+            TransactionType::INCOME->value => isset($payload['destination_account_id'])
+                ? (int) $payload['destination_account_id']
+                : (int) $payload['account_id'],
             TransactionType::TRANSFER->value => (int) $payload['destination_account_id'],
             default => null,
         };

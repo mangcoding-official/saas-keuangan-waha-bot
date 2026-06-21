@@ -16,7 +16,9 @@ class StructuredQuickTransactionParser
      *     status: string,
      *     route: string,
      *     reply_text: string,
-     *     payload: ?array<string, mixed>
+     *     payload: ?array<string, mixed>,
+     *     clarification_state: ?string,
+     *     intent_type: ?string
      * }
      */
     public function parse(TenantUser $tenantUser, string $messageText, Carbon $messageTimestamp): array
@@ -53,7 +55,8 @@ class StructuredQuickTransactionParser
 
         if (count($detectedCommands) > 1) {
             return $this->clarification(
-                'Pesan kamu memuat lebih dari satu tipe transaksi. Kirim satu transaksi per pesan, misalnya: `keluar 15rb makan`.'
+                'Pesan kamu memuat lebih dari satu tipe transaksi. Kirim satu transaksi per pesan, misalnya: `keluar 15rb makan`.',
+                'clarify_mixed_type',
             );
         }
 
@@ -68,7 +71,9 @@ class StructuredQuickTransactionParser
 
         if ($amountMatch === null) {
             return $this->clarification(
-                'Nominal belum terbaca. Pakai format seperti `keluar 15rb makan` atau `masuk 1,5 juta gaji`.'
+                'Nominal belum terbaca. Pakai format seperti `keluar 15rb makan` atau `masuk 1,5 juta gaji`.',
+                'clarify_amount',
+                $commandMap[$command],
             );
         }
 
@@ -113,23 +118,39 @@ class StructuredQuickTransactionParser
             ->get();
 
         if ($accounts->isEmpty()) {
-            return $this->clarification('Belum ada akun aktif untuk tenant ini. Owner perlu mengaktifkan minimal satu akun.');
+            return $this->clarification(
+                'Belum ada akun aktif untuk tenant ini. Owner perlu mengaktifkan minimal satu akun.',
+                $type === TransactionType::INCOME->value ? 'clarify_destination_account' : 'clarify_source_account',
+                $type,
+            );
         }
 
         $accountResolution = $this->resolveSingleAccount($body, $accounts->all());
 
         if ($accountResolution['ambiguous']) {
-            return $this->clarification('Nama akun yang dipakai ambigu. Sebutkan satu akun saja, misalnya `keluar 20rb makan via cash default`.');
+            return $this->clarification(
+                'Nama akun yang dipakai ambigu. Sebutkan satu akun saja, misalnya `keluar 20rb makan via cash default`.',
+                $type === TransactionType::INCOME->value ? 'clarify_destination_account' : 'clarify_source_account',
+                $type,
+            );
         }
 
         if ($accountResolution['explicit'] && $accountResolution['account'] === null) {
-            return $this->clarification('Akun yang kamu sebut belum dikenali. Pakai nama akun tenant yang aktif, misalnya `via cash default`.');
+            return $this->clarification(
+                'Akun yang kamu sebut belum dikenali. Pakai nama akun tenant yang aktif, misalnya `via cash default`.',
+                $type === TransactionType::INCOME->value ? 'clarify_destination_account' : 'clarify_source_account',
+                $type,
+            );
         }
 
         $account = $accountResolution['account'] ?? $accounts->firstWhere('is_default', true);
 
         if ($account === null) {
-            return $this->clarification('Akun default tenant belum tersedia. Owner perlu menetapkan default account lebih dulu.');
+            return $this->clarification(
+                'Akun default tenant belum tersedia. Owner perlu menetapkan default account lebih dulu.',
+                $type === TransactionType::INCOME->value ? 'clarify_destination_account' : 'clarify_source_account',
+                $type,
+            );
         }
 
         $categoryType = $type === TransactionType::INCOME->value ? CategoryType::INCOME : CategoryType::EXPENSE;
@@ -142,7 +163,11 @@ class StructuredQuickTransactionParser
             ->get();
 
         if ($categories->isEmpty()) {
-            return $this->clarification('Belum ada kategori aktif untuk tipe transaksi ini. Owner perlu menyiapkan kategori lebih dulu.');
+            return $this->clarification(
+                'Belum ada kategori aktif untuk tipe transaksi ini. Owner perlu menyiapkan kategori lebih dulu.',
+                'clarify_category',
+                $type,
+            );
         }
 
         $category = $this->resolveCategory($body, $categories->all());
@@ -152,7 +177,11 @@ class StructuredQuickTransactionParser
                 ? 'masuk 1jt gaji'
                 : 'keluar 20rb makan';
 
-            return $this->clarification('Kategori belum dikenali. Pakai kategori/keyword tenant, misalnya `'.$example.'`.');
+            return $this->clarification(
+                'Kategori belum dikenali. Pakai kategori/keyword tenant, misalnya `'.$example.'`.',
+                'clarify_category',
+                $type,
+            );
         }
 
         return [
@@ -169,6 +198,8 @@ class StructuredQuickTransactionParser
                 'category_name' => $category->name,
                 'account_name' => $account->name,
             ],
+            'clarification_state' => null,
+            'intent_type' => $type,
         ];
     }
 
@@ -196,17 +227,29 @@ class StructuredQuickTransactionParser
             ->all();
 
         if (count($accounts) < 2) {
-            return $this->clarification('Transfer butuh minimal dua akun aktif. Owner perlu menambah akun tujuan terlebih dulu.');
+            return $this->clarification(
+                'Transfer butuh minimal dua akun aktif. Owner perlu menambah akun tujuan terlebih dulu.',
+                'clarify_transfer_accounts',
+                TransactionType::TRANSFER->value,
+            );
         }
 
         $resolution = $this->resolveTransferAccounts($body, $accounts);
 
         if ($resolution['source_explicit'] && $resolution['source_account'] === null) {
-            return $this->clarification('Akun sumber belum dikenali. Contoh format: `transfer 50rb dari cash default ke bca operasional`.');
+            return $this->clarification(
+                'Akun sumber belum dikenali. Contoh format: `transfer 50rb dari cash default ke bca operasional`.',
+                'clarify_transfer_accounts',
+                TransactionType::TRANSFER->value,
+            );
         }
 
         if ($resolution['destination_explicit'] && $resolution['destination_account'] === null) {
-            return $this->clarification('Akun tujuan belum dikenali. Contoh format: `transfer 50rb dari cash default ke bca operasional`.');
+            return $this->clarification(
+                'Akun tujuan belum dikenali. Contoh format: `transfer 50rb dari cash default ke bca operasional`.',
+                'clarify_transfer_accounts',
+                TransactionType::TRANSFER->value,
+            );
         }
 
         $sourceAccount = $resolution['source_account'];
@@ -214,12 +257,18 @@ class StructuredQuickTransactionParser
 
         if ($sourceAccount === null || $destinationAccount === null) {
             return $this->clarification(
-                'Transfer harus menyebut akun asal dan tujuan. Contoh: `transfer 50rb dari cash default ke bca operasional`.'
+                'Transfer harus menyebut akun asal dan tujuan. Contoh: `transfer 50rb dari cash default ke bca operasional`.',
+                'clarify_transfer_accounts',
+                TransactionType::TRANSFER->value,
             );
         }
 
         if ($sourceAccount->id === $destinationAccount->id) {
-            return $this->clarification('Akun asal dan tujuan transfer tidak boleh sama.');
+            return $this->clarification(
+                'Akun asal dan tujuan transfer tidak boleh sama.',
+                'clarify_transfer_accounts',
+                TransactionType::TRANSFER->value,
+            );
         }
 
         return [
@@ -237,6 +286,8 @@ class StructuredQuickTransactionParser
                 'source_account_name' => $sourceAccount->name,
                 'destination_account_name' => $destinationAccount->name,
             ],
+            'clarification_state' => null,
+            'intent_type' => TransactionType::TRANSFER->value,
         ];
     }
 
@@ -544,7 +595,9 @@ class StructuredQuickTransactionParser
      *     status: string,
      *     route: string,
      *     reply_text: string,
-     *     payload: null
+     *     payload: null,
+     *     clarification_state: null,
+     *     intent_type: null
      * }
      */
     private function failed(string $route, string $replyText): array
@@ -554,6 +607,8 @@ class StructuredQuickTransactionParser
             'route' => $route,
             'reply_text' => $replyText,
             'payload' => null,
+            'clarification_state' => null,
+            'intent_type' => null,
         ];
     }
 
@@ -562,16 +617,20 @@ class StructuredQuickTransactionParser
      *     status: string,
      *     route: string,
      *     reply_text: string,
-     *     payload: null
+     *     payload: null,
+     *     clarification_state: string,
+     *     intent_type: ?string
      * }
      */
-    private function clarification(string $replyText): array
+    private function clarification(string $replyText, string $state = 'clarify_amount', ?string $intentType = null): array
     {
         return [
             'status' => 'needs_clarification',
             'route' => 'needs_clarification',
             'reply_text' => $replyText,
             'payload' => null,
+            'clarification_state' => $state,
+            'intent_type' => $intentType,
         ];
     }
 
