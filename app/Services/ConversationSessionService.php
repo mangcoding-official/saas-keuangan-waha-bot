@@ -521,10 +521,17 @@ class ConversationSessionService
     {
         return implode("\n", [
             'Perintah tersedia:',
-            'masuk 15000 gaji',
-            'keluar 20rb makan',
+            'masuk [nominal] [kategori]',
+            'keluar [nominal] [kategori]',
+            'masuk [nominal] [kategori] [tanggal]',
+            'keluar [nominal] [kategori] [tanggal]',
+            'transfer [nominal] dari [akun] ke [akun]',
+            '',
+            'Contoh:',
+            'masuk 15rb gaji',
+            'keluar 20rb makan 15 juni',
             'transfer 50rb dari cash default ke bca operasional',
-            'ketik menu atau bantuan untuk lihat format ini lagi.',
+            'ketik menu atau bantuan untuk melihat perintah.',
         ]);
     }
 }

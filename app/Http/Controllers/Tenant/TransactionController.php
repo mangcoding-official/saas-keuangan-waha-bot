@@ -106,9 +106,10 @@ class TransactionController extends Controller
             'transactions' => $transactions,
             'selectedTransaction' => $selectedTransaction,
             'usageExamples' => [
-                'masuk 15000 gaji',
+                'masuk 15000 bonus',
                 'keluar 20rb makan',
-                'masuk 1,5 juta bonus 15 juni',
+                'masuk 1,5 juta gaji 15 juni',
+                'keluar 20rb makan 15 juni',
                 'transfer 50rb dari cash default ke bca operasional',
             ],
         ]);
