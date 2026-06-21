@@ -13,6 +13,12 @@ return [
         'service_plan' => ServicePlan::ALPHA->value,
     ],
 
+    'supported_timezones' => [
+        'Asia/Jakarta',
+        'Asia/Makassar',
+        'Asia/Jayapura',
+    ],
+
     'limits' => [
         'tenant_users' => 5,
     ],

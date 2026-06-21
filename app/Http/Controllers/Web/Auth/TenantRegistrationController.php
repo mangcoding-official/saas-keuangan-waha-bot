@@ -2,32 +2,41 @@
 
 namespace App\Http\Controllers\Web\Auth;
 
+use App\Enums\TenantType;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\RegisterTenantOwnerRequest;
+use App\Services\TenantOwnerRegistrationService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 
 class TenantRegistrationController extends Controller
 {
+    public function __construct(
+        private readonly TenantOwnerRegistrationService $tenantOwnerRegistrationService,
+    ) {
+    }
+
     public function create(): View
     {
         return view('web.auth.register', [
             'page' => [
                 'title' => 'Registrasi tenant owner',
-                'description' => 'Struktur form dan response contract sudah dikunci di milestone 0. Logic create tenant akan diisi pada milestone 1.',
+                'description' => 'Calon owner mendaftarkan tenant, nomor WhatsApp, dan kredensial dashboard. Sistem akan membuat tenant, owner, activation code, akun Cash default, dan kategori template.',
                 'eyebrow' => 'Website Registration',
             ],
+            'tenantTypes' => TenantType::cases(),
+            'timezones' => config('platform.supported_timezones'),
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(RegisterTenantOwnerRequest $request): RedirectResponse
     {
-        $request->flash();
+        $result = $this->tenantOwnerRegistrationService->register($request->validated());
 
-        return back()->with(config('platform.flash_session_key'), [
-            'tone' => 'warning',
-            'title' => 'Contract route aktif',
-            'message' => 'Logic registrasi tenant dan owner akan diimplementasikan pada milestone 1 di endpoint ini.',
+        return to_route('tenant.login.create')->with(config('platform.flash_session_key'), [
+            'tone' => 'success',
+            'title' => 'Registrasi owner berhasil',
+            'message' => 'Tenant dan owner berhasil dibuat. Login ke dashboard lalu verifikasi nomor via bot dengan command AKTIF '.$result['activation_code'].'.',
         ]);
     }
 }
