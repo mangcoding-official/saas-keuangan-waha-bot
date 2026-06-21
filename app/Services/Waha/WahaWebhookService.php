@@ -80,6 +80,16 @@ class WahaWebhookService
 
             if ($route === 'access_granted') {
                 $sideEffects[] = 'access_gate_passed';
+                $route = 'unsupported_command';
+                $shouldReply = true;
+                $replyText = 'Perintah tidak dikenali. Saat ini format transaksi belum aktif.';
+                $sideEffects[] = 'unsupported_command_replied';
+            }
+
+            if ($ignoredReason === IncomingMessageIgnoredReason::PENDING_VERIFICATION->value && $access['tenant_user']) {
+                $shouldReply = true;
+                $replyText = 'Perintah tidak dikenali. Nomor kamu masih pending verification. Gunakan: AKTIF KAS-XXXX atau AKTIV KAS-XXXX.';
+                $sideEffects[] = 'pending_verification_guidance_sent';
             }
         }
 
@@ -91,7 +101,7 @@ class WahaWebhookService
             $access['tenant_user']?->id ?? null,
             $accessDecision,
             $ignoredReason,
-            $route === 'ignored' ? null : $message['message_text'],
+            $route === 'ignored' && $access['tenant_user'] === null ? null : $message['message_text'],
         );
 
         if ($botInstance) {
