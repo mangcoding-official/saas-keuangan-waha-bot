@@ -9,6 +9,7 @@ use App\Enums\UserStatus;
 use App\Enums\VerificationStatus;
 use App\Http\Controllers\Controller;
 use App\Models\TenantUser;
+use App\Services\AccountBalanceService;
 use App\Support\Navigation\TenantNavigation;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
@@ -16,6 +17,11 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+    public function __construct(
+        private readonly AccountBalanceService $accountBalanceService,
+    ) {
+    }
+
     public function __invoke(): View
     {
         /** @var TenantUser $user */
@@ -43,10 +49,12 @@ class DashboardController extends Controller
             ->where('is_active', true)
             ->count();
 
+        $accountBalances = $this->accountBalanceService->balancesForTenant($tenantId);
         $totalBalance = (float) DB::table('accounts')
             ->where('tenant_id', $tenantId)
             ->where('is_active', true)
-            ->sum('opening_balance');
+            ->get(['id'])
+            ->sum(fn (object $account): float => $accountBalances[(int) $account->id] ?? 0.0);
 
         $monthlyIncome = (float) (clone $transactionBaseQuery)
             ->where('type', TransactionType::INCOME->value)
@@ -125,10 +133,10 @@ class DashboardController extends Controller
             ->orderByDesc('is_active')
             ->orderBy('name')
             ->limit(4)
-            ->get(['name', 'opening_balance', 'is_active', 'is_default'])
+            ->get(['id', 'name', 'is_active', 'is_default'])
             ->map(fn (object $account): array => [
                 'name' => $account->name,
-                'balance' => self::formatCurrency((float) $account->opening_balance),
+                'balance' => self::formatCurrency($accountBalances[(int) $account->id] ?? 0.0),
                 'status' => $account->is_active ? 'Active' : 'Inactive',
                 'note' => $account->is_default ? 'Default account' : 'Manual account',
             ])
