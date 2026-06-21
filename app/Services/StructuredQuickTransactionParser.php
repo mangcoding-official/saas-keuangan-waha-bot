@@ -66,7 +66,7 @@ class StructuredQuickTransactionParser
             return $this->failed('parse_failed', $this->helpText());
         }
 
-        $body = trim((string) preg_replace('/^'.preg_quote($command, '/').'\b\s*/u', '', $rawText, 1));
+        $body = trim((string) preg_replace('/^'.preg_quote($command, '/').'\b\s*/iu', '', $rawText, 1));
         $amountMatch = $this->extractAmount($body);
 
         if ($amountMatch === null) {
