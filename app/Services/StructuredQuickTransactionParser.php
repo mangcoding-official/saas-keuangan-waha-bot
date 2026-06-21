@@ -170,7 +170,8 @@ class StructuredQuickTransactionParser
             );
         }
 
-        $category = $this->resolveCategory($body, $categories->all());
+        $categoryMatch = $this->resolveCategoryMatch($body, $categories->all());
+        $category = $categoryMatch['category'];
 
         if ($category === null) {
             $example = $type === TransactionType::INCOME->value
@@ -184,6 +185,13 @@ class StructuredQuickTransactionParser
             );
         }
 
+        $description = $this->extractIncomeExpenseDescription(
+            $body,
+            $categoryMatch['matched_phrase'],
+            $accountResolution['account']?->name,
+            $accountResolution['explicit'],
+        );
+
         return [
             'status' => 'parsed',
             'route' => 'parsed',
@@ -191,7 +199,7 @@ class StructuredQuickTransactionParser
             'payload' => [
                 'type' => $type,
                 'amount' => $amount,
-                'description' => $rawText,
+                'description' => $description,
                 'transaction_date' => $transactionDate,
                 'category_id' => $category->id,
                 'account_id' => $account->id,
@@ -298,7 +306,7 @@ class StructuredQuickTransactionParser
     private function resolveSingleAccount(string $text, array $accounts): array
     {
         $mentions = $this->findAccountMentions($text, $accounts);
-        $hasMarker = preg_match('/\b(via|pakai|dari|ke|akun|rekening|dompet)\b/u', mb_strtolower($text)) === 1;
+        $hasMarker = preg_match('/\b(via|pakai|akun|rekening|dompet)\b/u', mb_strtolower($text)) === 1;
 
         if (count($mentions) > 1) {
             return [
@@ -367,11 +375,12 @@ class StructuredQuickTransactionParser
     /**
      * @param  array<int, Category>  $categories
      */
-    private function resolveCategory(string $text, array $categories): ?Category
+    private function resolveCategoryMatch(string $text, array $categories): array
     {
         $normalizedText = $this->normalizeForMatch($text);
         $bestMatch = null;
         $bestLength = 0;
+        $bestPhrase = null;
 
         foreach ($categories as $category) {
             $candidates = [$category->name, ...($category->keywords ?? [])];
@@ -386,11 +395,43 @@ class StructuredQuickTransactionParser
                 if (str_contains($normalizedText, $needle) && strlen($needle) > $bestLength) {
                     $bestMatch = $category;
                     $bestLength = strlen($needle);
+                    $bestPhrase = (string) $candidate;
                 }
             }
         }
 
-        return $bestMatch;
+        return [
+            'category' => $bestMatch,
+            'matched_phrase' => $bestPhrase,
+        ];
+    }
+
+    private function extractIncomeExpenseDescription(
+        string $text,
+        ?string $matchedCategoryPhrase,
+        ?string $accountName,
+        bool $accountExplicit
+    ): ?string {
+        $description = ' '.$text.' ';
+
+        if ($matchedCategoryPhrase) {
+            $description = preg_replace('/\b'.preg_quote($matchedCategoryPhrase, '/').'\b/iu', ' ', $description, 1) ?? $description;
+        }
+
+        if ($accountExplicit && $accountName) {
+            $description = preg_replace(
+                '/\b(?:via|pakai|akun|rekening|dompet)\s+'.preg_quote($accountName, '/').'\b/iu',
+                ' ',
+                $description,
+                1
+            ) ?? $description;
+
+            $description = preg_replace('/\b'.preg_quote($accountName, '/').'\b/iu', ' ', $description, 1) ?? $description;
+        }
+
+        $description = trim(preg_replace('/\s+/u', ' ', $description) ?? $description);
+
+        return $description !== '' ? $description : null;
     }
 
     /**

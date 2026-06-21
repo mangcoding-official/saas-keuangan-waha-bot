@@ -477,8 +477,11 @@ class ConversationSessionService
             'Tipe: '.strtoupper((string) ($item['type'] ?? '-')),
             'Tanggal: '.$date,
             'Nominal: '.$amount,
-            'Deskripsi: '.((string) ($item['description'] ?? '-') ?: '-'),
         ];
+
+        if (filled($item['description'] ?? null)) {
+            $lines[] = 'Deskripsi: '.(string) $item['description'];
+        }
 
         if (($item['type'] ?? null) === ConversationIntentType::TRANSFER->value) {
             $lines[] = 'Dari: '.((string) ($meta['source_account_name'] ?? '-'));
