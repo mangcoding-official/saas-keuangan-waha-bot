@@ -103,7 +103,7 @@ class WahaAccessGateService
 
     private function looksLikeActivationCommand(?string $messageText): bool
     {
-        return preg_match('/^\s*aktif\s+\S+\s*$/i', (string) $messageText) === 1;
+        return preg_match('/^\s*akti[fv]\s+\S+\s*$/i', (string) $messageText) === 1;
     }
 
     private function ignored(IncomingMessageIgnoredReason $reason, ?object $tenantUser = null): array

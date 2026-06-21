@@ -103,7 +103,7 @@ class WahaActivationService
 
     private function extractActivationCode(?string $messageText): ?string
     {
-        if (preg_match('/^\s*aktif\s+(\S+)\s*$/i', (string) $messageText, $matches) !== 1) {
+        if (preg_match('/^\s*akti[fv]\s+(\S+)\s*$/i', (string) $messageText, $matches) !== 1) {
             return null;
         }
 
