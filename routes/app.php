@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Tenant\AccountController;
+use App\Http\Controllers\Tenant\AuditController;
 use App\Http\Controllers\Tenant\CategoryController;
 use App\Http\Controllers\Tenant\DashboardController;
 use App\Http\Controllers\Tenant\MemberController;
@@ -21,6 +22,9 @@ Route::prefix(config('platform.route_prefixes.tenant'))
             ->name('profile.show');
 
         Route::middleware('tenant.role:owner')->group(function (): void {
+            Route::put('/transactions/{transactionId}', [TransactionController::class, 'update'])->name('transactions.update');
+            Route::post('/transactions/{transactionId}/void', [TransactionController::class, 'void'])->name('transactions.void');
+
             Route::get('/accounts', [AccountController::class, 'index'])->name('accounts.index');
             Route::post('/accounts', [AccountController::class, 'store'])->name('accounts.store');
             Route::put('/accounts/{accountId}', [AccountController::class, 'update'])->name('accounts.update');
@@ -40,9 +44,7 @@ Route::prefix(config('platform.route_prefixes.tenant'))
             Route::post('/members/{memberId}/resend', [MemberController::class, 'resend'])->name('members.resend');
             Route::post('/members/{memberId}/regenerate', [MemberController::class, 'regenerate'])->name('members.regenerate');
 
-            Route::get('/audit', [ResourcePageController::class, 'show'])
-                ->defaults('page', 'audit')
-                ->name('audit.index');
+            Route::get('/audit', [AuditController::class, 'index'])->name('audit.index');
 
             Route::get('/settings', [ResourcePageController::class, 'show'])
                 ->defaults('page', 'settings')

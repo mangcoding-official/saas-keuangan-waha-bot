@@ -29,55 +29,80 @@ class TransactionMessageService
     ): array {
         $normalized = mb_strtolower(trim($messageText));
 
-        $this->conversationSessionService->expireStaleSessions($tenantUser, $messageTimestamp);
+        $expiredSession = $this->conversationSessionService->expireStaleSessions($tenantUser, $messageTimestamp);
         $activeSession = $this->conversationSessionService->findActiveSession($tenantUser);
 
         if ($activeSession) {
-            return $this->conversationSessionService->handleActiveSession(
+            return $this->withExpiredNotice($this->conversationSessionService->handleActiveSession(
                 $activeSession,
                 $tenantUser,
                 $messageText,
                 $messageTimestamp,
                 $sourceMessageId,
                 fn (TenantUser $user, string $text, Carbon $timestamp): array => $this->parser->parse($user, $text, $timestamp),
-            );
+            ), $expiredSession);
         }
 
         if (in_array($normalized, ['menu', 'bantuan'], true)) {
-            return [
+            return $this->withExpiredNotice([
                 'route' => 'command_help',
                 'should_reply' => true,
                 'reply_text' => $this->helpText(),
                 'side_effects' => ['command_help'],
-            ];
+            ], $expiredSession);
         }
 
         if ($normalized === 'batal') {
-            return [
+            return $this->withExpiredNotice([
                 'route' => 'command_cancel_idle',
                 'should_reply' => true,
                 'reply_text' => 'Tidak ada proses aktif untuk dibatalkan.',
                 'side_effects' => ['command_cancel_idle'],
-            ];
+            ], $expiredSession);
+        }
+
+        if (in_array($normalized, ['masuk', 'keluar', 'transfer'], true)) {
+            return $this->withExpiredNotice($this->conversationSessionService->startGuidedSession(
+                $tenantUser,
+                $normalized,
+                $messageTimestamp,
+                $sourceMessageId,
+            ), $expiredSession);
         }
 
         $parsed = $this->parser->parse($tenantUser, $messageText, $messageTimestamp);
 
         if ($parsed['status'] === 'failed') {
-            return [
+            return $this->withExpiredNotice([
                 'route' => $parsed['route'],
                 'should_reply' => true,
                 'reply_text' => $parsed['reply_text'],
                 'side_effects' => [$parsed['route']],
-            ];
+            ], $expiredSession);
         }
 
-        return $this->conversationSessionService->createSessionFromParserResult(
+        return $this->withExpiredNotice($this->conversationSessionService->createSessionFromParserResult(
             $tenantUser,
             $parsed,
             $messageTimestamp,
             $sourceMessageId,
-        );
+        ), $expiredSession);
+    }
+
+    /**
+     * @param  array{route:string,should_reply:bool,reply_text:string,side_effects:array<int,string>}  $result
+     * @return array{route:string,should_reply:bool,reply_text:string,side_effects:array<int,string>}
+     */
+    private function withExpiredNotice(array $result, bool $expiredSession): array
+    {
+        if (! $expiredSession || ! $result['should_reply']) {
+            return $result;
+        }
+
+        $result['reply_text'] = trim("Proses sebelumnya sudah timeout karena tidak ada aktivitas selama 30 menit.\n\n".$result['reply_text']);
+        $result['side_effects'][] = 'session_expired_notified';
+
+        return $result;
     }
 
     private function helpText(): string

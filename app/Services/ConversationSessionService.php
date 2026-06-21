@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
+use App\Enums\CategoryType;
 use App\Enums\ConversationIntentType;
 use App\Enums\ConversationSessionStatus;
+use App\Models\Account;
+use App\Models\Category;
 use App\Models\ConversationSession;
 use App\Models\TenantUser;
 use Illuminate\Support\Carbon;
@@ -16,9 +19,9 @@ class ConversationSessionService
     ) {
     }
 
-    public function expireStaleSessions(TenantUser $tenantUser, Carbon $now): void
+    public function expireStaleSessions(TenantUser $tenantUser, Carbon $now): bool
     {
-        ConversationSession::query()
+        $expiredCount = ConversationSession::query()
             ->where('tenant_user_id', $tenantUser->id)
             ->where('status', ConversationSessionStatus::ACTIVE)
             ->where('expires_at', '<', $now)
@@ -29,6 +32,8 @@ class ConversationSessionService
                 'expired_at' => $now,
                 'updated_at' => $now,
             ]);
+
+        return $expiredCount > 0;
     }
 
     public function findActiveSession(TenantUser $tenantUser): ?ConversationSession
@@ -94,6 +99,51 @@ class ConversationSessionService
      *     side_effects: array<int, string>
      * }
      */
+    public function startGuidedSession(
+        TenantUser $tenantUser,
+        string $command,
+        Carbon $messageTimestamp,
+        ?string $sourceMessageId = null
+    ): array {
+        $intent = match ($command) {
+            'masuk' => ConversationIntentType::INCOME,
+            'keluar' => ConversationIntentType::EXPENSE,
+            'transfer' => ConversationIntentType::TRANSFER,
+            default => ConversationIntentType::OTHER,
+        };
+
+        $session = ConversationSession::query()->create([
+            'tenant_id' => $tenantUser->tenant_id,
+            'tenant_user_id' => $tenantUser->id,
+            'status' => ConversationSessionStatus::ACTIVE,
+            'active_lock' => 1,
+            'current_state' => $this->initialGuidedState($intent),
+            'intent_type' => $intent,
+            'draft_payload' => $this->buildInitialGuidedDraft($intent),
+            'source_message_id' => $sourceMessageId,
+            'last_message_at' => $messageTimestamp,
+            'expires_at' => $this->nextExpiry($messageTimestamp),
+            'completed_at' => null,
+            'cancelled_at' => null,
+            'expired_at' => null,
+        ]);
+
+        return [
+            'route' => $session->current_state,
+            'should_reply' => true,
+            'reply_text' => $this->promptForCurrentState($session),
+            'side_effects' => ['session_created', 'guided_started'],
+        ];
+    }
+
+    /**
+     * @return array{
+     *     route: string,
+     *     should_reply: bool,
+     *     reply_text: string,
+     *     side_effects: array<int, string>
+     * }
+     */
     public function handleActiveSession(
         ConversationSession $session,
         TenantUser $tenantUser,
@@ -105,7 +155,7 @@ class ConversationSessionService
         $normalized = mb_strtolower(trim($messageText));
 
         if ($session->current_state === 'awaiting_interrupt_confirmation') {
-            return $this->handleInterruptConfirmation($session, $normalized, $messageTimestamp);
+            return $this->handleInterruptConfirmation($session, $tenantUser, $normalized, $messageTimestamp, $sourceMessageId);
         }
 
         if ($normalized === 'batal') {
@@ -139,6 +189,10 @@ class ConversationSessionService
                 'reply_text' => "Masih ada proses yang belum selesai.\n\nBalas:\n1. lanjut\n2. batal",
                 'side_effects' => ['session_interrupt_requested'],
             ];
+        }
+
+        if (str_starts_with($session->current_state, 'guided_')) {
+            return $this->handleGuidedState($session, $tenantUser, $messageText, $messageTimestamp, $sourceMessageId);
         }
 
         if ($session->current_state === 'review_confirm') {
@@ -216,6 +270,522 @@ class ConversationSessionService
             'reply_text' => 'State session saat ini belum bisa diproses. Balas `batal` untuk menutup proses ini.',
             'side_effects' => ['session_state_unsupported'],
         ];
+    }
+
+    /**
+     * @return array{
+     *     route: string,
+     *     should_reply: bool,
+     *     reply_text: string,
+     *     side_effects: array<int, string>
+     * }
+     */
+    private function handleGuidedState(
+        ConversationSession $session,
+        TenantUser $tenantUser,
+        string $messageText,
+        Carbon $messageTimestamp,
+        ?string $sourceMessageId
+    ): array {
+        $draft = $session->draft_payload ?? $this->buildInitialGuidedDraft($session->intent_type ?? ConversationIntentType::OTHER);
+        $item = data_get($draft, 'items.0', []);
+        $normalized = mb_strtolower(trim($messageText));
+
+        switch ($session->current_state) {
+            case 'guided_income_amount':
+            case 'guided_expense_amount':
+            case 'guided_transfer_amount':
+                $amount = $this->extractAmountValue($messageText);
+
+                if ($amount === null || $amount <= 0) {
+                    return $this->repeatGuidedPrompt($session, $messageTimestamp, 'Nominal belum valid. Kirim angka seperti `15000`, `15rb`, atau `1,5 juta`.');
+                }
+
+                data_set($draft, 'items.0.amount', $amount);
+                $nextState = match ($session->current_state) {
+                    'guided_income_amount' => 'guided_income_description',
+                    'guided_expense_amount' => 'guided_expense_description',
+                    default => 'guided_transfer_source_account',
+                };
+
+                return $this->advanceGuidedSession($session, $draft, $nextState, $messageTimestamp);
+
+            case 'guided_income_description':
+            case 'guided_expense_description':
+                if ($normalized === '') {
+                    return $this->repeatGuidedPrompt($session, $messageTimestamp, 'Keterangan wajib diisi.');
+                }
+
+                data_set($draft, 'items.0.description', trim($messageText));
+                $nextState = $session->current_state === 'guided_income_description'
+                    ? 'guided_income_category'
+                    : 'guided_expense_category';
+
+                return $this->advanceGuidedSession($session, $draft, $nextState, $messageTimestamp);
+
+            case 'guided_income_category':
+            case 'guided_expense_category':
+                $categoryType = $session->current_state === 'guided_income_category'
+                    ? CategoryType::INCOME
+                    : CategoryType::EXPENSE;
+                $category = $this->resolveCategory($tenantUser, $messageText, $categoryType);
+
+                if ($category === null) {
+                    return $this->repeatGuidedPrompt($session, $messageTimestamp, 'Kategori belum dikenali. Coba pakai nama kategori tenant yang aktif.');
+                }
+
+                data_set($draft, 'items.0.category_id', $category->id);
+                data_set($draft, 'resolved_meta.category_name', $category->name);
+                $nextState = $session->current_state === 'guided_income_category'
+                    ? 'guided_income_destination_account'
+                    : 'guided_expense_source_account';
+
+                return $this->advanceGuidedSession($session, $draft, $nextState, $messageTimestamp);
+
+            case 'guided_income_destination_account':
+            case 'guided_expense_source_account':
+                $account = $this->resolveAccountForGuided($tenantUser, $messageText, true);
+
+                if ($account === null) {
+                    return $this->repeatGuidedPrompt($session, $messageTimestamp, 'Akun belum dikenali. Kirim nama akun aktif atau balas `default`.');
+                }
+
+                if ($session->current_state === 'guided_income_destination_account') {
+                    data_set($draft, 'items.0.destination_account_id', $account->id);
+                } else {
+                    data_set($draft, 'items.0.source_account_id', $account->id);
+                }
+
+                data_set($draft, 'resolved_meta.account_name', $account->name);
+                $nextState = $session->current_state === 'guided_income_destination_account'
+                    ? 'guided_income_date'
+                    : 'guided_expense_date';
+
+                return $this->advanceGuidedSession($session, $draft, $nextState, $messageTimestamp);
+
+            case 'guided_income_date':
+            case 'guided_expense_date':
+            case 'guided_transfer_date':
+                $date = $this->resolveGuidedDate($messageText, $messageTimestamp, $tenantUser);
+
+                if ($date === null) {
+                    return $this->repeatGuidedPrompt($session, $messageTimestamp, 'Tanggal belum valid. Contoh: `hari ini`, `kemarin`, `15 juni`, atau `2026-06-15`.');
+                }
+
+                data_set($draft, 'items.0.transaction_date', $date->toDateString());
+
+                $nextState = match ($session->current_state) {
+                    'guided_income_date' => 'guided_income_attachment_offer',
+                    'guided_expense_date' => 'guided_expense_attachment_offer',
+                    default => 'guided_transfer_description',
+                };
+
+                return $nextState === 'guided_transfer_description'
+                    ? $this->advanceGuidedSession($session, $draft, $nextState, $messageTimestamp)
+                    : $this->advanceGuidedSession($session, $draft, $nextState, $messageTimestamp);
+
+            case 'guided_income_attachment_offer':
+            case 'guided_expense_attachment_offer':
+                if (! in_array($normalized, ['skip', 'tidak', 'ga', 'gak', 'lanjut', 'tidak ada'], true)) {
+                    return $this->repeatGuidedPrompt($session, $messageTimestamp, 'Untuk saat ini lampiran belum aktif. Balas `skip` atau `lanjut`.');
+                }
+
+                data_set($draft, 'review_ready', true);
+
+                return $this->moveGuidedSessionToReview($session, $draft, $messageTimestamp, $sourceMessageId);
+
+            case 'guided_transfer_source_account':
+                $sourceAccount = $this->resolveAccountForGuided($tenantUser, $messageText, false);
+
+                if ($sourceAccount === null) {
+                    return $this->repeatGuidedPrompt($session, $messageTimestamp, 'Akun sumber belum dikenali. Kirim nama akun aktif.');
+                }
+
+                data_set($draft, 'items.0.source_account_id', $sourceAccount->id);
+                data_set($draft, 'resolved_meta.source_account_name', $sourceAccount->name);
+
+                return $this->advanceGuidedSession($session, $draft, 'guided_transfer_destination_account', $messageTimestamp);
+
+            case 'guided_transfer_destination_account':
+                $destinationAccount = $this->resolveAccountForGuided($tenantUser, $messageText, false);
+                $sourceAccountId = (int) data_get($draft, 'items.0.source_account_id');
+
+                if ($destinationAccount === null) {
+                    return $this->repeatGuidedPrompt($session, $messageTimestamp, 'Akun tujuan belum dikenali. Kirim nama akun aktif.');
+                }
+
+                if ($destinationAccount->id === $sourceAccountId) {
+                    return $this->repeatGuidedPrompt($session, $messageTimestamp, 'Akun sumber dan tujuan tidak boleh sama.');
+                }
+
+                data_set($draft, 'items.0.destination_account_id', $destinationAccount->id);
+                data_set($draft, 'resolved_meta.destination_account_name', $destinationAccount->name);
+
+                return $this->advanceGuidedSession($session, $draft, 'guided_transfer_admin_fee', $messageTimestamp);
+
+            case 'guided_transfer_admin_fee':
+                if (in_array($normalized, ['skip', 'tidak', 'ga', 'gak', '0', 'tidak ada'], true)) {
+                    data_set($draft, 'transfer_admin_fee', null);
+                } else {
+                    $fee = $this->extractAmountValue($messageText);
+
+                    if ($fee === null || $fee < 0) {
+                        return $this->repeatGuidedPrompt($session, $messageTimestamp, 'Biaya admin belum valid. Kirim angka nominal atau balas `0` / `skip`.');
+                    }
+
+                    data_set($draft, 'transfer_admin_fee', $fee > 0 ? $fee : null);
+                }
+
+                return $this->advanceGuidedSession($session, $draft, 'guided_transfer_date', $messageTimestamp);
+
+            case 'guided_transfer_description':
+                data_set(
+                    $draft,
+                    'items.0.description',
+                    in_array($normalized, ['skip', 'tidak', 'ga', 'gak', 'tidak ada', 'kosong'], true) ? null : trim($messageText)
+                );
+                data_set($draft, 'review_ready', true);
+
+                return $this->moveGuidedSessionToReview($session, $draft, $messageTimestamp, $sourceMessageId);
+        }
+
+        return $this->repeatGuidedPrompt($session, $messageTimestamp, null);
+    }
+
+    private function initialGuidedState(ConversationIntentType $intent): string
+    {
+        return match ($intent) {
+            ConversationIntentType::INCOME => 'guided_income_amount',
+            ConversationIntentType::EXPENSE => 'guided_expense_amount',
+            ConversationIntentType::TRANSFER => 'guided_transfer_amount',
+            default => 'guided_expense_amount',
+        };
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildInitialGuidedDraft(ConversationIntentType $intent): array
+    {
+        return [
+            'intent_type' => $intent->value,
+            'source' => 'guided',
+            'items' => [[
+                'type' => $intent->value,
+                'amount' => null,
+                'description' => null,
+                'category_id' => null,
+                'source_account_id' => null,
+                'destination_account_id' => null,
+                'transaction_date' => null,
+            ]],
+            'transfer_admin_fee' => null,
+            'attachment_ids' => [],
+            'clarification' => null,
+            'review_ready' => false,
+            'resolved_meta' => [
+                'category_name' => null,
+                'account_name' => null,
+                'source_account_name' => null,
+                'destination_account_name' => null,
+            ],
+        ];
+    }
+
+    /**
+     * @return array{
+     *     route: string,
+     *     should_reply: bool,
+     *     reply_text: string,
+     *     side_effects: array<int, string>
+     * }
+     */
+    private function advanceGuidedSession(
+        ConversationSession $session,
+        array $draft,
+        string $nextState,
+        Carbon $messageTimestamp
+    ): array {
+        $session->forceFill([
+            'current_state' => $nextState,
+            'draft_payload' => $draft,
+            'last_message_at' => $messageTimestamp,
+            'expires_at' => $this->nextExpiry($messageTimestamp),
+        ])->save();
+
+        return [
+            'route' => $nextState,
+            'should_reply' => true,
+            'reply_text' => $this->promptForCurrentState($session->fresh()),
+            'side_effects' => ['guided_state_advanced'],
+        ];
+    }
+
+    /**
+     * @return array{
+     *     route: string,
+     *     should_reply: bool,
+     *     reply_text: string,
+     *     side_effects: array<int, string>
+     * }
+     */
+    private function moveGuidedSessionToReview(
+        ConversationSession $session,
+        array $draft,
+        Carbon $messageTimestamp,
+        ?string $sourceMessageId
+    ): array {
+        $session->forceFill([
+            'current_state' => 'review_confirm',
+            'draft_payload' => $draft,
+            'source_message_id' => $sourceMessageId ?: $session->source_message_id,
+            'last_message_at' => $messageTimestamp,
+            'expires_at' => $this->nextExpiry($messageTimestamp),
+        ])->save();
+
+        return [
+            'route' => 'review_confirm',
+            'should_reply' => true,
+            'reply_text' => $this->reviewPrompt($session->fresh()),
+            'side_effects' => ['guided_review_ready'],
+        ];
+    }
+
+    /**
+     * @return array{
+     *     route: string,
+     *     should_reply: bool,
+     *     reply_text: string,
+     *     side_effects: array<int, string>
+     * }
+     */
+    private function repeatGuidedPrompt(
+        ConversationSession $session,
+        Carbon $messageTimestamp,
+        ?string $prefix
+    ): array {
+        $session->forceFill([
+            'last_message_at' => $messageTimestamp,
+            'expires_at' => $this->nextExpiry($messageTimestamp),
+        ])->save();
+
+        $prompt = $this->promptForCurrentState($session);
+        $reply = $prefix ? trim($prefix."\n\n".$prompt) : $prompt;
+
+        return [
+            'route' => $session->current_state,
+            'should_reply' => true,
+            'reply_text' => $reply,
+            'side_effects' => ['guided_validation_failed'],
+        ];
+    }
+
+    private function extractAmountValue(string $text): ?float
+    {
+        $normalized = trim(preg_replace('/\s+/u', '', mb_strtolower($text)) ?? '');
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $multiplier = 1;
+
+        if (str_contains($normalized, 'juta') || str_contains($normalized, 'jt')) {
+            $multiplier = 1000000;
+            $normalized = str_replace(['juta', 'jt'], '', $normalized);
+        } elseif (str_contains($normalized, 'ribu') || str_contains($normalized, 'rb') || preg_match('/k$/', $normalized) === 1) {
+            $multiplier = 1000;
+            $normalized = str_replace(['ribu', 'rb', 'k'], '', $normalized);
+        }
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $normalized = $multiplier > 1
+            ? str_replace(',', '.', $normalized)
+            : str_replace(',', '', str_replace('.', '', $normalized));
+
+        if (preg_match('/^\d+(?:\.\d+)?$/', $normalized) !== 1) {
+            return null;
+        }
+
+        return (float) $normalized * $multiplier;
+    }
+
+    private function resolveCategory(TenantUser $tenantUser, string $text, CategoryType $type): ?Category
+    {
+        $normalizedText = $this->normalizeForMatch($text);
+        $bestMatch = null;
+        $bestLength = 0;
+
+        $categories = Category::query()
+            ->where('tenant_id', $tenantUser->tenant_id)
+            ->where('type', $type)
+            ->where('is_active', true)
+            ->orderByDesc('is_system')
+            ->orderBy('name')
+            ->get();
+
+        foreach ($categories as $category) {
+            foreach ([$category->name, ...($category->keywords ?? [])] as $candidate) {
+                $needle = $this->normalizeForMatch((string) $candidate);
+
+                if ($needle !== '' && str_contains($normalizedText, $needle) && strlen($needle) > $bestLength) {
+                    $bestMatch = $category;
+                    $bestLength = strlen($needle);
+                }
+            }
+        }
+
+        return $bestMatch;
+    }
+
+    private function resolveAccountForGuided(TenantUser $tenantUser, string $text, bool $allowDefaultKeyword): ?Account
+    {
+        $normalized = $this->normalizeForMatch($text);
+
+        if ($allowDefaultKeyword && in_array($normalized, ['default', 'akun default', 'pakai default', 'gunakan default', 'skip', 'lanjut'], true)) {
+            return Account::query()
+                ->where('tenant_id', $tenantUser->tenant_id)
+                ->where('is_active', true)
+                ->where('is_default', true)
+                ->first();
+        }
+
+        $accounts = Account::query()
+            ->where('tenant_id', $tenantUser->tenant_id)
+            ->where('is_active', true)
+            ->orderByDesc('is_default')
+            ->orderBy('name')
+            ->get();
+
+        $bestMatch = null;
+        $bestLength = 0;
+
+        foreach ($accounts as $account) {
+            $needle = $this->normalizeForMatch($account->name);
+
+            if ($needle !== '' && str_contains($normalized, $needle) && strlen($needle) > $bestLength) {
+                $bestMatch = $account;
+                $bestLength = strlen($needle);
+            }
+        }
+
+        return $bestMatch;
+    }
+
+    private function resolveGuidedDate(string $text, Carbon $messageTimestamp, TenantUser $tenantUser): ?Carbon
+    {
+        $normalized = mb_strtolower(trim($text));
+        $now = $messageTimestamp->copy()->timezone($tenantUser->tenant->timezone);
+
+        if (in_array($normalized, ['skip', 'default', 'lanjut', 'hari ini', 'sekarang'], true)) {
+            return $now->copy()->startOfDay();
+        }
+
+        if ($normalized === 'kemarin') {
+            return $now->copy()->subDay()->startOfDay();
+        }
+
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/u', $normalized, $matches) === 1) {
+            return Carbon::createFromDate((int) $matches[1], (int) $matches[2], (int) $matches[3], $now->timezone);
+        }
+
+        if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/u', $normalized, $matches) === 1) {
+            return Carbon::createFromDate((int) $matches[3], (int) $matches[2], (int) $matches[1], $now->timezone);
+        }
+
+        if (preg_match('/^tanggal\s+(\d{1,2})$/u', $normalized, $matches) === 1) {
+            return Carbon::createFromDate((int) $now->format('Y'), (int) $now->format('m'), (int) $matches[1], $now->timezone);
+        }
+
+        if (preg_match('/^(\d{1,2})\s+(januari|februari|maret|april|mei|juni|juli|agustus|september|oktober|november|desember)(?:\s+(\d{4}))?$/u', $normalized, $matches) === 1) {
+            return Carbon::createFromDate(
+                isset($matches[3]) ? (int) $matches[3] : (int) $now->format('Y'),
+                $this->indonesianMonthNumber($matches[2]),
+                (int) $matches[1],
+                $now->timezone,
+            );
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildTransactionsForCommit(ConversationSession $session, TenantUser $tenantUser): array
+    {
+        $draft = $session->draft_payload ?? [];
+        $items = data_get($draft, 'items', []);
+
+        if (($session->intent_type?->value ?? null) !== ConversationIntentType::TRANSFER->value) {
+            return $items;
+        }
+
+        $fee = data_get($draft, 'transfer_admin_fee');
+
+        if (! is_numeric($fee) || (float) $fee <= 0) {
+            return $items;
+        }
+
+        $adminCategory = Category::query()
+            ->where('tenant_id', $tenantUser->tenant_id)
+            ->where('type', CategoryType::EXPENSE)
+            ->where('is_system', true)
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->first();
+
+        if (! $adminCategory) {
+            return $items;
+        }
+
+        $firstItem = $items[0] ?? null;
+
+        if (! is_array($firstItem)) {
+            return $items;
+        }
+
+        $items[] = [
+            'type' => ConversationIntentType::EXPENSE->value,
+            'amount' => (float) $fee,
+            'description' => 'Biaya admin transfer',
+            'category_id' => $adminCategory->id,
+            'source_account_id' => $firstItem['source_account_id'] ?? null,
+            'destination_account_id' => null,
+            'transaction_date' => $firstItem['transaction_date'] ?? now()->toDateString(),
+        ];
+
+        return $items;
+    }
+
+    private function indonesianMonthNumber(string $month): int
+    {
+        return match (mb_strtolower($month)) {
+            'januari' => 1,
+            'februari' => 2,
+            'maret' => 3,
+            'april' => 4,
+            'mei' => 5,
+            'juni' => 6,
+            'juli' => 7,
+            'agustus' => 8,
+            'september' => 9,
+            'oktober' => 10,
+            'november' => 11,
+            'desember' => 12,
+            default => 1,
+        };
+    }
+
+    private function normalizeForMatch(string $value): string
+    {
+        $normalized = mb_strtolower($value);
+        $normalized = preg_replace('/[^a-z0-9]+/u', ' ', $normalized) ?? $normalized;
+
+        return trim(preg_replace('/\s+/u', ' ', $normalized) ?? $normalized);
     }
 
     /**
@@ -321,8 +891,10 @@ class ConversationSessionService
      */
     private function handleInterruptConfirmation(
         ConversationSession $session,
+        TenantUser $tenantUser,
         string $normalized,
-        Carbon $messageTimestamp
+        Carbon $messageTimestamp,
+        ?string $sourceMessageId
     ): array {
         $normalized = match ($normalized) {
             '1', '1.', '1)' => 'lanjut',
@@ -355,14 +927,15 @@ class ConversationSessionService
         if ($normalized === 'batal') {
             $this->cancelSession($session, $messageTimestamp);
 
+            if (in_array($pendingCommand, ['masuk', 'keluar', 'transfer'], true)) {
+                return $this->startGuidedSession($tenantUser, (string) $pendingCommand, $messageTimestamp, $sourceMessageId);
+            }
+
             return [
                 'route' => 'session_cancelled',
                 'should_reply' => true,
                 'reply_text' => match ($pendingCommand) {
                     'menu', 'bantuan' => $this->helpText(),
-                    'masuk' => 'Format cepat pemasukan: `masuk 15000 gaji` atau `masuk 1,5 juta bonus 15 juni`.',
-                    'keluar' => 'Format cepat pengeluaran: `keluar 20rb makan` atau `keluar 75rb transport via cash default`.',
-                    'transfer' => 'Format cepat transfer: `transfer 50rb dari cash default ke bca operasional`.',
                     default => 'Proses aktif dibatalkan.',
                 },
                 'side_effects' => ['session_cancelled'],
@@ -387,8 +960,7 @@ class ConversationSessionService
      */
     private function commitReviewSession(ConversationSession $session, TenantUser $tenantUser, Carbon $now): array
     {
-        $draft = $session->draft_payload ?? [];
-        $items = data_get($draft, 'items', []);
+        $items = $this->buildTransactionsForCommit($session, $tenantUser);
         $savedCount = 0;
 
         DB::transaction(function () use ($items, $session, $tenantUser, &$savedCount, $now): void {
@@ -500,9 +1072,54 @@ class ConversationSessionService
     private function promptForCurrentState(ConversationSession $session): string
     {
         return match ($session->current_state) {
+            'guided_income_amount' => 'Masukkan nominal pemasukan. Contoh: `15000`, `15rb`, atau `1,5 juta`.',
+            'guided_income_description' => 'Masukkan keterangan pemasukan. Contoh: `bonus goal project`.',
+            'guided_income_category' => 'Masukkan kategori pemasukan. Opsi aktif: '.$this->listCategoryNames($session->tenant_id, CategoryType::INCOME).'.',
+            'guided_income_destination_account' => 'Masukkan akun tujuan. Opsi aktif: '.$this->listAccountNames($session->tenant_id).'. Balas nama akun atau `default`.',
+            'guided_income_date' => 'Masukkan tanggal pemasukan. Contoh: `hari ini`, `kemarin`, `15 juni`, atau `2026-06-15`.',
+            'guided_income_attachment_offer' => 'Lampiran belum aktif untuk MVP ini. Balas `skip` atau `lanjut` untuk lanjut ke review.',
+            'guided_expense_amount' => 'Masukkan nominal pengeluaran. Contoh: `15000`, `15rb`, atau `1,5 juta`.',
+            'guided_expense_description' => 'Masukkan keterangan pengeluaran. Contoh: `makan siang tim`.',
+            'guided_expense_category' => 'Masukkan kategori pengeluaran. Opsi aktif: '.$this->listCategoryNames($session->tenant_id, CategoryType::EXPENSE).'.',
+            'guided_expense_source_account' => 'Masukkan akun sumber. Opsi aktif: '.$this->listAccountNames($session->tenant_id).'. Balas nama akun atau `default`.',
+            'guided_expense_date' => 'Masukkan tanggal pengeluaran. Contoh: `hari ini`, `kemarin`, `15 juni`, atau `2026-06-15`.',
+            'guided_expense_attachment_offer' => 'Lampiran belum aktif untuk MVP ini. Balas `skip` atau `lanjut` untuk lanjut ke review.',
+            'guided_transfer_amount' => 'Masukkan nominal transfer. Contoh: `50000` atau `50rb`.',
+            'guided_transfer_source_account' => 'Masukkan akun sumber transfer. Opsi aktif: '.$this->listAccountNames($session->tenant_id).'.',
+            'guided_transfer_destination_account' => 'Masukkan akun tujuan transfer. Opsi aktif: '.$this->listAccountNames($session->tenant_id).'.',
+            'guided_transfer_admin_fee' => 'Masukkan biaya admin transfer jika ada. Balas `0` atau `skip` jika tidak ada.',
+            'guided_transfer_date' => 'Masukkan tanggal transfer. Contoh: `hari ini`, `kemarin`, `15 juni`, atau `2026-06-15`.',
+            'guided_transfer_description' => 'Masukkan keterangan transfer jika perlu. Balas `skip` jika tidak ada.',
             'review_confirm' => $this->reviewPrompt($session),
             default => (string) data_get($session->draft_payload, 'clarification.reply_text', 'Lanjutkan proses yang sedang aktif atau balas `batal`.'),
         };
+    }
+
+    private function listAccountNames(int $tenantId): string
+    {
+        $names = Account::query()
+            ->where('tenant_id', $tenantId)
+            ->where('is_active', true)
+            ->orderByDesc('is_default')
+            ->orderBy('name')
+            ->pluck('name')
+            ->all();
+
+        return $names === [] ? '-' : implode(', ', $names);
+    }
+
+    private function listCategoryNames(int $tenantId, CategoryType $type): string
+    {
+        $names = Category::query()
+            ->where('tenant_id', $tenantId)
+            ->where('type', $type)
+            ->where('is_active', true)
+            ->orderByDesc('is_system')
+            ->orderBy('name')
+            ->pluck('name')
+            ->all();
+
+        return $names === [] ? '-' : implode(', ', $names);
     }
 
     private function nextExpiry(Carbon $messageTimestamp): Carbon
