@@ -17,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/waha',
+        ]);
+
         $middleware->alias([
             'tenant.role' => EnsureTenantUserRole::class,
         ]);

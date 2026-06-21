@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Enums\AccountType;
-use App\Enums\ActivationCodeStatus;
 use App\Enums\AiAddonStatus;
 use App\Enums\CategoryType;
 use App\Enums\ServicePlan;
@@ -23,6 +22,7 @@ use Illuminate\Validation\ValidationException;
 class TenantOwnerRegistrationService
 {
     public function __construct(
+        private readonly ActivationCodeService $activationCodeService,
         private readonly PhoneNumberNormalizer $phoneNumberNormalizer,
     ) {
     }
@@ -58,7 +58,7 @@ class TenantOwnerRegistrationService
                 'verification_status' => VerificationStatus::PENDING_VERIFICATION,
             ]);
 
-            $activationCode = $this->createActivationCodeFor($owner->id);
+            $activationCode = $this->activationCodeService->issue($owner->id, 'owner_created');
 
             $this->createDefaultAccountFor($tenant->id);
             $this->createCategoryTemplatesFor($tenant->id, TenantType::from((string) $payload['tenant_type']));
@@ -103,36 +103,6 @@ class TenantOwnerRegistrationService
         }
 
         return $normalized;
-    }
-
-    private function createActivationCodeFor(int $tenantUserId): string
-    {
-        DB::table('activation_codes')
-            ->where('tenant_user_id', $tenantUserId)
-            ->where('status', ActivationCodeStatus::ACTIVE->value)
-            ->update([
-                'status' => ActivationCodeStatus::INVALIDATED->value,
-                'active_lock' => null,
-                'invalidated_at' => now(),
-                'invalidated_reason' => 'regenerated',
-                'updated_at' => now(),
-            ]);
-
-        $suffix = strtoupper(substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 4));
-        $plainCode = 'KAS-'.$suffix;
-
-        DB::table('activation_codes')->insert([
-            'tenant_user_id' => $tenantUserId,
-            'code_hash' => Hash::make($plainCode),
-            'code_last4' => $suffix,
-            'status' => ActivationCodeStatus::ACTIVE->value,
-            'active_lock' => 1,
-            'expires_at' => now()->addMinutes((int) config('platform.timeouts.activation_code_minutes')),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        return $plainCode;
     }
 
     private function createDefaultAccountFor(int $tenantId): void

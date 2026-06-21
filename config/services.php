@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'waha' => [
+        'base_url' => env('WAHA_BASE_URL', 'http://localhost:3000'),
+        'api_key' => env('WAHA_API_KEY'),
+        'dashboard_username' => env('WAHA_DASHBOARD_USERNAME'),
+        'dashboard_password' => env('WAHA_DASHBOARD_PASSWORD'),
+        'default_session' => env('WAHA_DEFAULT_SESSION', 'default'),
+    ],
+
 ];

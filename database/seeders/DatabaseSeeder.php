@@ -82,12 +82,12 @@ class DatabaseSeeder extends Seeder
             ],
         );
 
-        $botId = DB::table('bot_instances')->where('waha_instance_key', 'default-alpha')->value('id');
+        $botId = DB::table('bot_instances')->where('waha_instance_key', 'default')->value('id');
 
         if (! $botId) {
             $botId = DB::table('bot_instances')->insertGetId([
-                'name' => 'Default Alpha Bot',
-                'waha_instance_key' => 'default-alpha',
+                'name' => 'Default Bot',
+                'waha_instance_key' => 'default',
                 'bot_whatsapp_number' => '081100000000',
                 'bot_whatsapp_number_normalized' => '6281100000000',
                 'connection_status' => WahaConnectionStatus::CONNECTING->value,

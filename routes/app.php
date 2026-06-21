@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Tenant\MemberController;
 use App\Http\Controllers\Tenant\DashboardController;
 use App\Http\Controllers\Tenant\ResourcePageController;
 use Illuminate\Support\Facades\Route;
@@ -27,9 +28,11 @@ Route::prefix(config('platform.route_prefixes.tenant'))
                 ->defaults('page', 'categories')
                 ->name('categories.index');
 
-            Route::get('/members', [ResourcePageController::class, 'show'])
-                ->defaults('page', 'members')
+            Route::get('/members', [MemberController::class, 'index'])
                 ->name('members.index');
+            Route::post('/members', [MemberController::class, 'store'])->name('members.store');
+            Route::post('/members/{memberId}/resend', [MemberController::class, 'resend'])->name('members.resend');
+            Route::post('/members/{memberId}/regenerate', [MemberController::class, 'regenerate'])->name('members.regenerate');
 
             Route::get('/audit', [ResourcePageController::class, 'show'])
                 ->defaults('page', 'audit')
