@@ -9,6 +9,7 @@ use App\Enums\WahaConnectionStatus;
 use App\Http\Controllers\Controller;
 use App\Support\Navigation\PlatformAdminNavigation;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
@@ -68,19 +69,33 @@ class DashboardController extends Controller
 
         $attentionQueue = DB::table('tenant_users')
             ->join('tenants', 'tenants.id', '=', 'tenant_users.tenant_id')
+            ->leftJoin('activation_codes', function ($join): void {
+                $join->on('activation_codes.tenant_user_id', '=', 'tenant_users.id')
+                    ->where('activation_codes.active_lock', '=', 1);
+            })
             ->where('tenant_users.verification_status', VerificationStatus::PENDING_VERIFICATION->value)
             ->orderByDesc('tenant_users.created_at')
             ->limit(4)
             ->get([
+                'tenant_users.id',
                 'tenants.name as tenant_name',
                 'tenant_users.name as user_name',
+                'tenant_users.role',
                 'tenant_users.user_status',
+                'activation_codes.code_last4',
+                'activation_codes.expires_at',
             ])
             ->map(fn (object $row): array => [
+                'id' => (int) $row->id,
                 'queue' => 'Pending verification',
-                'tenant_user' => $row->tenant_name.' / '.$row->user_name,
+                'tenant_user' => $row->tenant_name.' / '.$row->user_name.' ('.strtoupper((string) $row->role).')',
                 'status' => $row->user_status === 'inactive' ? 'Blocked' : 'Warning',
-                'next_action' => 'Review verification',
+                'code' => $row->code_last4 ? 'KAS-'.$row->code_last4 : 'Tidak ada code aktif',
+                'code_note' => $row->expires_at
+                    ? (Carbon::parse($row->expires_at)->isPast()
+                        ? 'Expired'
+                        : 'Aktif sampai '.Carbon::parse($row->expires_at)->format('d M Y H:i'))
+                    : 'Perlu issue code baru',
             ])
             ->all();
 

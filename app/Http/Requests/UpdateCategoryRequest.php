@@ -1,0 +1,41 @@
+<?php
+
+namespace App\Http\Requests;
+
+use App\Enums\CategoryType;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+class UpdateCategoryRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user('web') !== null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function rules(): array
+    {
+        $tenantId = $this->user('web')?->tenant_id;
+        $categoryId = (int) $this->route('categoryId');
+        $type = $this->input('type');
+
+        return [
+            'type' => ['required', Rule::in(CategoryType::values())],
+            'name' => [
+                'required',
+                'string',
+                'max:120',
+                Rule::unique('categories', 'name')
+                    ->where(fn ($query) => $query
+                        ->where('tenant_id', $tenantId)
+                        ->where('type', $type))
+                    ->ignore($categoryId),
+            ],
+            'keywords' => ['nullable', 'string', 'max:1000'],
+            'is_active' => ['nullable', 'boolean'],
+        ];
+    }
+}

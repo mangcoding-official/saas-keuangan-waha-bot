@@ -3,6 +3,7 @@
 use App\Http\Controllers\Internal\Auth\PlatformAdminSessionController;
 use App\Http\Controllers\Internal\DashboardController;
 use App\Http\Controllers\Internal\ResourcePageController;
+use App\Http\Controllers\Internal\VerificationController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix(config('platform.route_prefixes.internal'))
@@ -16,11 +17,13 @@ Route::prefix(config('platform.route_prefixes.internal'))
         Route::middleware('auth:platform_admin')->group(function (): void {
             Route::post('/logout', [PlatformAdminSessionController::class, 'destroy'])->name('logout');
             Route::get('/', DashboardController::class)->name('dashboard');
+            Route::get('/verification', [VerificationController::class, 'index'])->name('verification.index');
+            Route::post('/verification/{tenantUserId}/resend', [VerificationController::class, 'resend'])->name('verification.resend');
+            Route::post('/verification/{tenantUserId}/regenerate', [VerificationController::class, 'regenerate'])->name('verification.regenerate');
 
             foreach ([
                 'tenants' => 'tenants.index',
                 'users' => 'users.index',
-                'verification' => 'verification.index',
                 'sessions' => 'sessions.index',
                 'transactions' => 'transactions.index',
                 'attachments' => 'attachments.index',

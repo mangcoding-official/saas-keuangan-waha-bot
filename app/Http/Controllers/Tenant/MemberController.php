@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreTenantMemberRequest;
 use App\Models\TenantUser;
 use App\Services\TenantMemberInvitationService;
+use App\Services\TenantVerificationCodeService;
 use App\Support\Navigation\TenantNavigation;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -18,6 +19,7 @@ class MemberController extends Controller
 {
     public function __construct(
         private readonly TenantMemberInvitationService $tenantMemberInvitationService,
+        private readonly TenantVerificationCodeService $tenantVerificationCodeService,
     ) {
     }
 
@@ -66,8 +68,7 @@ class MemberController extends Controller
                     ? 'expired'
                     : ((string) ($member->activation_status ?? 'none')),
                 'inviter_name' => $member->inviter_name ?: 'Website Registration',
-                'can_manage_code' => $member->role === UserRole::MEMBER->value
-                    && $member->verification_status === VerificationStatus::PENDING_VERIFICATION->value,
+                'can_manage_code' => $member->verification_status === VerificationStatus::PENDING_VERIFICATION->value,
             ])
             ->all();
 
@@ -123,8 +124,8 @@ class MemberController extends Controller
     {
         /** @var TenantUser $owner */
         $owner = auth('web')->user();
-        $member = $this->findMember($owner, $memberId);
-        $activationCode = $this->tenantMemberInvitationService->resend($owner, $member);
+        $member = $this->findManagedUser($owner, $memberId);
+        $activationCode = $this->tenantVerificationCodeService->resendForTenantOwner($owner, $member);
 
         return to_route('tenant.members.index')->with(config('platform.flash_session_key'), [
             'tone' => 'success',
@@ -137,8 +138,8 @@ class MemberController extends Controller
     {
         /** @var TenantUser $owner */
         $owner = auth('web')->user();
-        $member = $this->findMember($owner, $memberId);
-        $activationCode = $this->tenantMemberInvitationService->regenerate($owner, $member);
+        $member = $this->findManagedUser($owner, $memberId);
+        $activationCode = $this->tenantVerificationCodeService->regenerateForTenantOwner($owner, $member);
 
         return to_route('tenant.members.index')->with(config('platform.flash_session_key'), [
             'tone' => 'warning',
@@ -147,11 +148,11 @@ class MemberController extends Controller
         ]);
     }
 
-    private function findMember(TenantUser $owner, int $memberId): TenantUser
+    private function findManagedUser(TenantUser $owner, int $memberId): TenantUser
     {
         return TenantUser::query()
             ->where('tenant_id', $owner->tenant_id)
-            ->where('role', UserRole::MEMBER)
+            ->whereIn('role', [UserRole::OWNER, UserRole::MEMBER])
             ->findOrFail($memberId);
     }
 }

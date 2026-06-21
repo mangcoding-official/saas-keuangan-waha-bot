@@ -347,6 +347,12 @@ img {
     border-color: rgba(53, 106, 230, 0.45);
 }
 
+.input-textarea {
+    min-height: 120px;
+    padding-block: 14px;
+    resize: vertical;
+}
+
 .panel {
     padding: 24px;
 }
@@ -521,6 +527,10 @@ img {
     line-height: 1.08;
 }
 
+.dashboard-kpi-value-compact {
+    font-size: clamp(1.15rem, 1.8vw, 1.55rem);
+}
+
 .dashboard-kpi-note {
     margin: 0;
     color: #7a7a7a;
@@ -674,6 +684,23 @@ img {
     display: grid;
     gap: 8px;
     justify-content: flex-start;
+}
+
+.resource-chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.resource-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: var(--surface-muted);
+    color: #494949;
+    font-size: 0.86rem;
 }
 
 .button-compact {

@@ -1,7 +1,9 @@
 <?php
 
-use App\Http\Controllers\Tenant\MemberController;
+use App\Http\Controllers\Tenant\AccountController;
+use App\Http\Controllers\Tenant\CategoryController;
 use App\Http\Controllers\Tenant\DashboardController;
+use App\Http\Controllers\Tenant\MemberController;
 use App\Http\Controllers\Tenant\ResourcePageController;
 use Illuminate\Support\Facades\Route;
 
@@ -20,13 +22,18 @@ Route::prefix(config('platform.route_prefixes.tenant'))
             ->name('profile.show');
 
         Route::middleware('tenant.role:owner')->group(function (): void {
-            Route::get('/accounts', [ResourcePageController::class, 'show'])
-                ->defaults('page', 'accounts')
-                ->name('accounts.index');
+            Route::get('/accounts', [AccountController::class, 'index'])->name('accounts.index');
+            Route::post('/accounts', [AccountController::class, 'store'])->name('accounts.store');
+            Route::put('/accounts/{accountId}', [AccountController::class, 'update'])->name('accounts.update');
+            Route::post('/accounts/{accountId}/set-default', [AccountController::class, 'setDefault'])->name('accounts.set-default');
+            Route::post('/accounts/{accountId}/activate', [AccountController::class, 'activate'])->name('accounts.activate');
+            Route::post('/accounts/{accountId}/deactivate', [AccountController::class, 'deactivate'])->name('accounts.deactivate');
 
-            Route::get('/categories', [ResourcePageController::class, 'show'])
-                ->defaults('page', 'categories')
-                ->name('categories.index');
+            Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+            Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
+            Route::put('/categories/{categoryId}', [CategoryController::class, 'update'])->name('categories.update');
+            Route::post('/categories/{categoryId}/activate', [CategoryController::class, 'activate'])->name('categories.activate');
+            Route::post('/categories/{categoryId}/deactivate', [CategoryController::class, 'deactivate'])->name('categories.deactivate');
 
             Route::get('/members', [MemberController::class, 'index'])
                 ->name('members.index');

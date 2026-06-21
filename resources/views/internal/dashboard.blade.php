@@ -30,7 +30,8 @@
                             <th>Queue</th>
                             <th>Tenant / User</th>
                             <th>Status</th>
-                            <th>Next action</th>
+                            <th>Activation code</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -39,11 +40,27 @@
                                 <td>{{ $row['queue'] }}</td>
                                 <td>{{ $row['tenant_user'] }}</td>
                                 <td>{{ $row['status'] }}</td>
-                                <td>{{ $row['next_action'] }}</td>
+                                <td>
+                                    <div>{{ $row['code'] }}</div>
+                                    <div class="members-cell-meta">{{ $row['code_note'] }}</div>
+                                </td>
+                                <td>
+                                    <div class="members-action-stack">
+                                        <form action="{{ route('internal.verification.resend', $row['id']) }}" method="post">
+                                            @csrf
+                                            <button class="button button-secondary button-compact" type="submit">Resend</button>
+                                        </form>
+
+                                        <form action="{{ route('internal.verification.regenerate', $row['id']) }}" method="post">
+                                            @csrf
+                                            <button class="button button-ghost button-compact" type="submit">Regenerate</button>
+                                        </form>
+                                    </div>
+                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="dashboard-empty-cell">Belum ada antrian yang perlu di-review.</td>
+                                <td colspan="5" class="dashboard-empty-cell">Belum ada antrian yang perlu di-review.</td>
                             </tr>
                         @endforelse
                     </tbody>
