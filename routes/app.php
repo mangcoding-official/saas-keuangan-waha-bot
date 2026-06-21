@@ -5,6 +5,7 @@ use App\Http\Controllers\Tenant\CategoryController;
 use App\Http\Controllers\Tenant\DashboardController;
 use App\Http\Controllers\Tenant\MemberController;
 use App\Http\Controllers\Tenant\ResourcePageController;
+use App\Http\Controllers\Tenant\TransactionController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix(config('platform.route_prefixes.tenant'))
@@ -13,9 +14,7 @@ Route::prefix(config('platform.route_prefixes.tenant'))
     ->group(function (): void {
         Route::get('/', DashboardController::class)->name('dashboard');
 
-        Route::get('/transactions', [ResourcePageController::class, 'show'])
-            ->defaults('page', 'transactions')
-            ->name('transactions.index');
+        Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
 
         Route::get('/profile', [ResourcePageController::class, 'show'])
             ->defaults('page', 'profile')

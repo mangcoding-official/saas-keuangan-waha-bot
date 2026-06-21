@@ -24,6 +24,13 @@ class DashboardController extends Controller
         $now = now()->timezone($user->tenant->timezone);
         $monthStart = $now->copy()->startOfMonth()->toDateString();
         $monthEnd = $now->copy()->endOfMonth()->toDateString();
+        $transactionBaseQuery = DB::table('transactions')
+            ->where('tenant_id', $tenantId)
+            ->where('status', TransactionStatus::COMPLETED->value);
+
+        if ($user->role === UserRole::MEMBER) {
+            $transactionBaseQuery->where('recorded_by_user_id', $user->id);
+        }
 
         $latestActivationCode = DB::table('activation_codes')
             ->where('tenant_user_id', $user->id)
@@ -41,19 +48,19 @@ class DashboardController extends Controller
             ->where('is_active', true)
             ->sum('opening_balance');
 
-        $monthlyIncome = (float) DB::table('transactions')
-            ->where('tenant_id', $tenantId)
-            ->where('status', TransactionStatus::COMPLETED->value)
+        $monthlyIncome = (float) (clone $transactionBaseQuery)
             ->where('type', TransactionType::INCOME->value)
             ->whereBetween('transaction_date', [$monthStart, $monthEnd])
             ->sum('amount');
 
-        $monthlyExpense = (float) DB::table('transactions')
-            ->where('tenant_id', $tenantId)
-            ->where('status', TransactionStatus::COMPLETED->value)
+        $monthlyExpense = (float) (clone $transactionBaseQuery)
             ->where('type', TransactionType::EXPENSE->value)
             ->whereBetween('transaction_date', [$monthStart, $monthEnd])
             ->sum('amount');
+
+        $monthlyTransactionCount = (int) (clone $transactionBaseQuery)
+            ->whereBetween('transaction_date', [$monthStart, $monthEnd])
+            ->count();
 
         $membersTotal = (int) DB::table('tenant_users')
             ->where('tenant_id', $tenantId)
@@ -78,6 +85,10 @@ class DashboardController extends Controller
             ->leftJoin('tenant_users', 'tenant_users.id', '=', 'transactions.recorded_by_user_id')
             ->where('transactions.tenant_id', $tenantId)
             ->where('transactions.status', TransactionStatus::COMPLETED->value)
+            ->when(
+                $user->role === UserRole::MEMBER,
+                fn ($query) => $query->where('transactions.recorded_by_user_id', $user->id)
+            )
             ->orderByDesc('transactions.transaction_date')
             ->orderByDesc('transactions.id')
             ->limit(4)
@@ -123,14 +134,16 @@ class DashboardController extends Controller
             ])
             ->all();
 
-        $attentionItems = $membersPending + $membersInactive + ($user->verification_status === VerificationStatus::PENDING_VERIFICATION ? 1 : 0);
+        $attentionItems = $user->role === UserRole::OWNER
+            ? $membersPending + $membersInactive + ($user->verification_status === VerificationStatus::PENDING_VERIFICATION ? 1 : 0)
+            : ($user->verification_status === VerificationStatus::PENDING_VERIFICATION ? 1 : 0);
         $attentionNotes = [];
 
-        if ($membersPending > 0) {
+        if ($user->role === UserRole::OWNER && $membersPending > 0) {
             $attentionNotes[] = $membersPending.' pending verification';
         }
 
-        if ($membersInactive > 0) {
+        if ($user->role === UserRole::OWNER && $membersInactive > 0) {
             $attentionNotes[] = $membersInactive.' inactive';
         }
 
@@ -140,7 +153,7 @@ class DashboardController extends Controller
 
         $alerts = [];
 
-        if ($membersPending > 0) {
+        if ($user->role === UserRole::OWNER && $membersPending > 0) {
             $alerts[] = $membersPending.' member masih menunggu verifikasi.';
         }
 
@@ -157,7 +170,9 @@ class DashboardController extends Controller
         }
 
         if ($recentTransactions === []) {
-            $alerts[] = 'Belum ada transaksi tercatat. Onboarding tenant masih di tahap awal.';
+            $alerts[] = $user->role === UserRole::OWNER
+                ? 'Belum ada transaksi tercatat. Onboarding tenant masih di tahap awal.'
+                : 'Belum ada transaksi yang kamu catat dari WhatsApp.';
         }
 
         if ($alerts === []) {
@@ -190,9 +205,13 @@ class DashboardController extends Controller
             'authUser' => $user,
             'kpis' => [
                 [
-                    'label' => 'Saldo total',
-                    'value' => self::formatCompactCurrency($totalBalance),
-                    'note' => $activeAccountsCount.' akun aktif',
+                    'label' => $user->role === UserRole::OWNER ? 'Saldo total' : 'Transaksi bulan ini',
+                    'value' => $user->role === UserRole::OWNER
+                        ? self::formatCompactCurrency($totalBalance)
+                        : (string) $monthlyTransactionCount,
+                    'note' => $user->role === UserRole::OWNER
+                        ? $activeAccountsCount.' akun aktif'
+                        : 'Jumlah transaksi yang kamu catat bulan berjalan',
                     'tone' => 'neutral',
                 ],
                 [
@@ -204,7 +223,9 @@ class DashboardController extends Controller
                 [
                     'label' => 'Pengeluaran bulan ini',
                     'value' => self::formatCompactCurrency($monthlyExpense),
-                    'note' => 'Operasional dan biaya admin tenant',
+                    'note' => $user->role === UserRole::OWNER
+                        ? 'Operasional dan biaya admin tenant'
+                        : 'Pengeluaran pribadi yang kamu catat',
                     'tone' => 'neutral',
                 ],
                 [
@@ -217,19 +238,33 @@ class DashboardController extends Controller
             'transactionFlow' => $transactionFlow,
             'transactionRows' => $recentTransactions,
             'accountRows' => $accountRows,
-            'memberStatus' => [
-                ['label' => 'Total member', 'value' => (string) $membersTotal],
-                ['label' => 'Active', 'value' => (string) $membersActive],
-                ['label' => 'Pending verification', 'value' => (string) $membersPending],
-                ['label' => 'Inactive', 'value' => (string) $membersInactive],
-            ],
-            'pendingBadge' => $membersPending > 0 ? $membersPending.' pending verification' : null,
-            'quickActions' => [
-                ['label' => 'Tambah member', 'href' => route('tenant.members.index')],
-                ['label' => 'Catat transaksi', 'href' => route('tenant.transactions.index')],
-                ['label' => 'Kelola akun', 'href' => route('tenant.accounts.index')],
-                ['label' => 'Review audit log', 'href' => route('tenant.audit.index')],
-            ],
+            'memberStatus' => $user->role === UserRole::OWNER
+                ? [
+                    ['label' => 'Total member', 'value' => (string) $membersTotal],
+                    ['label' => 'Active', 'value' => (string) $membersActive],
+                    ['label' => 'Pending verification', 'value' => (string) $membersPending],
+                    ['label' => 'Inactive', 'value' => (string) $membersInactive],
+                ]
+                : [
+                    ['label' => 'Role', 'value' => strtoupper($user->role->value)],
+                    ['label' => 'Status', 'value' => $user->user_status->value],
+                    ['label' => 'Verification', 'value' => $user->verification_status->value],
+                    ['label' => 'Nomor WA', 'value' => $user->whatsapp_number],
+                ],
+            'pendingBadge' => $user->role === UserRole::OWNER
+                ? ($membersPending > 0 ? $membersPending.' pending verification' : null)
+                : ($user->verification_status === VerificationStatus::PENDING_VERIFICATION ? 'Nomor kamu masih pending verification' : null),
+            'quickActions' => $user->role === UserRole::OWNER
+                ? [
+                    ['label' => 'Tambah member', 'href' => route('tenant.members.index')],
+                    ['label' => 'Catat transaksi', 'href' => route('tenant.transactions.index')],
+                    ['label' => 'Kelola akun', 'href' => route('tenant.accounts.index')],
+                    ['label' => 'Review audit log', 'href' => route('tenant.audit.index')],
+                ]
+                : [
+                    ['label' => 'Lihat transaksi saya', 'href' => route('tenant.transactions.index')],
+                    ['label' => 'Open profile', 'href' => route('tenant.profile.show')],
+                ],
             'alerts' => $alerts,
         ]);
     }

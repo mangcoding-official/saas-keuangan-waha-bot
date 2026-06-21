@@ -4,6 +4,8 @@ namespace App\Services\Waha;
 
 use App\Enums\IncomingMessageAccessDecision;
 use App\Enums\IncomingMessageIgnoredReason;
+use App\Models\TenantUser;
+use App\Services\TransactionMessageService;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,6 +18,7 @@ class WahaWebhookService
         private readonly WahaWebhookPayloadNormalizer $payloadNormalizer,
         private readonly WahaAccessGateService $accessGateService,
         private readonly WahaActivationService $activationService,
+        private readonly TransactionMessageService $transactionMessageService,
         private readonly WahaClient $wahaClient,
     ) {
     }
@@ -80,10 +83,30 @@ class WahaWebhookService
 
             if ($route === 'access_granted') {
                 $sideEffects[] = 'access_gate_passed';
-                $route = 'unsupported_command';
-                $shouldReply = true;
-                $replyText = 'Perintah tidak dikenali. Saat ini format transaksi belum aktif.';
-                $sideEffects[] = 'unsupported_command_replied';
+
+                /** @var TenantUser|null $tenantUser */
+                $tenantUser = $access['tenant_user']
+                    ? TenantUser::query()->with('tenant')->find($access['tenant_user']->id)
+                    : null;
+
+                if ($tenantUser) {
+                    $transactionResult = $this->transactionMessageService->handle(
+                        $tenantUser,
+                        $message['message_text'],
+                        $message['message_timestamp'],
+                        $message['source_message_id'],
+                    );
+
+                    $route = $transactionResult['route'];
+                    $shouldReply = $transactionResult['should_reply'];
+                    $replyText = $transactionResult['reply_text'];
+                    $sideEffects = array_merge($sideEffects, $transactionResult['side_effects']);
+                } else {
+                    $route = 'unsupported_command';
+                    $shouldReply = true;
+                    $replyText = 'Perintah tidak dikenali.';
+                    $sideEffects[] = 'unsupported_command_replied';
+                }
             }
 
             if ($ignoredReason === IncomingMessageIgnoredReason::PENDING_VERIFICATION->value && $access['tenant_user']) {
