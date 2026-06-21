@@ -112,11 +112,14 @@ class MemberController extends Controller
         /** @var TenantUser $owner */
         $owner = $request->user('web');
         $result = $this->tenantMemberInvitationService->invite($owner, $request->validated());
+        $deliveryNote = $result['whatsapp_sent']
+            ? ' Activation code juga sudah dikirim ke WhatsApp user.'
+            : ' Namun pesan belum berhasil dikirim.';
 
         return to_route('tenant.members.index')->with(config('platform.flash_session_key'), [
             'tone' => 'success',
             'title' => 'Member berhasil ditambahkan',
-            'message' => 'Activation code '.$result['activation_code'].' dibuat untuk '.$result['member']->name.'. Status member sekarang pending verification.',
+            'message' => 'Activation code '.$result['activation_code'].' dibuat untuk '.$result['member']->name.'. Status member sekarang pending verification.'.$deliveryNote,
         ]);
     }
 
@@ -125,12 +128,15 @@ class MemberController extends Controller
         /** @var TenantUser $owner */
         $owner = auth('web')->user();
         $member = $this->findManagedUser($owner, $memberId);
-        $activationCode = $this->tenantVerificationCodeService->resendForTenantOwner($owner, $member);
+        $result = $this->tenantVerificationCodeService->resendForTenantOwner($owner, $member);
+        $deliveryNote = $result['whatsapp_sent']
+            ? ' sudah dikirim.'
+            : ' Namun pesan belum berhasil dikirim.';
 
         return to_route('tenant.members.index')->with(config('platform.flash_session_key'), [
             'tone' => 'success',
             'title' => 'Activation code dikirim ulang',
-            'message' => 'Code baru '.$activationCode.' sekarang aktif untuk '.$member->name.'. Code aktif sebelumnya otomatis tidak berlaku.',
+            'message' => 'Code baru '.$result['code'].' sekarang aktif untuk '.$member->name.'. Code aktif sebelumnya otomatis tidak berlaku.'.$deliveryNote,
         ]);
     }
 
@@ -139,12 +145,15 @@ class MemberController extends Controller
         /** @var TenantUser $owner */
         $owner = auth('web')->user();
         $member = $this->findManagedUser($owner, $memberId);
-        $activationCode = $this->tenantVerificationCodeService->regenerateForTenantOwner($owner, $member);
+        $result = $this->tenantVerificationCodeService->regenerateForTenantOwner($owner, $member);
+        $deliveryNote = $result['whatsapp_sent']
+            ? ' sudah dikirim.'
+            : ' Namun pesan belum berhasil dikirim.';
 
         return to_route('tenant.members.index')->with(config('platform.flash_session_key'), [
             'tone' => 'warning',
             'title' => 'Activation code diregenerate',
-            'message' => 'Code lama dibatalkan dan code baru '.$activationCode.' sekarang aktif untuk '.$member->name.'.',
+            'message' => 'Code baru '.$result['code'].' untuk '.$member->name.'.'.$deliveryNote,
         ]);
     }
 

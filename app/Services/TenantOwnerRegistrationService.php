@@ -23,13 +23,14 @@ class TenantOwnerRegistrationService
 {
     public function __construct(
         private readonly ActivationCodeService $activationCodeService,
+        private readonly ActivationCodeDeliveryService $activationCodeDeliveryService,
         private readonly PhoneNumberNormalizer $phoneNumberNormalizer,
     ) {
     }
 
     /**
      * @param  array<string, mixed>  $payload
-     * @return array{tenant: Tenant, owner: TenantUser, activation_code: string}
+     * @return array{tenant: Tenant, owner: TenantUser, activation_code: string, whatsapp_sent: bool}
      */
     public function register(array $payload): array
     {
@@ -67,6 +68,7 @@ class TenantOwnerRegistrationService
                 'tenant' => $tenant,
                 'owner' => $owner,
                 'activation_code' => $activationCode,
+                'whatsapp_sent' => $this->activationCodeDeliveryService->send($owner, $activationCode, 'owner_created'),
             ];
         });
     }

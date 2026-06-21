@@ -88,7 +88,7 @@ class WahaWebhookService
 
             if ($ignoredReason === IncomingMessageIgnoredReason::PENDING_VERIFICATION->value && $access['tenant_user']) {
                 $shouldReply = true;
-                $replyText = 'Perintah tidak dikenali. Nomor kamu masih pending verification. Gunakan: AKTIF KAS-XXXX atau AKTIV KAS-XXXX.';
+                $replyText = 'Perintah tidak dikenali. Nomor kamu masih pending verification. Gunakan: AKTIF KAS-XXXX.';
                 $sideEffects[] = 'pending_verification_guidance_sent';
             }
         }

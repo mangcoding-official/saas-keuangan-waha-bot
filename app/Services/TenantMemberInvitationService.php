@@ -14,13 +14,14 @@ class TenantMemberInvitationService
 {
     public function __construct(
         private readonly ActivationCodeService $activationCodeService,
+        private readonly ActivationCodeDeliveryService $activationCodeDeliveryService,
         private readonly PhoneNumberNormalizer $phoneNumberNormalizer,
     ) {
     }
 
     /**
      * @param  array{name: string, whatsapp_number: string}  $payload
-     * @return array{member: TenantUser, activation_code: string}
+     * @return array{member: TenantUser, activation_code: string, whatsapp_sent: bool}
      */
     public function invite(TenantUser $owner, array $payload): array
     {
@@ -41,9 +42,12 @@ class TenantMemberInvitationService
                 'invited_by_user_id' => $owner->id,
             ]);
 
+            $activationCode = $this->activationCodeService->issue($member->id, 'member_created');
+
             return [
                 'member' => $member,
-                'activation_code' => $this->activationCodeService->issue($member->id, 'member_created'),
+                'activation_code' => $activationCode,
+                'whatsapp_sent' => $this->activationCodeDeliveryService->send($member, $activationCode, 'member_created'),
             ];
         });
     }

@@ -94,12 +94,15 @@ class VerificationController extends Controller
         /** @var PlatformAdminUser $admin */
         $admin = auth('platform_admin')->user();
         $targetUser = $this->findTargetUser($tenantUserId);
-        $code = $this->tenantVerificationCodeService->resendForPlatformAdmin($admin, $targetUser);
+        $result = $this->tenantVerificationCodeService->resendForPlatformAdmin($admin, $targetUser);
+        $deliveryNote = $result['whatsapp_sent']
+            ? ' sudah dikirim.'
+            : ' Namun pesan belum berhasil dikirim.';
 
         return to_route('internal.verification.index')->with(config('platform.flash_session_key'), [
             'tone' => 'success',
             'title' => 'Activation code dikirim ulang',
-            'message' => 'Code baru '.$code.' sekarang aktif untuk '.$targetUser->name.'.',
+            'message' => 'Code baru '.$result['code'].' sekarang aktif untuk '.$targetUser->name.'.'.$deliveryNote,
         ]);
     }
 
@@ -108,12 +111,15 @@ class VerificationController extends Controller
         /** @var PlatformAdminUser $admin */
         $admin = auth('platform_admin')->user();
         $targetUser = $this->findTargetUser($tenantUserId);
-        $code = $this->tenantVerificationCodeService->regenerateForPlatformAdmin($admin, $targetUser);
+        $result = $this->tenantVerificationCodeService->regenerateForPlatformAdmin($admin, $targetUser);
+        $deliveryNote = $result['whatsapp_sent']
+            ? ' sudah dikirim.'
+            : ' Namun pesan belum berhasil dikirim.';
 
         return to_route('internal.verification.index')->with(config('platform.flash_session_key'), [
             'tone' => 'warning',
             'title' => 'Activation code diregenerate',
-            'message' => 'Code lama dibatalkan dan code baru '.$code.' sekarang aktif untuk '.$targetUser->name.'.',
+            'message' => 'Code lama dibatalkan dan code baru '.$result['code'].' sekarang aktif untuk '.$targetUser->name.'.'.$deliveryNote,
         ]);
     }
 

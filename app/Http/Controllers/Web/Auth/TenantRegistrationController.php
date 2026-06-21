@@ -32,11 +32,14 @@ class TenantRegistrationController extends Controller
     public function store(RegisterTenantOwnerRequest $request): RedirectResponse
     {
         $result = $this->tenantOwnerRegistrationService->register($request->validated());
+        $deliveryNote = $result['whatsapp_sent']
+            ? ' Activation code juga sudah dikirim ke WhatsApp owner.'
+            : ' Namun pesan WhatsApp otomatis ke owner belum berhasil dikirim.';
 
         return to_route('tenant.login.create')->with(config('platform.flash_session_key'), [
             'tone' => 'success',
             'title' => 'Registrasi owner berhasil',
-            'message' => 'Tenant dan owner berhasil dibuat. Login ke dashboard lalu verifikasi nomor via bot dengan command AKTIF '.$result['activation_code'].'.',
+            'message' => 'Tenant dan owner berhasil dibuat. Login ke dashboard lalu verifikasi nomor via bot dengan command AKTIF '.$result['activation_code'].'.'.$deliveryNote,
         ]);
     }
 }

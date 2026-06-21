@@ -13,43 +13,72 @@ class TenantVerificationCodeService
 {
     public function __construct(
         private readonly ActivationCodeService $activationCodeService,
+        private readonly ActivationCodeDeliveryService $activationCodeDeliveryService,
     ) {
     }
 
-    public function resendForTenantOwner(TenantUser $owner, TenantUser $targetUser): string
+    /**
+     * @return array{code: string, whatsapp_sent: bool}
+     */
+    public function resendForTenantOwner(TenantUser $owner, TenantUser $targetUser): array
     {
         $this->assertTenantOwnerCanManage($owner, $targetUser);
         $this->assertPendingUser($targetUser);
 
-        return $this->activationCodeService->issue($targetUser->id, 'resent');
+        $code = $this->activationCodeService->issue($targetUser->id, 'resent');
+
+        return [
+            'code' => $code,
+            'whatsapp_sent' => $this->activationCodeDeliveryService->send($targetUser, $code, 'resent'),
+        ];
     }
 
-    public function regenerateForTenantOwner(TenantUser $owner, TenantUser $targetUser): string
+    /**
+     * @return array{code: string, whatsapp_sent: bool}
+     */
+    public function regenerateForTenantOwner(TenantUser $owner, TenantUser $targetUser): array
     {
         $this->assertTenantOwnerCanManage($owner, $targetUser);
         $this->assertPendingUser($targetUser);
 
-        return $this->activationCodeService->issue($targetUser->id, 'regenerated');
+        $code = $this->activationCodeService->issue($targetUser->id, 'regenerated');
+
+        return [
+            'code' => $code,
+            'whatsapp_sent' => $this->activationCodeDeliveryService->send($targetUser, $code, 'regenerated'),
+        ];
     }
 
-    public function resendForPlatformAdmin(PlatformAdminUser $admin, TenantUser $targetUser): string
+    /**
+     * @return array{code: string, whatsapp_sent: bool}
+     */
+    public function resendForPlatformAdmin(PlatformAdminUser $admin, TenantUser $targetUser): array
     {
         $this->assertPendingUser($targetUser);
         $code = $this->activationCodeService->issue($targetUser->id, 'resent_by_admin');
 
         $this->recordPlatformAudit($admin, $targetUser, 'verification_code_resent');
 
-        return $code;
+        return [
+            'code' => $code,
+            'whatsapp_sent' => $this->activationCodeDeliveryService->send($targetUser, $code, 'resent_by_admin'),
+        ];
     }
 
-    public function regenerateForPlatformAdmin(PlatformAdminUser $admin, TenantUser $targetUser): string
+    /**
+     * @return array{code: string, whatsapp_sent: bool}
+     */
+    public function regenerateForPlatformAdmin(PlatformAdminUser $admin, TenantUser $targetUser): array
     {
         $this->assertPendingUser($targetUser);
         $code = $this->activationCodeService->issue($targetUser->id, 'regenerated_by_admin');
 
         $this->recordPlatformAudit($admin, $targetUser, 'verification_code_regenerated');
 
-        return $code;
+        return [
+            'code' => $code,
+            'whatsapp_sent' => $this->activationCodeDeliveryService->send($targetUser, $code, 'regenerated_by_admin'),
+        ];
     }
 
     private function assertTenantOwnerCanManage(TenantUser $owner, TenantUser $targetUser): void
