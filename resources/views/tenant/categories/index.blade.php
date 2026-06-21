@@ -11,32 +11,31 @@
         <article class="dashboard-kpi-card">
             <p class="dashboard-kpi-label">Total kategori</p>
             <h2 class="dashboard-kpi-value">{{ $summary['total'] }}</h2>
-            <p class="dashboard-kpi-note">Income dan expense milik tenant</p>
+            <p class="dashboard-kpi-note">Income dan expense</p>
         </article>
 
         <article class="dashboard-kpi-card">
             <p class="dashboard-kpi-label">Kategori aktif</p>
             <h2 class="dashboard-kpi-value">{{ $summary['active'] }}</h2>
-            <p class="dashboard-kpi-note">Dipakai untuk parser transaksi</p>
+            <p class="dashboard-kpi-note"></p>
         </article>
 
         <article class="dashboard-kpi-card">
             <p class="dashboard-kpi-label">Income vs expense</p>
             <h2 class="dashboard-kpi-value">{{ $summary['income'] }} / {{ $summary['expense'] }}</h2>
-            <p class="dashboard-kpi-note">Distribusi kategori tenant</p>
+            <p class="dashboard-kpi-note"></p>
         </article>
 
         <article class="dashboard-kpi-card {{ $summary['system'] > 0 ? 'is-alert' : '' }}">
             <p class="dashboard-kpi-label">Kategori sistem</p>
             <h2 class="dashboard-kpi-value">{{ $summary['system'] }}</h2>
-            <p class="dashboard-kpi-note">Wajib ada untuk admin fee transfer</p>
+            <p class="dashboard-kpi-note"></p>
         </article>
     </section>
 
     <section class="members-layout-grid">
         <article class="dashboard-card members-form-card">
             <h2 class="dashboard-section-title">{{ $editingCategory ? 'Edit category' : 'Create category' }}</h2>
-            <p class="panel-copy">Owner mengelola kategori dan keyword parser. Kata kunci dipisah dengan koma atau baris baru agar transaksi WhatsApp lebih mudah dikenali.</p>
 
             @if (($editingCategory['is_system'] ?? false) === true)
                 <div class="members-alert members-alert-warning">
@@ -90,9 +89,10 @@
                         id="keywords"
                         name="keywords"
                         class="input-control input-textarea"
-                        placeholder="Contoh: langganan, tools, canva&#10;Pisahkan dengan koma atau enter"
+                        placeholder="Contoh: langganan, tools, canva"
                         @disabled(($editingCategory['is_system'] ?? false) === true)
                     >{{ old('keywords', $editingCategory['keywords'] ?? '') }}</textarea>
+                    <p class="panel-copy" style="margin-top: 0;">Note: Kata kunci dipisah dengan koma agar transaksi WhatsApp lebih mudah dikenali.</p>
                     @error('keywords')
                         <p class="field-error">{{ $message }}</p>
                     @enderror
@@ -133,91 +133,89 @@
                 </div>
             </form>
         </article>
-
-        <article class="dashboard-card">
-            <h2 class="dashboard-section-title">Rules</h2>
-
-            <div class="dashboard-alert-list">
-                <p>Kategori tenant dibagi menjadi income dan expense.</p>
-                <p>Keyword atau alias dipakai parser untuk mencocokkan kategori dari pesan WhatsApp.</p>
-                <p>Kategori inactive disimpan, tetapi tidak dipakai parser transaksi baru.</p>
-                <p>Kategori sistem `Biaya Admin Transfer` wajib tetap tersedia.</p>
-            </div>
-        </article>
     </section>
 
-    <article class="dashboard-card dashboard-table-card">
-        <table class="dashboard-table">
-            <thead>
-                <tr>
-                    <th>Kategori</th>
-                    <th>Tipe</th>
-                    <th>Keyword</th>
-                    <th>Status</th>
-                    <th>Last update</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($categories as $category)
+    <section class="members-layout-grid">
+        <article class="dashboard-card dashboard-table-card">
+            <table class="dashboard-table">
+                <thead>
                     <tr>
-                        <td>
-                            <strong>{{ $category['name'] }}</strong>
-                            @if ($category['is_system'])
-                                <div class="members-cell-meta">Kategori sistem wajib</div>
-                            @endif
-                        </td>
-                        <td>{{ $category['type'] }}</td>
-                        <td>
-                            @if ($category['keywords'] !== [])
-                                <div class="resource-chip-group">
-                                    @foreach ($category['keywords'] as $keyword)
-                                        <span class="resource-chip">{{ $keyword }}</span>
-                                    @endforeach
-                                </div>
-                            @else
-                                <span class="members-cell-meta">Belum ada keyword</span>
-                            @endif
-                        </td>
-                        <td>
-                            <div class="members-badge-stack">
+                        <th>Kategori</th>
+                        <th>Tipe</th>
+                        <th>Keyword</th>
+                        <th>Status</th>
+                        <th>Last update</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($categories as $category)
+                        <tr>
+                            <td>
+                                <strong>{{ $category['name'] }}</strong>
                                 @if ($category['is_system'])
-                                    <x-ui.badge tone="neutral">system</x-ui.badge>
+                                    <div class="members-cell-meta">Kategori sistem wajib</div>
                                 @endif
-                                <x-ui.badge tone="{{ $category['is_active'] ? 'success' : 'warning' }}">
-                                    {{ $category['is_active'] ? 'active' : 'inactive' }}
-                                </x-ui.badge>
-                            </div>
-                        </td>
-                        <td>{{ $category['updated_at'] }}</td>
-                        <td>
-                            <div class="members-action-stack">
-                                @if (! $category['is_system'])
-                                    <a href="{{ route('tenant.categories.index', ['edit' => $category['id']]) }}" class="button button-secondary button-compact">Edit</a>
-
-                                    @if ($category['is_active'])
-                                        <form action="{{ route('tenant.categories.deactivate', $category['id']) }}" method="post">
-                                            @csrf
-                                            <button class="button button-ghost button-compact" type="submit">Nonaktifkan</button>
-                                        </form>
-                                    @else
-                                        <form action="{{ route('tenant.categories.activate', $category['id']) }}" method="post">
-                                            @csrf
-                                            <button class="button button-secondary button-compact" type="submit">Aktifkan</button>
-                                        </form>
-                                    @endif
+                            </td>
+                            <td>{{ $category['type'] }}</td>
+                            <td>
+                                @if ($category['keywords'] !== [])
+                                    <div class="resource-chip-group">
+                                        @foreach ($category['keywords'] as $keyword)
+                                            <span class="resource-chip">{{ $keyword }}</span>
+                                        @endforeach
+                                    </div>
                                 @else
-                                    <span class="members-cell-meta">Action dibatasi</span>
+                                    <span class="members-cell-meta">Belum ada keyword</span>
                                 @endif
-                            </div>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="6" class="dashboard-empty-cell">Belum ada kategori untuk tenant ini.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </article>
+                            </td>
+                            <td>
+                                <div class="members-badge-stack">
+                                    @if ($category['is_system'])
+                                        <x-ui.badge tone="neutral">system</x-ui.badge>
+                                    @endif
+                                    <x-ui.badge tone="{{ $category['is_active'] ? 'success' : 'warning' }}">
+                                        {{ $category['is_active'] ? 'active' : 'inactive' }}
+                                    </x-ui.badge>
+                                </div>
+                            </td>
+                            <td>{{ $category['updated_at'] }}</td>
+                            <td>
+                                <div class="members-action-stack">
+                                    @if (! $category['is_system'])
+                                        <a href="{{ route('tenant.categories.index', ['edit' => $category['id']]) }}" class="button button-secondary button-compact">Edit</a>
+
+                                        @if ($category['is_active'])
+                                            <form action="{{ route('tenant.categories.deactivate', $category['id']) }}" method="post">
+                                                @csrf
+                                                <button class="button button-ghost button-compact" type="submit">Nonaktifkan</button>
+                                            </form>
+                                        @else
+                                            <form action="{{ route('tenant.categories.activate', $category['id']) }}" method="post">
+                                                @csrf
+                                                <button class="button button-secondary button-compact" type="submit">Aktifkan</button>
+                                            </form>
+                                        @endif
+                                    @else
+                                        <span class="members-cell-meta">Action dibatasi</span>
+                                    @endif
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="dashboard-empty-cell">Belum ada kategori untuk tenant ini.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </article>
+        <article class="dashboard-card">
+                <h2 class="dashboard-section-title">Informasi</h2>
+
+                <div class="dashboard-alert-list">
+                    <p>Kategori sistem `Biaya Admin Transfer` wajib tetap tersedia.</p>
+                </div>
+            </article>
+    </section>
 @endsection

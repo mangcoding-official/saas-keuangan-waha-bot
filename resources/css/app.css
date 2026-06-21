@@ -316,7 +316,7 @@ img {
 .dashboard-search {
     display: grid;
     gap: 8px;
-    width: min(100%, 480px);
+    width: 500px;
 }
 
 .dashboard-search-label {

@@ -99,18 +99,14 @@ class TransactionController extends Controller
             'page' => [
                 'title' => 'Transactions',
                 'description' => $user->role === UserRole::OWNER
-                    ? 'Owner memonitor seluruh transaksi tenant dan memastikan format pesan WA tersimpan rapi.'
-                    : 'Member melihat transaksi yang dia catat dari WhatsApp dan referensi format cepat.',
-                'eyebrow' => $user->role === UserRole::OWNER ? 'Tenant Module' : 'Member Workspace',
+                    ? 'Lihat semua transaksi yang tercatat dari WhatsApp.'
+                    : 'Lihat transaksi yang catat dari WhatsApp.',
+                'eyebrow' => $user->role === UserRole::OWNER ? 'Workspace' : 'Member',
             ],
             'toolbar' => [
-                'search_label' => 'Cari transaksi atau kategori',
+                'search_label' => '',
                 'search_placeholder' => 'Search transactions or categories',
-                'secondary_action' => [
-                    'label' => 'Back to overview',
-                    'href' => route('tenant.dashboard'),
-                    'variant' => 'secondary',
-                ],
+                'secondary_action' => null,
                 'primary_action' => null,
             ],
             'navigation' => TenantNavigation::items($user),
@@ -127,7 +123,7 @@ class TransactionController extends Controller
                 'keluar 20rb makan',
                 'masuk 1,5 juta gaji 15 juni',
                 'keluar 20rb makan 15 juni',
-                'transfer 50rb dari cash default ke bca operasional',
+                'transfer 50rb dari cash default ke bca',
             ],
         ]);
     }

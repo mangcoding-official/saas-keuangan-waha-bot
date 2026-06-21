@@ -20,7 +20,7 @@ class TenantRegistrationController extends Controller
     {
         return view('web.auth.register', [
             'page' => [
-                'title' => 'Registrasi tenant owner',
+                'title' => 'Registrasi',
                 'description' => 'Calon owner mendaftarkan tenant, nomor WhatsApp, dan kredensial dashboard. Sistem akan membuat tenant, owner, activation code, akun Cash default, dan kategori template.',
                 'eyebrow' => 'Website Registration',
             ],

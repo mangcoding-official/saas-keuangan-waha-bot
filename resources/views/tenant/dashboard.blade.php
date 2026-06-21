@@ -13,27 +13,13 @@
 
     <section class="dashboard-content-grid">
         <div class="dashboard-main-column">
-            <article class="dashboard-card dashboard-flow-card">
-                <h2 class="dashboard-section-title">Recent transaction flow</h2>
-
-                @if ($transactionFlow !== [])
-                    <div class="dashboard-flow-list">
-                        @foreach ($transactionFlow as $item)
-                            <p class="dashboard-flow-item">{{ $item['stamp'] }} {{ $item['summary'] }} {{ $item['amount'] }}</p>
-                        @endforeach
-                    </div>
-                @else
-                    <p class="dashboard-empty-copy">Belum ada transaksi masuk. Owner baru selesai onboarding tenant.</p>
-                @endif
-            </article>
-
             <article class="dashboard-card dashboard-table-card">
                 <table class="dashboard-table">
                     <thead>
                         <tr>
                             <th>Date</th>
                             <th>Description</th>
-                            <th>Recorder</th>
+                            <th>User</th>
                             <th>Type</th>
                             <th>Amount</th>
                         </tr>

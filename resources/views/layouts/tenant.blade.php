@@ -11,9 +11,8 @@
     <section class="shell-grid">
         <aside class="sidebar" data-sidebar>
             <div class="sidebar-brand">
-                <span class="sidebar-eyebrow">{{ strtoupper('Tenant '.$authUser->role->value) }}</span>
                 <h2 class="sidebar-title">{{ $authUser->tenant->name }}</h2>
-                <p class="sidebar-copy">Akses penuh tenant dashboard</p>
+                <p class="sidebar-copy">dashboard</p>
             </div>
 
             <nav class="sidebar-nav">

@@ -246,7 +246,7 @@ class StructuredQuickTransactionParser
 
         if ($resolution['source_explicit'] && $resolution['source_account'] === null) {
             return $this->clarification(
-                'Akun sumber belum dikenali. Contoh format: `transfer 50rb dari cash default ke bca operasional`.',
+                'Akun sumber belum dikenali. Contoh format: `transfer 50rb dari cash default ke bca`.',
                 'clarify_transfer_accounts',
                 TransactionType::TRANSFER->value,
             );
@@ -254,7 +254,7 @@ class StructuredQuickTransactionParser
 
         if ($resolution['destination_explicit'] && $resolution['destination_account'] === null) {
             return $this->clarification(
-                'Akun tujuan belum dikenali. Contoh format: `transfer 50rb dari cash default ke bca operasional`.',
+                'Akun tujuan belum dikenali. Contoh format: `transfer 50rb dari cash default ke bca`.',
                 'clarify_transfer_accounts',
                 TransactionType::TRANSFER->value,
             );
@@ -265,7 +265,7 @@ class StructuredQuickTransactionParser
 
         if ($sourceAccount === null || $destinationAccount === null) {
             return $this->clarification(
-                'Transfer harus menyebut akun asal dan tujuan. Contoh: `transfer 50rb dari cash default ke bca operasional`.',
+                'Transfer harus menyebut akun asal dan tujuan. Contoh: `transfer 50rb dari cash default ke bca`.',
                 'clarify_transfer_accounts',
                 TransactionType::TRANSFER->value,
             );
@@ -688,7 +688,7 @@ class StructuredQuickTransactionParser
             'Contoh:',
             'masuk 15rb gaji',
             'keluar 20rb makan 15 juni',
-            'transfer 50rb dari cash default ke bca operasional',
+            'transfer 50rb dari cash default ke bca',
             'ketik menu atau bantuan untuk melihat perintah.',
         ]);
     }
@@ -698,7 +698,7 @@ class StructuredQuickTransactionParser
         return match ($command) {
             'masuk' => 'Format cepat pemasukan: `masuk 15000 gaji` atau `masuk 1,5 juta bonus 15 juni`.',
             'keluar' => 'Format cepat pengeluaran: `keluar 20rb makan` atau `keluar 75rb transport via cash default`.',
-            'transfer' => 'Format cepat transfer: `transfer 50rb dari cash default ke bca operasional`.',
+            'transfer' => 'Format cepat transfer: `transfer 50rb dari cash default ke bca`.',
             default => $this->helpText(),
         };
     }

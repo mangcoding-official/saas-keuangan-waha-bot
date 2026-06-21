@@ -51,17 +51,13 @@ class CategoryController extends Controller
         return view('tenant.categories.index', [
             'page' => [
                 'title' => 'Categories',
-                'description' => 'Owner mengelola kategori income dan expense berikut keyword parser tenant.',
-                'eyebrow' => 'Tenant Module',
+                'description' => 'Mengelola kategori income dan expense.',
+                'eyebrow' => '',
             ],
             'toolbar' => [
-                'search_label' => 'Cari kategori atau keyword',
+                'search_label' => '',
                 'search_placeholder' => 'Search category or keyword',
-                'secondary_action' => [
-                    'label' => 'Back to overview',
-                    'href' => route('tenant.dashboard'),
-                    'variant' => 'secondary',
-                ],
+                'secondary_action' => null,
                 'primary_action' => null,
             ],
             'navigation' => TenantNavigation::items($owner),

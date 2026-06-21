@@ -17,7 +17,7 @@ class ResourcePageController extends Controller
             'state_title' => 'Belum ada transaksi foundation',
         ],
         'accounts' => [
-            'title' => 'Accounts',
+            'title' => 'Saldo Accounts',
             'description' => 'Manajemen akun keuangan owner akan mulai hidup pada milestone 5.',
             'state_title' => 'Master account belum diaktifkan',
         ],

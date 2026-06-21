@@ -42,17 +42,13 @@ class AuditController extends Controller
         return view('tenant.audit.index', [
             'page' => [
                 'title' => 'Audit',
-                'description' => 'Owner meninjau perubahan transaksi tenant, siapa pelakunya, dan data sebelum sesudah perubahan.',
-                'eyebrow' => 'Tenant Module',
+                'description' => 'Tinjau perubahan transaksi.',
+                'eyebrow' => '',
             ],
             'toolbar' => [
-                'search_label' => 'Cari actor atau action',
+                'search_label' => '',
                 'search_placeholder' => 'Search audit logs',
-                'secondary_action' => [
-                    'label' => 'Back to overview',
-                    'href' => route('tenant.dashboard'),
-                    'variant' => 'secondary',
-                ],
+                'secondary_action' => null,
                 'primary_action' => null,
             ],
             'navigation' => TenantNavigation::items($owner),

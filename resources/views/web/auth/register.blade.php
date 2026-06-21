@@ -43,7 +43,7 @@
         <x-ui.input name="owner_password_confirmation" label="Konfirmasi Password" type="password" required />
 
         <div class="field field-full">
-            <x-ui.button type="submit">Daftarkan Tenant Owner</x-ui.button>
+            <x-ui.button type="submit">Daftar</x-ui.button>
         </div>
     </form>
 @endsection

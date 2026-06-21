@@ -1150,7 +1150,7 @@ class ConversationSessionService
             'Contoh:',
             'masuk 15rb gaji',
             'keluar 20rb makan 15 juni',
-            'transfer 50rb dari cash default ke bca operasional',
+            'transfer 50rb dari cash default ke bca',
             'ketik menu atau bantuan untuk melihat perintah.',
         ]);
     }

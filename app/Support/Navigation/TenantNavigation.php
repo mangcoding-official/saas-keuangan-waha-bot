@@ -28,7 +28,7 @@ class TenantNavigation
         if ($user->role === UserRole::OWNER) {
             return [
                 ...$items,
-                ['label' => 'Accounts', 'route' => 'tenant.accounts.index', 'pattern' => 'tenant.accounts.*'],
+                ['label' => 'Saldo Accounts', 'route' => 'tenant.accounts.index', 'pattern' => 'tenant.accounts.*'],
                 ['label' => 'Categories', 'route' => 'tenant.categories.index', 'pattern' => 'tenant.categories.*'],
                 ['label' => 'Members', 'route' => 'tenant.members.index', 'pattern' => 'tenant.members.*'],
                 ['label' => 'Audit', 'route' => 'tenant.audit.index', 'pattern' => 'tenant.audit.*'],

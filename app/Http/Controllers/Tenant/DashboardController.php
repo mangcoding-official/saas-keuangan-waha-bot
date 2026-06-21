@@ -138,7 +138,7 @@ class DashboardController extends Controller
                 'name' => $account->name,
                 'balance' => self::formatCurrency($accountBalances[(int) $account->id] ?? 0.0),
                 'status' => $account->is_active ? 'Active' : 'Inactive',
-                'note' => $account->is_default ? 'Default account' : 'Manual account',
+                'note' => $account->is_default ? 'Default account' : 'Other account',
             ])
             ->all();
 
@@ -189,25 +189,15 @@ class DashboardController extends Controller
 
         return view('tenant.dashboard', [
             'page' => [
-                'title' => 'Tenant overview',
-                'description' => 'Ringkasan tenant, transaksi terbaru, dan area yang perlu tindakan owner.',
+                'title' => 'Overview',
+                'description' => '',
                 'eyebrow' => strtoupper($user->role->value),
             ],
             'toolbar' => [
-                'search_label' => 'Cari transaksi, akun, kategori, atau member',
+                'search_label' => '',
                 'search_placeholder' => 'Search transaction, account, category, or member',
-                'secondary_action' => [
-                    'label' => 'Export',
-                    'href' => route('tenant.transactions.index'),
-                    'variant' => 'secondary',
-                ],
-                'primary_action' => [
-                    'label' => $user->role === UserRole::OWNER ? 'Add member' : 'Open profile',
-                    'href' => $user->role === UserRole::OWNER
-                        ? route('tenant.members.index')
-                        : route('tenant.profile.show'),
-                    'variant' => 'primary',
-                ],
+                'secondary_action' => null,
+                'primary_action' => null,
             ],
             'navigation' => TenantNavigation::items($user),
             'authUser' => $user,
@@ -225,21 +215,21 @@ class DashboardController extends Controller
                 [
                     'label' => 'Pemasukan bulan ini',
                     'value' => self::formatCompactCurrency($monthlyIncome),
-                    'note' => 'Akumulasi transaksi income bulan berjalan',
+                    'note' => 'Total pemasukan dari semua transaksi tipe income bulan berjalan',
                     'tone' => 'neutral',
                 ],
                 [
                     'label' => 'Pengeluaran bulan ini',
                     'value' => self::formatCompactCurrency($monthlyExpense),
                     'note' => $user->role === UserRole::OWNER
-                        ? 'Operasional dan biaya admin tenant'
+                        ? 'Total pengeluaran dari semua transaksi tipe expense bulan berjalan'
                         : 'Pengeluaran pribadi yang kamu catat',
                     'tone' => 'neutral',
                 ],
                 [
                     'label' => 'Butuh perhatian',
                     'value' => $attentionItems.' item',
-                    'note' => $attentionNotes === [] ? 'Tidak ada antrian tindakan owner' : implode(', ', $attentionNotes),
+                    'note' => $attentionNotes === [] ? 'Tidak ada antrian' : implode(', ', $attentionNotes),
                     'tone' => $attentionItems > 0 ? 'alert' : 'neutral',
                 ],
             ],

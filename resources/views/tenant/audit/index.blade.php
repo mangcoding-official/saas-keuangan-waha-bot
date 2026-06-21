@@ -11,32 +11,25 @@
         <article class="dashboard-kpi-card">
             <p class="dashboard-kpi-label">Transaction updated</p>
             <h2 class="dashboard-kpi-value">{{ $summary['updated'] }}</h2>
-            <p class="dashboard-kpi-note">Perubahan field transaksi oleh owner</p>
+            <p class="dashboard-kpi-note">Perubahan Detail transaksi</p>
         </article>
 
         <article class="dashboard-kpi-card">
             <p class="dashboard-kpi-label">Transaction voided</p>
             <h2 class="dashboard-kpi-value">{{ $summary['voided'] }}</h2>
-            <p class="dashboard-kpi-note">Transaksi completed yang dibatalkan</p>
-        </article>
-
-        <article class="dashboard-kpi-card">
-            <p class="dashboard-kpi-label">Cakupan audit</p>
-            <h2 class="dashboard-kpi-value dashboard-kpi-value-compact">Tenant</h2>
-            <p class="dashboard-kpi-note">Saat ini fokus pada perubahan transaksi</p>
+            <p class="dashboard-kpi-note">Transaksi yang dibatalkan</p>
         </article>
     </section>
 
     <article class="dashboard-card dashboard-table-card">
-        <h2 class="dashboard-section-title">Audit trail transaksi</h2>
 
         <table class="dashboard-table">
             <thead>
                 <tr>
                     <th>Waktu</th>
-                    <th>Actor</th>
+                    <th>User</th>
                     <th>Action</th>
-                    <th>Target</th>
+                    <th>Transaksi</th>
                     <th>Ringkasan</th>
                 </tr>
             </thead>

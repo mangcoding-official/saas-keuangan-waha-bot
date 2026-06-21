@@ -9,38 +9,37 @@
 
     <section class="members-summary-grid">
         <article class="dashboard-kpi-card">
-            <p class="dashboard-kpi-label">Total user tenant</p>
+            <p class="dashboard-kpi-label">Total user</p>
             <h2 class="dashboard-kpi-value">{{ $summary['total_users'] }}</h2>
-            <p class="dashboard-kpi-note">Limit {{ $summary['limit'] }} user per tenant</p>
+            <p class="dashboard-kpi-note">Limit {{ $summary['limit'] }} user</p>
         </article>
 
         <article class="dashboard-kpi-card">
-            <p class="dashboard-kpi-label">Member aktif + pending</p>
+            <p class="dashboard-kpi-label">Member</p>
             <h2 class="dashboard-kpi-value">{{ $summary['member_count'] }}</h2>
-            <p class="dashboard-kpi-note">Tidak termasuk owner</p>
+            <p class="dashboard-kpi-note"></p>
         </article>
 
         <article class="dashboard-kpi-card {{ $summary['pending_count'] > 0 ? 'is-alert' : '' }}">
             <p class="dashboard-kpi-label">Pending verification</p>
             <h2 class="dashboard-kpi-value">{{ $summary['pending_count'] }}</h2>
-            <p class="dashboard-kpi-note">Butuh activation code valid</p>
+            <p class="dashboard-kpi-note"></p>
         </article>
 
         <article class="dashboard-kpi-card {{ $slotIsFull ? 'is-alert' : '' }}">
-            <p class="dashboard-kpi-label">Sisa slot</p>
+            <p class="dashboard-kpi-label">Available</p>
             <h2 class="dashboard-kpi-value">{{ $summary['remaining_slots'] }}</h2>
-            <p class="dashboard-kpi-note">{{ $slotIsFull ? 'Tenant sudah penuh' : 'Masih bisa tambah member' }}</p>
+            <p class="dashboard-kpi-note">{{ $slotIsFull ? 'Tenant sudah penuh' : '' }}</p>
         </article>
     </section>
 
     <section class="members-layout-grid">
         <article class="dashboard-card members-form-card">
             <h2 class="dashboard-section-title">Add member</h2>
-            <p class="panel-copy">Owner menambahkan member dengan nama dan nomor WhatsApp. Member baru langsung masuk `pending_verification` dan mendapat activation code 15 menit.</p>
 
             @if ($slotIsFull)
                 <div class="members-alert members-alert-warning">
-                    Slot user tenant sudah penuh. Maksimal 1 owner dan 4 member.
+                    Member sudah penuh. Maksimal 1 owner dan 4 member.
                 </div>
             @endif
 
@@ -71,19 +70,9 @@
                 </div>
             </form>
         </article>
-
-        <article class="dashboard-card">
-            <h2 class="dashboard-section-title">Verification rules</h2>
-
-            <div class="dashboard-alert-list">
-                <p>Satu activation code aktif per user.</p>
-                <p>Code berlaku {{ config('platform.timeouts.activation_code_minutes') }} menit.</p>
-                <p>Nomor bot aktif tidak boleh dipakai sebagai nomor member.</p>
-                <p>Nomor yang sama tidak boleh dipakai lintas tenant.</p>
-                <p>User `pending_verification` belum boleh memakai guided chat atau parser transaksi.</p>
-            </div>
-        </article>
     </section>
+
+    <section class="members-layout-grid">
 
     <article class="dashboard-card dashboard-table-card">
         <table class="dashboard-table">
@@ -94,7 +83,6 @@
                     <th>WhatsApp</th>
                     <th>Verification</th>
                     <th>Activation code</th>
-                    <th>Invited by</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -127,7 +115,6 @@
                                 <span class="members-cell-meta">Tidak ada code aktif</span>
                             @endif
                         </td>
-                        <td>{{ $member['inviter_name'] }}</td>
                         <td>
                             @if ($member['can_manage_code'])
                                 <div class="members-action-stack">
@@ -154,4 +141,15 @@
             </tbody>
         </table>
     </article>
+
+    <article class="dashboard-card">
+            <h2 class="dashboard-section-title">Informasi</h2>
+
+            <div class="dashboard-alert-list">
+                <p>Satu activation code aktif per user.</p>
+                <p>Code berlaku {{ config('platform.timeouts.activation_code_minutes') }} menit.</p>
+            </div>
+        </article>
+
+    </section>
 @endsection

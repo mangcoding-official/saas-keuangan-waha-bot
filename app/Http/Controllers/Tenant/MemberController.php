@@ -80,17 +80,13 @@ class MemberController extends Controller
         return view('tenant.members.index', [
             'page' => [
                 'title' => 'Members',
-                'description' => 'Owner menambah member, memonitor status verifikasi, dan mengelola activation code.',
-                'eyebrow' => 'Tenant Module',
+                'description' => 'Mengelola User, verifikasi, dan mengelola activation code.',
+                'eyebrow' => '',
             ],
             'toolbar' => [
-                'search_label' => 'Cari member atau nomor WhatsApp',
+                'search_label' => '',
                 'search_placeholder' => 'Search member or WhatsApp number',
-                'secondary_action' => [
-                    'label' => 'Back to overview',
-                    'href' => route('tenant.dashboard'),
-                    'variant' => 'secondary',
-                ],
+                'secondary_action' => null,
                 'primary_action' => null,
             ],
             'navigation' => TenantNavigation::items($owner),

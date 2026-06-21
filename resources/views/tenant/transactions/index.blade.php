@@ -11,32 +11,30 @@
         <article class="dashboard-kpi-card">
             <p class="dashboard-kpi-label">Total transaksi</p>
             <h2 class="dashboard-kpi-value">{{ $summary['total'] }}</h2>
-            <p class="dashboard-kpi-note">Transaksi completed yang terlihat di workspace ini</p>
+            <p class="dashboard-kpi-note">Transaksi completed</p>
         </article>
 
         <article class="dashboard-kpi-card">
             <p class="dashboard-kpi-label">Income bulan ini</p>
             <h2 class="dashboard-kpi-value">Rp {{ number_format($summary['income'], 0, ',', '.') }}</h2>
-            <p class="dashboard-kpi-note">Akumulasi pemasukan bulan berjalan</p>
+            <p class="dashboard-kpi-note">Pemasukan bulan berjalan</p>
         </article>
 
         <article class="dashboard-kpi-card">
             <p class="dashboard-kpi-label">Expense bulan ini</p>
             <h2 class="dashboard-kpi-value">Rp {{ number_format($summary['expense'], 0, ',', '.') }}</h2>
-            <p class="dashboard-kpi-note">Akumulasi pengeluaran bulan berjalan</p>
+            <p class="dashboard-kpi-note">Pengeluaran bulan berjalan</p>
         </article>
 
         <article class="dashboard-kpi-card">
             <p class="dashboard-kpi-label">Transfer bulan ini</p>
             <h2 class="dashboard-kpi-value">Rp {{ number_format($summary['transfer'], 0, ',', '.') }}</h2>
-            <p class="dashboard-kpi-note">Mutasi antar akun tenant</p>
+            <p class="dashboard-kpi-note">Mutasi antar akun</p>
         </article>
     </section>
 
     <section class="members-layout-grid">
         <article class="dashboard-card dashboard-table-card">
-            <h2 class="dashboard-section-title">Riwayat transaksi</h2>
-
             <table class="dashboard-table">
                 <thead>
                     <tr>
@@ -45,7 +43,7 @@
                         <th>Nominal</th>
                         <th>Kategori</th>
                         <th>Akun</th>
-                        <th>Recorder</th>
+                        <th>User</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -84,16 +82,6 @@
 
         <div class="dashboard-side-column">
             <article class="dashboard-card">
-                <h2 class="dashboard-section-title">Format WhatsApp</h2>
-
-                <div class="dashboard-alert-list">
-                    @foreach ($usageExamples as $example)
-                        <p>{{ $example }}</p>
-                    @endforeach
-                </div>
-            </article>
-
-            <article class="dashboard-card">
                 <h2 class="dashboard-section-title">Detail transaksi</h2>
 
                 @if ($selectedTransaction)
@@ -104,7 +92,7 @@
                         <p><strong>Kategori:</strong> {{ $selectedTransaction['category'] }}</p>
                         <p><strong>Sumber:</strong> {{ $selectedTransaction['source_account'] }}</p>
                         <p><strong>Tujuan:</strong> {{ $selectedTransaction['destination_account'] }}</p>
-                        <p><strong>Recorder:</strong> {{ $selectedTransaction['recorder'] }}</p>
+                        <p><strong>User:</strong> {{ $selectedTransaction['recorder'] }}</p>
                         <p><strong>Logged at:</strong> {{ $selectedTransaction['logged_at'] }}</p>
                         <p><strong>Deskripsi:</strong> {{ $selectedTransaction['description'] }}</p>
                     </div>
@@ -248,7 +236,7 @@
                 @else
                     <x-ui.state-shell
                         title="Pilih transaksi"
-                        description="Klik tombol detail pada tabel untuk melihat akun sumber, akun tujuan, recorder, deskripsi, dan action owner."
+                        description="Klik tombol detail pada tabel untuk melihat detail transaksi."
                         tone="neutral"
                     />
                 @endif

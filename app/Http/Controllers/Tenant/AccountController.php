@@ -49,18 +49,14 @@ class AccountController extends Controller
 
         return view('tenant.accounts.index', [
             'page' => [
-                'title' => 'Accounts',
-                'description' => 'Owner mengelola akun keuangan tenant, akun default, dan status aktif untuk transaksi baru.',
-                'eyebrow' => 'Tenant Module',
+                'title' => 'Saldo Accounts',
+                'description' => 'Mengelola akun keuangan.',
+                'eyebrow' => 'Accounts',
             ],
             'toolbar' => [
-                'search_label' => 'Cari akun atau tipe akun',
+                'search_label' => '',
                 'search_placeholder' => 'Search account or type',
-                'secondary_action' => [
-                    'label' => 'Back to overview',
-                    'href' => route('tenant.dashboard'),
-                    'variant' => 'secondary',
-                ],
+                'secondary_action' => null,
                 'primary_action' => null,
             ],
             'navigation' => TenantNavigation::items($owner),
