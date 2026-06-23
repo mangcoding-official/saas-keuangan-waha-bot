@@ -37,7 +37,7 @@ class TransactionController extends Controller
         $monthEnd = $now->copy()->endOfMonth()->toDateString();
 
         $baseQuery = Transaction::query()
-            ->with(['recorder', 'category', 'sourceAccount', 'destinationAccount'])
+            ->with(['recorder', 'category', 'sourceAccount', 'destinationAccount', 'attachments'])
             ->where('transactions.tenant_id', $tenantId)
             ->where('transactions.status', TransactionStatus::COMPLETED->value);
 
@@ -123,7 +123,7 @@ class TransactionController extends Controller
                 'keluar 20rb makan',
                 'masuk 1,5 juta gaji 15 juni',
                 'keluar 20rb makan 15 juni',
-                'transfer 50rb dari cash default ke bca',
+                'transfer 50rb dari cash ke bca',
             ],
         ]);
     }
@@ -179,6 +179,18 @@ class TransactionController extends Controller
             'source_account_id' => $transaction->source_account_id,
             'destination_account' => $transaction->destinationAccount?->name ?: '-',
             'destination_account_id' => $transaction->destination_account_id,
+            'attachments' => $transaction->attachments
+                ->map(fn ($attachment): array => [
+                    'id' => $attachment->id,
+                    'url' => route('tenant.attachments.show', $attachment->id),
+                    'name' => $attachment->original_file_name ?: 'Bukti transaksi #'.$attachment->id,
+                    'mime_type' => $attachment->mime_type,
+                    'size' => number_format($attachment->file_size / 1024, 1, ',', '.').' KB',
+                    'dimensions' => $attachment->width && $attachment->height
+                        ? $attachment->width.' x '.$attachment->height.' px'
+                        : null,
+                ])
+                ->all(),
         ];
     }
 

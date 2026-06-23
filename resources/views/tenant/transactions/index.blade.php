@@ -97,6 +97,41 @@
                         <p><strong>Deskripsi:</strong> {{ $selectedTransaction['description'] }}</p>
                     </div>
 
+                    <div class="transaction-attachments">
+                        <h3 class="dashboard-section-title">Lampiran</h3>
+
+                        @if ($selectedTransaction['attachments'] !== [])
+                            <div class="transaction-attachment-grid">
+                                @foreach ($selectedTransaction['attachments'] as $attachment)
+                                    <a
+                                        href="{{ $attachment['url'] }}"
+                                        class="transaction-attachment-card"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        <img
+                                            src="{{ $attachment['url'] }}"
+                                            alt="{{ $attachment['name'] }}"
+                                            class="transaction-attachment-image"
+                                            loading="lazy"
+                                        >
+                                        <span class="transaction-attachment-meta">
+                                            <strong>{{ $attachment['name'] }}</strong>
+                                            <small>
+                                                {{ $attachment['size'] }}
+                                                @if ($attachment['dimensions'])
+                                                    · {{ $attachment['dimensions'] }}
+                                                @endif
+                                            </small>
+                                        </span>
+                                    </a>
+                                @endforeach
+                            </div>
+                        @else
+                            <p class="dashboard-kpi-note">Tidak ada lampiran pada transaksi ini.</p>
+                        @endif
+                    </div>
+
                     @if ($authUser->role->value === 'owner' && $editingTransaction)
                         <hr class="dashboard-divider">
 

@@ -27,6 +27,8 @@ class WahaWebhookPayloadNormalizer
      *     sender_normalized: ?string,
      *     chat_id: ?string,
      *     message_text: ?string,
+     *     has_media: bool,
+     *     media: ?array{url:string,mime_type:?string,file_name:?string,file_size:?int,width:?int,height:?int},
      *     message_timestamp: Carbon,
      *     raw_payload: array<string, mixed>
      * }
@@ -58,6 +60,8 @@ class WahaWebhookPayloadNormalizer
             'sender_normalized' => $this->normalizeSender($sessionKey, $senderRaw),
             'chat_id' => $chatId,
             'message_text' => $this->normalizeMessageText($messagePayload['body'] ?? null),
+            'has_media' => (bool) ($messagePayload['hasMedia'] ?? false),
+            'media' => $this->normalizeMedia($messagePayload),
             'message_timestamp' => $this->resolveTimestamp($messagePayload['timestamp'] ?? $payload['timestamp'] ?? null),
             'raw_payload' => $payload,
         ];
@@ -144,6 +148,33 @@ class WahaWebhookPayloadNormalizer
         return $text === '' ? null : $text;
     }
 
+    /**
+     * @param  array<string, mixed>  $messagePayload
+     * @return array{url:string,mime_type:?string,file_name:?string,file_size:?int,width:?int,height:?int}|null
+     */
+    private function normalizeMedia(array $messagePayload): ?array
+    {
+        if (! (bool) ($messagePayload['hasMedia'] ?? false)) {
+            return null;
+        }
+
+        $media = is_array($messagePayload['media'] ?? null) ? $messagePayload['media'] : [];
+        $url = $this->stringOrEmpty($media['url'] ?? null);
+
+        if ($url === '') {
+            return null;
+        }
+
+        return [
+            'url' => $url,
+            'mime_type' => $this->nullableString($media['mimetype'] ?? data_get($messagePayload, '_data.mimetype')),
+            'file_name' => $this->nullableString($media['filename'] ?? data_get($messagePayload, '_data.filename')),
+            'file_size' => $this->nullableInteger($messagePayload['size'] ?? data_get($messagePayload, '_data.size')),
+            'width' => $this->nullableInteger($messagePayload['width'] ?? data_get($messagePayload, '_data.width')),
+            'height' => $this->nullableInteger($messagePayload['height'] ?? data_get($messagePayload, '_data.height')),
+        ];
+    }
+
     private function resolveTimestamp(mixed $value): Carbon
     {
         if (is_numeric($value)) {
@@ -174,5 +205,10 @@ class WahaWebhookPayloadNormalizer
         $normalized = trim((string) $value);
 
         return $normalized !== '' ? $normalized : null;
+    }
+
+    private function nullableInteger(mixed $value): ?int
+    {
+        return is_numeric($value) ? (int) $value : null;
     }
 }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Tenant\AccountController;
+use App\Http\Controllers\Tenant\AttachmentController;
 use App\Http\Controllers\Tenant\AuditController;
 use App\Http\Controllers\Tenant\CategoryController;
 use App\Http\Controllers\Tenant\DashboardController;
@@ -16,6 +17,7 @@ Route::prefix(config('platform.route_prefixes.tenant'))
         Route::get('/', DashboardController::class)->name('dashboard');
 
         Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
+        Route::get('/attachments/{attachmentId}', [AttachmentController::class, 'show'])->name('attachments.show');
 
         Route::get('/profile', [ResourcePageController::class, 'show'])
             ->defaults('page', 'profile')

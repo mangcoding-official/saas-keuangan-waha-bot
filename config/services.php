@@ -41,6 +41,15 @@ return [
         'dashboard_username' => env('WAHA_DASHBOARD_USERNAME'),
         'dashboard_password' => env('WAHA_DASHBOARD_PASSWORD'),
         'default_session' => env('WAHA_DEFAULT_SESSION', 'default'),
+        'attachments' => [
+            'disk' => env('WAHA_ATTACHMENT_DISK', 'local'),
+            'max_bytes' => (int) env('WAHA_ATTACHMENT_MAX_BYTES', 5 * 1024 * 1024),
+            'allowed_mime_types' => [
+                'image/jpeg' => 'jpg',
+                'image/png' => 'png',
+                'image/webp' => 'webp',
+            ],
+        ],
     ],
 
 ];

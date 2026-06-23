@@ -6,6 +6,7 @@ use App\Enums\TransactionStatus;
 use App\Enums\TransactionType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Transaction extends Model
 {
@@ -60,5 +61,11 @@ class Transaction extends Model
     public function destinationAccount(): BelongsTo
     {
         return $this->belongsTo(Account::class, 'destination_account_id');
+    }
+
+    public function attachments(): BelongsToMany
+    {
+        return $this->belongsToMany(Attachment::class, 'attachment_transaction')
+            ->withPivot('created_at');
     }
 }

@@ -108,7 +108,7 @@
                             @checked(old('is_active', $editingCategory['is_active'] ?? true))
                             @disabled(($editingCategory['is_system'] ?? false) === true)
                         >
-                        <span>Kategori aktif dan boleh dipakai parser</span>
+                        <span>Aktif</span>
                     </label>
 
                     @if (($editingCategory['is_system'] ?? false) === true)
@@ -154,7 +154,7 @@
                             <td>
                                 <strong>{{ $category['name'] }}</strong>
                                 @if ($category['is_system'])
-                                    <div class="members-cell-meta">Kategori sistem wajib</div>
+                                    <div class="members-cell-meta">Dibuat oleh sistem</div>
                                 @endif
                             </td>
                             <td>{{ $category['type'] }}</td>
@@ -214,7 +214,7 @@
                 <h2 class="dashboard-section-title">Informasi</h2>
 
                 <div class="dashboard-alert-list">
-                    <p>Kategori sistem `Biaya Admin Transfer` wajib tetap tersedia.</p>
+                    <p>Dibuat oleh sistem `Biaya Admin`.</p>
                 </div>
             </article>
     </section>

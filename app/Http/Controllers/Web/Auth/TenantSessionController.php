@@ -57,7 +57,7 @@ class TenantSessionController extends Controller
         return to_route('tenant.dashboard')->with(config('platform.flash_session_key'), [
             'tone' => 'success',
             'title' => 'Login berhasil',
-            'message' => 'Dashboard tenant siap dipakai untuk milestone berikutnya.',
+            'message' => 'Selamat datang di dashboard Anda.',
         ]);
     }
 

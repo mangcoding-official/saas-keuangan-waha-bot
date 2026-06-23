@@ -5,7 +5,7 @@
     <h1 class="page-title">{{ $page['title'] }}</h1>
     <p class="page-copy">{{ $page['description'] }}</p>
 
-    <x-ui.card title="Flow registrasi milestone 1" description="Registrasi website akan membuat tenant, owner, activation code, akun Cash default, dan kategori template dasar. Owner login dashboard tetap bisa dilakukan walau nomor masih pending verification.">
+    <x-ui.card title="Flow registrasi milestone 1" description="Registrasi website akan membuat tenant, owner, activation code, akun Cash, dan kategori template dasar. Owner login dashboard tetap bisa dilakukan walau nomor masih pending verification.">
         <x-ui.badge tone="success">No AlpineJS</x-ui.badge>
     </x-ui.card>
 

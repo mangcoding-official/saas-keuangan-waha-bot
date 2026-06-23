@@ -6,6 +6,7 @@ use App\Enums\CategoryType;
 use App\Enums\ConversationIntentType;
 use App\Enums\ConversationSessionStatus;
 use App\Models\Account;
+use App\Models\Attachment;
 use App\Models\Category;
 use App\Models\ConversationSession;
 use App\Models\TenantUser;
@@ -36,6 +37,20 @@ class ConversationSessionService
         return $expiredCount > 0;
     }
 
+    public function expireAllStaleSessions(Carbon $now): int
+    {
+        return ConversationSession::query()
+            ->where('status', ConversationSessionStatus::ACTIVE)
+            ->where('expires_at', '<', $now)
+            ->update([
+                'status' => ConversationSessionStatus::EXPIRED,
+                'active_lock' => null,
+                'draft_payload' => null,
+                'expired_at' => $now,
+                'updated_at' => $now,
+            ]);
+    }
+
     public function findActiveSession(TenantUser $tenantUser): ?ConversationSession
     {
         return ConversationSession::query()
@@ -44,6 +59,61 @@ class ConversationSessionService
             ->whereNotNull('active_lock')
             ->latest('id')
             ->first();
+    }
+
+    public function acceptsAttachment(ConversationSession $session): bool
+    {
+        return in_array($session->intent_type, [
+            ConversationIntentType::INCOME,
+            ConversationIntentType::EXPENSE,
+        ], true) && in_array($session->current_state, [
+            'guided_income_attachment_offer',
+            'guided_expense_attachment_offer',
+            'review_confirm',
+        ], true);
+    }
+
+    /**
+     * @return array{route:string,should_reply:bool,reply_text:string,side_effects:array<int,string>}
+     */
+    public function attachImage(
+        ConversationSession $session,
+        TenantUser $tenantUser,
+        Attachment $attachment,
+        Carbon $messageTimestamp,
+    ): array {
+        if (
+            ! $this->acceptsAttachment($session)
+            || $session->tenant_id !== $tenantUser->tenant_id
+            || $session->tenant_user_id !== $tenantUser->id
+            || $attachment->tenant_id !== $tenantUser->tenant_id
+            || $attachment->conversation_session_id !== $session->id
+        ) {
+            throw new \RuntimeException('Lampiran tidak sesuai dengan flow transaksi yang aktif.');
+        }
+
+        $draft = $session->draft_payload ?? [];
+        $attachmentIds = array_values(array_unique(array_map(
+            'intval',
+            array_merge((array) data_get($draft, 'attachment_ids', []), [$attachment->id]),
+        )));
+
+        data_set($draft, 'attachment_ids', $attachmentIds);
+        data_set($draft, 'review_ready', true);
+
+        $session->forceFill([
+            'current_state' => 'review_confirm',
+            'draft_payload' => $draft,
+            'last_message_at' => $messageTimestamp,
+            'expires_at' => $this->nextExpiry($messageTimestamp),
+        ])->save();
+
+        return [
+            'route' => 'attachment_added',
+            'should_reply' => true,
+            'reply_text' => "Lampiran berhasil ditambahkan.\n\n".$this->reviewPrompt($session->fresh()),
+            'side_effects' => ['attachment_stored', 'attachment_added_to_session', 'review_confirm'],
+        ];
     }
 
     /**
@@ -155,7 +225,14 @@ class ConversationSessionService
         $normalized = mb_strtolower(trim($messageText));
 
         if ($session->current_state === 'awaiting_interrupt_confirmation') {
-            return $this->handleInterruptConfirmation($session, $tenantUser, $normalized, $messageTimestamp, $sourceMessageId);
+            return $this->handleInterruptConfirmation(
+                $session,
+                $tenantUser,
+                $normalized,
+                $messageTimestamp,
+                $sourceMessageId,
+                $parser,
+            );
         }
 
         if ($normalized === 'batal') {
@@ -169,7 +246,7 @@ class ConversationSessionService
             ];
         }
 
-        if ($this->isInterruptCommand($normalized)) {
+        if ($this->isInterruptCommand($normalized, $session->current_state)) {
             $draft = $session->draft_payload ?? [];
             $draft['interrupt'] = [
                 'previous_state' => $session->current_state,
@@ -387,7 +464,7 @@ class ConversationSessionService
             case 'guided_income_attachment_offer':
             case 'guided_expense_attachment_offer':
                 if (! in_array($normalized, ['skip', 'tidak', 'ga', 'gak', 'lanjut', 'tidak ada'], true)) {
-                    return $this->repeatGuidedPrompt($session, $messageTimestamp, 'Untuk saat ini lampiran belum aktif. Balas `skip` atau `lanjut`.');
+                    return $this->repeatGuidedPrompt($session, $messageTimestamp, 'Kirim gambar bukti atau balas `skip` / `lanjut` jika tidak ada lampiran.');
                 }
 
                 data_set($draft, 'review_ready', true);
@@ -751,7 +828,7 @@ class ConversationSessionService
         $items[] = [
             'type' => ConversationIntentType::EXPENSE->value,
             'amount' => (float) $fee,
-            'description' => 'Biaya admin transfer',
+            'description' => 'Biaya Admin',
             'category_id' => $adminCategory->id,
             'source_account_id' => $firstItem['source_account_id'] ?? null,
             'destination_account_id' => null,
@@ -894,7 +971,8 @@ class ConversationSessionService
         TenantUser $tenantUser,
         string $normalized,
         Carbon $messageTimestamp,
-        ?string $sourceMessageId
+        ?string $sourceMessageId,
+        callable $parser,
     ): array {
         $normalized = match ($normalized) {
             '1', '1.', '1)' => 'lanjut',
@@ -931,6 +1009,17 @@ class ConversationSessionService
                 return $this->startGuidedSession($tenantUser, (string) $pendingCommand, $messageTimestamp, $sourceMessageId);
             }
 
+            if (is_string($pendingCommand) && preg_match('/^(masuk|keluar|transfer)\b/u', $pendingCommand) === 1) {
+                $parsed = $parser($tenantUser, $pendingCommand, $messageTimestamp);
+
+                return $this->createSessionFromParserResult(
+                    $tenantUser,
+                    $parsed,
+                    $messageTimestamp,
+                    $sourceMessageId,
+                );
+            }
+
             return [
                 'route' => 'session_cancelled',
                 'should_reply' => true,
@@ -961,16 +1050,33 @@ class ConversationSessionService
     private function commitReviewSession(ConversationSession $session, TenantUser $tenantUser, Carbon $now): array
     {
         $items = $this->buildTransactionsForCommit($session, $tenantUser);
+        $attachmentIds = Attachment::query()
+            ->where('tenant_id', $tenantUser->tenant_id)
+            ->where('uploaded_by_user_id', $tenantUser->id)
+            ->where('conversation_session_id', $session->id)
+            ->whereIn('id', (array) data_get($session->draft_payload, 'attachment_ids', []))
+            ->pluck('id')
+            ->map(fn (int $id): int => $id)
+            ->all();
         $savedCount = 0;
 
-        DB::transaction(function () use ($items, $session, $tenantUser, &$savedCount, $now): void {
+        DB::transaction(function () use ($items, $attachmentIds, $session, $tenantUser, &$savedCount, $now): void {
             foreach ($items as $item) {
-                $this->transactionRecordingService->record(
+                $transaction = $this->transactionRecordingService->record(
                     $tenantUser,
                     $item,
                     $session->source_message_id,
                     $session->id,
                 );
+
+                foreach ($attachmentIds as $attachmentId) {
+                    DB::table('attachment_transaction')->insertOrIgnore([
+                        'attachment_id' => $attachmentId,
+                        'transaction_id' => $transaction->id,
+                        'created_at' => $now,
+                    ]);
+                }
+
                 $savedCount++;
             }
 
@@ -983,13 +1089,19 @@ class ConversationSessionService
             ])->save();
         });
 
+        $sideEffects = ['session_completed', 'transaction_recorded'];
+
+        if ($attachmentIds !== []) {
+            $sideEffects[] = 'attachment_linked_to_transaction';
+        }
+
         return [
             'route' => 'save_success',
             'should_reply' => true,
             'reply_text' => $savedCount === 1
-                ? 'Transaksi sudah disimpan.'
-                : 'Transaksi sudah disimpan sebanyak '.$savedCount.' item.',
-            'side_effects' => ['session_completed', 'transaction_recorded'],
+                ? 'Transaksi sudah disimpan'.($attachmentIds !== [] ? ' beserta lampirannya.' : '.')
+                : 'Transaksi sudah disimpan sebanyak '.$savedCount.' item'.($attachmentIds !== [] ? ' beserta lampirannya.' : '.'),
+            'side_effects' => $sideEffects,
         ];
     }
 
@@ -1064,6 +1176,13 @@ class ConversationSessionService
         }
 
         $lines[] = '';
+
+        if (($item['type'] ?? null) !== ConversationIntentType::TRANSFER->value) {
+            $attachmentCount = count((array) data_get($draft, 'attachment_ids', []));
+            $lines[] = 'Lampiran: '.$attachmentCount.' gambar';
+            $lines[] = 'Kirim gambar bukti jika ada.';
+        }
+
         $lines[] = 'Balas `simpan` untuk menyimpan atau `batal` untuk membatalkan.';
 
         return implode("\n", $lines);
@@ -1077,17 +1196,17 @@ class ConversationSessionService
             'guided_income_category' => 'Masukkan kategori pemasukan. Opsi aktif: '.$this->listCategoryNames($session->tenant_id, CategoryType::INCOME).'.',
             'guided_income_destination_account' => 'Masukkan akun tujuan. Opsi aktif: '.$this->listAccountNames($session->tenant_id).'. Balas nama akun atau `default`.',
             'guided_income_date' => 'Masukkan tanggal pemasukan. Contoh: `hari ini`, `kemarin`, `15 juni`, atau `2026-06-15`.',
-            'guided_income_attachment_offer' => 'Lampiran belum aktif untuk MVP ini. Balas `skip` atau `lanjut` untuk lanjut ke review.',
+            'guided_income_attachment_offer' => 'Kirim gambar bukti pemasukan. Jika tidak ada, balas `skip` atau `lanjut`.',
             'guided_expense_amount' => 'Masukkan nominal pengeluaran. Contoh: `15000`, `15rb`, atau `1,5 juta`.',
             'guided_expense_description' => 'Masukkan keterangan pengeluaran. Contoh: `makan siang tim`.',
             'guided_expense_category' => 'Masukkan kategori pengeluaran. Opsi aktif: '.$this->listCategoryNames($session->tenant_id, CategoryType::EXPENSE).'.',
             'guided_expense_source_account' => 'Masukkan akun sumber. Opsi aktif: '.$this->listAccountNames($session->tenant_id).'. Balas nama akun atau `default`.',
             'guided_expense_date' => 'Masukkan tanggal pengeluaran. Contoh: `hari ini`, `kemarin`, `15 juni`, atau `2026-06-15`.',
-            'guided_expense_attachment_offer' => 'Lampiran belum aktif untuk MVP ini. Balas `skip` atau `lanjut` untuk lanjut ke review.',
+            'guided_expense_attachment_offer' => 'Kirim gambar bukti pengeluaran. Jika tidak ada, balas `skip` atau `lanjut`.',
             'guided_transfer_amount' => 'Masukkan nominal transfer. Contoh: `50000` atau `50rb`.',
             'guided_transfer_source_account' => 'Masukkan akun sumber transfer. Opsi aktif: '.$this->listAccountNames($session->tenant_id).'.',
             'guided_transfer_destination_account' => 'Masukkan akun tujuan transfer. Opsi aktif: '.$this->listAccountNames($session->tenant_id).'.',
-            'guided_transfer_admin_fee' => 'Masukkan biaya admin transfer jika ada. Balas `0` atau `skip` jika tidak ada.',
+            'guided_transfer_admin_fee' => 'Masukkan biaya admin jika ada. Balas `0` atau `skip` jika tidak ada.',
             'guided_transfer_date' => 'Masukkan tanggal transfer. Contoh: `hari ini`, `kemarin`, `15 juni`, atau `2026-06-15`.',
             'guided_transfer_description' => 'Masukkan keterangan transfer jika perlu. Balas `skip` jika tidak ada.',
             'review_confirm' => $this->reviewPrompt($session),
@@ -1132,9 +1251,17 @@ class ConversationSessionService
         return $type ? ConversationIntentType::tryFrom($type) : null;
     }
 
-    private function isInterruptCommand(string $normalized): bool
+    private function isInterruptCommand(string $normalized, string $currentState): bool
     {
-        return in_array($normalized, ['menu', 'bantuan', 'masuk', 'keluar', 'transfer'], true);
+        if (in_array($normalized, ['menu', 'bantuan'], true)) {
+            return true;
+        }
+
+        if (str_starts_with($currentState, 'clarify_')) {
+            return false;
+        }
+
+        return preg_match('/^(masuk|keluar|transfer)\b/u', $normalized) === 1;
     }
 
     private function helpText(): string
@@ -1150,7 +1277,7 @@ class ConversationSessionService
             'Contoh:',
             'masuk 15rb gaji',
             'keluar 20rb makan 15 juni',
-            'transfer 50rb dari cash default ke bca',
+            'transfer 50rb dari cash ke bca',
             'ketik menu atau bantuan untuk melihat perintah.',
         ]);
     }

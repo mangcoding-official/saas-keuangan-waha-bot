@@ -111,7 +111,7 @@ class TenantOwnerRegistrationService
     {
         DB::table('accounts')->insert([
             'tenant_id' => $tenantId,
-            'name' => 'Cash default',
+            'name' => 'Cash',
             'account_type' => AccountType::CASH->value,
             'is_default' => true,
             'opening_balance' => 0,
@@ -156,7 +156,7 @@ class TenantOwnerRegistrationService
             ],
         };
 
-        $templates[] = [CategoryType::EXPENSE, 'Biaya Admin Transfer', true];
+        $templates[] = [CategoryType::EXPENSE, 'Biaya Admin', true];
 
         $rows = array_map(function (array $item) use ($tenantId): array {
             return [

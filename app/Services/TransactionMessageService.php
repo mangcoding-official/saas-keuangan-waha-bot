@@ -2,14 +2,18 @@
 
 namespace App\Services;
 
+use App\Exceptions\AttachmentException;
 use App\Models\TenantUser;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class TransactionMessageService
 {
     public function __construct(
         private readonly StructuredQuickTransactionParser $parser,
         private readonly ConversationSessionService $conversationSessionService,
+        private readonly AttachmentStorageService $attachmentStorageService,
     ) {
     }
 
@@ -90,6 +94,69 @@ class TransactionMessageService
     }
 
     /**
+     * @param  array{url:string,mime_type:?string,file_name:?string,file_size:?int,width:?int,height:?int}  $media
+     * @return array{route:string,should_reply:bool,reply_text:string,side_effects:array<int,string>}
+     */
+    public function handleAttachment(
+        TenantUser $tenantUser,
+        array $media,
+        Carbon $messageTimestamp,
+        string $sourceMessageId,
+    ): array {
+        $expiredSession = $this->conversationSessionService->expireStaleSessions($tenantUser, $messageTimestamp);
+        $activeSession = $this->conversationSessionService->findActiveSession($tenantUser);
+
+        if (! $activeSession || ! $this->conversationSessionService->acceptsAttachment($activeSession)) {
+            return $this->withExpiredNotice([
+                'route' => 'attachment_not_expected',
+                'should_reply' => true,
+                'reply_text' => 'Lampiran hanya dapat dikirim saat bot meminta bukti transaksi atau saat review transaksi income/expense masih aktif.',
+                'side_effects' => ['attachment_rejected_no_active_flow'],
+            ], $expiredSession);
+        }
+
+        try {
+            $attachment = $this->attachmentStorageService->storeFromWaha(
+                $tenantUser,
+                $activeSession,
+                $sourceMessageId,
+                $media,
+            );
+
+            return $this->withExpiredNotice(
+                $this->conversationSessionService->attachImage($activeSession, $tenantUser, $attachment, $messageTimestamp),
+                $expiredSession,
+            );
+        } catch (AttachmentException $exception) {
+            Log::warning('WAHA attachment failed', [
+                'source_message_id' => $sourceMessageId,
+                'tenant_user_id' => $tenantUser->id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return $this->withExpiredNotice([
+                'route' => 'attachment_failed',
+                'should_reply' => true,
+                'reply_text' => $exception->getMessage(),
+                'side_effects' => ['attachment_store_failed'],
+            ], $expiredSession);
+        } catch (Throwable $exception) {
+            Log::error('WAHA attachment processing crashed', [
+                'source_message_id' => $sourceMessageId,
+                'tenant_user_id' => $tenantUser->id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return $this->withExpiredNotice([
+                'route' => 'attachment_failed',
+                'should_reply' => true,
+                'reply_text' => 'Lampiran gagal diproses karena masalah internal. Silakan kirim ulang.',
+                'side_effects' => ['attachment_processing_failed'],
+            ], $expiredSession);
+        }
+    }
+
+    /**
      * @param  array{route:string,should_reply:bool,reply_text:string,side_effects:array<int,string>}  $result
      * @return array{route:string,should_reply:bool,reply_text:string,side_effects:array<int,string>}
      */
@@ -118,7 +185,7 @@ class TransactionMessageService
             'Contoh:',
             'masuk 15rb gaji',
             'keluar 20rb makan 15 juni',
-            'transfer 50rb dari cash default ke bca',
+            'transfer 50rb dari cash ke bca',
             'ketik menu atau bantuan untuk melihat perintah.',
         ]);
     }

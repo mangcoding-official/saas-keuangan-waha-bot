@@ -90,12 +90,35 @@ class WahaWebhookService
                     : null;
 
                 if ($tenantUser) {
-                    $transactionResult = $this->transactionMessageService->handle(
-                        $tenantUser,
-                        $message['message_text'],
-                        $message['message_timestamp'],
-                        $message['source_message_id'],
-                    );
+                    if ($message['media'] !== null) {
+                        $transactionResult = $this->transactionMessageService->handleAttachment(
+                            $tenantUser,
+                            $message['media'],
+                            $message['message_timestamp'],
+                            $message['source_message_id'],
+                        );
+                    } elseif ($message['has_media']) {
+                        $transactionResult = [
+                            'route' => 'attachment_media_unavailable',
+                            'should_reply' => true,
+                            'reply_text' => 'Gambar belum dapat diunduh dari WAHA. Silakan kirim ulang gambarnya.',
+                            'side_effects' => ['attachment_media_unavailable_replied'],
+                        ];
+                    } elseif ($message['message_text'] !== null) {
+                        $transactionResult = $this->transactionMessageService->handle(
+                            $tenantUser,
+                            $message['message_text'],
+                            $message['message_timestamp'],
+                            $message['source_message_id'],
+                        );
+                    } else {
+                        $transactionResult = [
+                            'route' => 'unsupported_message_type',
+                            'should_reply' => true,
+                            'reply_text' => 'Jenis pesan belum didukung. Kirim teks perintah atau gambar bukti transaksi.',
+                            'side_effects' => ['unsupported_message_type_replied'],
+                        ];
+                    }
 
                     $route = $transactionResult['route'];
                     $shouldReply = $transactionResult['should_reply'];
