@@ -19,7 +19,6 @@ class BalanceInquiryService
     {
         $tenant = $tenantUser->tenant;
         $tenantId = $tenantUser->tenant_id;
-        $timezone = $tenant?->timezone ?? config('app.timezone', 'Asia/Jakarta');
 
         $accounts = DB::table('accounts')
             ->where('tenant_id', $tenantId)
@@ -30,6 +29,23 @@ class BalanceInquiryService
 
         $balances = $this->accountBalanceService->balancesForTenant($tenantId);
         $totalBalance = $accounts->sum(fn (object $account): float => $balances[(int) $account->id] ?? 0.0);
+
+        return $this->buildBalanceReply(
+            $tenant?->name ?? 'Tenant',
+            (float) $totalBalance,
+            $accounts->map(fn (object $account): array => [
+                'name' => $account->name,
+                'balance' => (float) ($balances[(int) $account->id] ?? 0.0),
+                'is_default' => (bool) $account->is_default,
+            ])->all(),
+        );
+    }
+
+    public function latestTransactionsReplyForTenantUser(TenantUser $tenantUser): string
+    {
+        $tenant = $tenantUser->tenant;
+        $tenantId = $tenantUser->tenant_id;
+        $timezone = $tenant?->timezone ?? config('app.timezone', 'Asia/Jakarta');
 
         $latestTransactions = DB::table('transactions')
             ->leftJoin('categories', 'categories.id', '=', 'transactions.category_id')
@@ -60,31 +76,16 @@ class BalanceInquiryService
             ])
             ->all();
 
-        return $this->buildReply(
+        return $this->buildLatestTransactionsReply(
             $tenant?->name ?? 'Tenant',
-            (float) $totalBalance,
-            $accounts->map(fn (object $account): array => [
-                'name' => $account->name,
-                'balance' => (float) ($balances[(int) $account->id] ?? 0.0),
-                'is_default' => (bool) $account->is_default,
-            ])->all(),
             $latestTransactions,
         );
     }
 
     /**
      * @param  array<int, array{name:string,balance:float,is_default:bool}>  $accounts
-     * @param  array<int, array{
-     *     date:string,
-     *     type:string,
-     *     amount:float,
-     *     description:string,
-     *     category:?string,
-     *     source_account:?string,
-     *     destination_account:?string
-     * }>  $latestTransactions
      */
-    public function buildReply(string $tenantName, float $totalBalance, array $accounts, array $latestTransactions): string
+    public function buildBalanceReply(string $tenantName, float $totalBalance, array $accounts): string
     {
         $lines = [
             'Saldo '.$tenantName,
@@ -102,23 +103,40 @@ class BalanceInquiryService
             }
         }
 
-        $lines[] = '';
-        $lines[] = '5 transaksi terbaru:';
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param  array<int, array{
+     *     date:string,
+     *     type:string,
+     *     amount:float,
+     *     description:string,
+     *     category:?string,
+     *     source_account:?string,
+     *     destination_account:?string
+     * }>  $latestTransactions
+     */
+    public function buildLatestTransactionsReply(string $tenantName, array $latestTransactions): string
+    {
+        $lines = [
+            '5 transaksi terakhir '.$tenantName.':',
+        ];
 
         if ($latestTransactions === []) {
             $lines[] = '- Belum ada transaksi tersimpan.';
         } else {
             foreach ($latestTransactions as $transaction) {
                 $accountSummary = $this->transactionAccountSummary($transaction);
-                $category = $transaction['category'] ? ' · '.$transaction['category'] : '';
+                $category = $transaction['category'] ? ' | '.$transaction['category'] : '';
                 $lines[] = sprintf(
-                    '- %s · %s · %s · %s%s%s',
+                    '- %s | %s | %s | %s%s%s',
                     $transaction['date'],
                     $transaction['type'],
                     $this->formatCurrency($transaction['amount']),
                     $transaction['description'],
                     $category,
-                    $accountSummary !== '' ? ' · '.$accountSummary : ''
+                    $accountSummary !== '' ? ' | '.$accountSummary : ''
                 );
             }
         }

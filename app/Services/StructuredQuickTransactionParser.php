@@ -682,6 +682,7 @@ class StructuredQuickTransactionParser
             'masuk [nominal] [kategori]',
             'keluar [nominal] [kategori]',
             'saldo',
+            'transaksi terakhir',
             'masuk [nominal] [kategori] [tanggal]',
             'keluar [nominal] [kategori] [tanggal]',
             'transfer [nominal] dari [akun] ke [akun]',
@@ -691,6 +692,7 @@ class StructuredQuickTransactionParser
             'keluar 20rb makan 15 juni',
             'transfer 50rb dari cash ke bca',
             'saldo',
+            'transaksi terakhir',
             'ketik menu atau bantuan untuk melihat perintah.',
         ]);
     }

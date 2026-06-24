@@ -66,6 +66,15 @@ class TransactionMessageService
             ], $expiredSession);
         }
 
+        if (in_array($normalized, ['transaksi terakhir', 'latest transaction'], true)) {
+            return $this->withExpiredNotice([
+                'route' => 'command_latest_transactions',
+                'should_reply' => true,
+                'reply_text' => $this->balanceInquiryService->latestTransactionsReplyForTenantUser($tenantUser),
+                'side_effects' => ['command_latest_transactions'],
+            ], $expiredSession);
+        }
+
         if ($normalized === 'batal') {
             return $this->withExpiredNotice([
                 'route' => 'command_cancel_idle',
@@ -189,6 +198,7 @@ class TransactionMessageService
             'masuk [nominal] [kategori]',
             'keluar [nominal] [kategori]',
             'saldo',
+            'transaksi terakhir',
             'masuk [nominal] [kategori] [tanggal]',
             'keluar [nominal] [kategori] [tanggal]',
             'transfer [nominal] dari [akun] ke [akun]',
@@ -198,6 +208,7 @@ class TransactionMessageService
             'keluar 20rb makan 15 juni',
             'transfer 50rb dari cash ke bca',
             'saldo',
+            'transaksi terakhir',
             'ketik menu atau bantuan untuk melihat perintah.',
         ]);
     }

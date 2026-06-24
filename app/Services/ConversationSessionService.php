@@ -1018,6 +1018,15 @@ class ConversationSessionService
                 ];
             }
 
+            if (in_array($pendingCommand, ['transaksi terakhir', 'latest transaction'], true)) {
+                return [
+                    'route' => 'command_latest_transactions',
+                    'should_reply' => true,
+                    'reply_text' => app(BalanceInquiryService::class)->latestTransactionsReplyForTenantUser($tenantUser),
+                    'side_effects' => ['command_latest_transactions'],
+                ];
+            }
+
             if (is_string($pendingCommand) && preg_match('/^(masuk|keluar|transfer)\b/u', $pendingCommand) === 1) {
                 $parsed = $parser($tenantUser, $pendingCommand, $messageTimestamp);
 
@@ -1035,6 +1044,7 @@ class ConversationSessionService
                 'reply_text' => match ($pendingCommand) {
                     'menu', 'bantuan' => $this->helpText(),
                     'saldo' => app(BalanceInquiryService::class)->replyForTenantUser($tenantUser),
+                    'transaksi terakhir', 'latest transaction' => app(BalanceInquiryService::class)->latestTransactionsReplyForTenantUser($tenantUser),
                     default => 'Proses aktif dibatalkan.',
                 },
                 'side_effects' => ['session_cancelled'],
@@ -1271,7 +1281,8 @@ class ConversationSessionService
             return false;
         }
 
-        return preg_match('/^(masuk|keluar|transfer|saldo)\b/u', $normalized) === 1;
+        return preg_match('/^(masuk|keluar|transfer|saldo)\b/u', $normalized) === 1
+            || in_array($normalized, ['transaksi terakhir', 'latest transaction'], true);
     }
 
     private function helpText(): string
@@ -1281,6 +1292,7 @@ class ConversationSessionService
             'masuk [nominal] [kategori]',
             'keluar [nominal] [kategori]',
             'saldo',
+            'transaksi terakhir',
             'masuk [nominal] [kategori] [tanggal]',
             'keluar [nominal] [kategori] [tanggal]',
             'transfer [nominal] dari [akun] ke [akun]',
@@ -1290,6 +1302,7 @@ class ConversationSessionService
             'keluar 20rb makan 15 juni',
             'transfer 50rb dari cash ke bca',
             'saldo',
+            'transaksi terakhir',
             'ketik menu atau bantuan untuk melihat perintah.',
         ]);
     }
