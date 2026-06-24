@@ -105,6 +105,21 @@
                                 </div>
                             @endif
 
+                            @if (!empty($section['forms']))
+                                <div class="members-action-stack">
+                                    @foreach ($section['forms'] as $form)
+                                        <form action="{{ $form['action'] }}" method="post">
+                                            @csrf
+                                            <button class="button button-{{ $form['variant'] ?? 'secondary' }} button-compact" type="submit">{{ $form['label'] }}</button>
+                                        </form>
+                                    @endforeach
+                                </div>
+                            @endif
+
+                            @if (!empty($section['image']))
+                                <img src="{{ $section['image'] }}" alt="{{ $section['title'] }}" class="dashboard-inline-image">
+                            @endif
+
                             @if (!empty($section['code']))
                                 <pre class="dashboard-code-block">{{ $section['code'] }}</pre>
                             @endif

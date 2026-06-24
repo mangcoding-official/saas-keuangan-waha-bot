@@ -5,6 +5,7 @@ use App\Http\Controllers\Internal\AttachmentPreviewController;
 use App\Http\Controllers\Internal\DashboardController;
 use App\Http\Controllers\Internal\ResourcePageController;
 use App\Http\Controllers\Internal\VerificationController;
+use App\Http\Controllers\Internal\WahaActionController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix(config('platform.route_prefixes.internal'))
@@ -23,6 +24,8 @@ Route::prefix(config('platform.route_prefixes.internal'))
             Route::post('/verification/{tenantUserId}/resend', [VerificationController::class, 'resend'])->name('verification.resend');
             Route::post('/verification/{tenantUserId}/regenerate', [VerificationController::class, 'regenerate'])->name('verification.regenerate');
             Route::get('/tenants/{tenantId}', [ResourcePageController::class, 'showTenant'])->name('tenants.show');
+            Route::post('/waha/{botInstanceId}/reconnect', [WahaActionController::class, 'reconnect'])->name('waha.reconnect');
+            Route::post('/waha/{botInstanceId}/refresh-qr', [WahaActionController::class, 'refreshQr'])->name('waha.refresh-qr');
 
             foreach ([
                 'tenants' => 'tenants.index',

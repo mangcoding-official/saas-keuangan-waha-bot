@@ -3,6 +3,7 @@
 namespace App\Services\Waha;
 
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -79,6 +80,70 @@ class WahaClient
             ->body();
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    public function restartSession(string $sessionKey): array
+    {
+        $session = trim($sessionKey);
+
+        if ($session === '') {
+            throw new RuntimeException('Session WAHA tidak valid.');
+        }
+
+        $response = $this->request()
+            ->post('/api/sessions/'.rawurlencode($session).'/restart')
+            ->throw();
+
+        return $this->decodeJsonResponse($response);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getSessionInfo(string $sessionKey): array
+    {
+        $session = trim($sessionKey);
+
+        if ($session === '') {
+            throw new RuntimeException('Session WAHA tidak valid.');
+        }
+
+        $response = $this->request()
+            ->get('/api/sessions/'.rawurlencode($session))
+            ->throw();
+
+        return $this->decodeJsonResponse($response);
+    }
+
+    /**
+     * @return array{data_url:?string, payload:array<string, mixed>}
+     */
+    public function refreshQrCode(string $sessionKey): array
+    {
+        $session = trim($sessionKey);
+
+        if ($session === '') {
+            throw new RuntimeException('Session WAHA tidak valid.');
+        }
+
+        $response = $this->request()
+            ->withHeaders(['Accept' => 'application/json'])
+            ->get('/api/'.rawurlencode($session).'/auth/qr');
+
+        if ($response->failed() && ! str_contains(strtolower((string) $response->header('Content-Type')), 'image/')) {
+            $response->throw();
+        }
+
+        $payload = $this->decodeJsonResponse($response);
+        $dataUrl = $this->extractQrDataUrl($response, $payload);
+
+        return [
+            'data_url' => $dataUrl,
+            'payload' => $payload,
+        ];
+    }
+
     private function request(): PendingRequest
     {
         $baseUrl = rtrim((string) config('services.waha.base_url'), '/');
@@ -103,5 +168,50 @@ class WahaClient
         }
 
         return $request;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function decodeJsonResponse(Response $response): array
+    {
+        $decoded = $response->json();
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function extractQrDataUrl(Response $response, array $payload): ?string
+    {
+        $contentType = strtolower((string) $response->header('Content-Type'));
+
+        if (str_contains($contentType, 'image/')) {
+            return 'data:'.($contentType ?: 'image/png').';base64,'.base64_encode($response->body());
+        }
+
+        $candidates = [
+            $payload['qr'] ?? null,
+            $payload['value'] ?? null,
+            $payload['base64'] ?? null,
+            $payload['data'] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (! is_string($candidate) || trim($candidate) === '') {
+                continue;
+            }
+
+            $value = trim($candidate);
+
+            if (str_starts_with($value, 'data:image/')) {
+                return $value;
+            }
+
+            return 'data:image/png;base64,'.$value;
+        }
+
+        return null;
     }
 }

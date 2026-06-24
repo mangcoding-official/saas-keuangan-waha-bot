@@ -1392,10 +1392,26 @@ class ResourcePageController extends Controller
                         'Last error: '.($bot->last_error_message ?: '-'),
                     ],
                     'links' => $assignedTenants,
+                    'forms' => [
+                        [
+                            'label' => 'Reconnect WAHA',
+                            'action' => route('internal.waha.reconnect', $bot->id),
+                            'variant' => 'secondary',
+                        ],
+                        [
+                            'label' => 'Refresh QR',
+                            'action' => route('internal.waha.refresh-qr', $bot->id),
+                            'variant' => 'ghost',
+                        ],
+                    ],
                 ],
                 [
                     'title' => 'Meta payload',
-                    'code' => $this->prettyJson($bot->meta_json),
+                    'code' => $this->prettyJson($this->metaForDisplay($bot->meta_json)),
+                ],
+                [
+                    'title' => 'Latest QR',
+                    'image' => data_get($this->decodeMeta($bot->meta_json), 'latest_qr.data_url'),
                 ],
             ],
         ];
@@ -1445,6 +1461,21 @@ class ResourcePageController extends Controller
         }
 
         return (string) json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    }
+
+    private function metaForDisplay(mixed $payload): array|string
+    {
+        $meta = $this->decodeMeta($payload);
+
+        if ($meta === []) {
+            return 'No payload';
+        }
+
+        if (isset($meta['latest_qr']['data_url'])) {
+            $meta['latest_qr']['data_url'] = '[omitted: rendered below as image]';
+        }
+
+        return $meta;
     }
 
     private function formatDateTime(mixed $value): string
