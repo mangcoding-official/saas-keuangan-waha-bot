@@ -633,6 +633,17 @@ img {
     border-bottom: 0;
 }
 
+.dashboard-code-block {
+    margin: 0;
+    padding: 0.875rem;
+    border-radius: 1rem;
+    overflow-x: auto;
+    background: rgba(15, 23, 42, 0.92);
+    color: #e2e8f0;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
 .dashboard-empty-cell,
 .dashboard-empty-copy {
     color: var(--text-soft);
