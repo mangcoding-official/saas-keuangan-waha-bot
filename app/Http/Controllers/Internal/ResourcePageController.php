@@ -1478,6 +1478,24 @@ class ResourcePageController extends Controller
         return $meta;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    private function decodeMeta(mixed $payload): array
+    {
+        if (is_array($payload)) {
+            return $payload;
+        }
+
+        if (! is_string($payload) || trim($payload) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($payload, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
     private function formatDateTime(mixed $value): string
     {
         if ($value === null || $value === '') {
