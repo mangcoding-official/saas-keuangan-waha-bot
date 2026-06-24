@@ -14,6 +14,7 @@ class TransactionMessageService
         private readonly StructuredQuickTransactionParser $parser,
         private readonly ConversationSessionService $conversationSessionService,
         private readonly AttachmentStorageService $attachmentStorageService,
+        private readonly BalanceInquiryService $balanceInquiryService,
     ) {
     }
 
@@ -53,6 +54,15 @@ class TransactionMessageService
                 'should_reply' => true,
                 'reply_text' => $this->helpText(),
                 'side_effects' => ['command_help'],
+            ], $expiredSession);
+        }
+
+        if ($normalized === 'saldo') {
+            return $this->withExpiredNotice([
+                'route' => 'command_balance',
+                'should_reply' => true,
+                'reply_text' => $this->balanceInquiryService->replyForTenantUser($tenantUser),
+                'side_effects' => ['command_balance'],
             ], $expiredSession);
         }
 
@@ -178,6 +188,7 @@ class TransactionMessageService
             'Perintah tersedia:',
             'masuk [nominal] [kategori]',
             'keluar [nominal] [kategori]',
+            'saldo',
             'masuk [nominal] [kategori] [tanggal]',
             'keluar [nominal] [kategori] [tanggal]',
             'transfer [nominal] dari [akun] ke [akun]',
@@ -186,6 +197,7 @@ class TransactionMessageService
             'masuk 15rb gaji',
             'keluar 20rb makan 15 juni',
             'transfer 50rb dari cash ke bca',
+            'saldo',
             'ketik menu atau bantuan untuk melihat perintah.',
         ]);
     }

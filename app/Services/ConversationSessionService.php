@@ -1009,6 +1009,15 @@ class ConversationSessionService
                 return $this->startGuidedSession($tenantUser, (string) $pendingCommand, $messageTimestamp, $sourceMessageId);
             }
 
+            if ($pendingCommand === 'saldo') {
+                return [
+                    'route' => 'command_balance',
+                    'should_reply' => true,
+                    'reply_text' => app(BalanceInquiryService::class)->replyForTenantUser($tenantUser),
+                    'side_effects' => ['command_balance'],
+                ];
+            }
+
             if (is_string($pendingCommand) && preg_match('/^(masuk|keluar|transfer)\b/u', $pendingCommand) === 1) {
                 $parsed = $parser($tenantUser, $pendingCommand, $messageTimestamp);
 
@@ -1025,6 +1034,7 @@ class ConversationSessionService
                 'should_reply' => true,
                 'reply_text' => match ($pendingCommand) {
                     'menu', 'bantuan' => $this->helpText(),
+                    'saldo' => app(BalanceInquiryService::class)->replyForTenantUser($tenantUser),
                     default => 'Proses aktif dibatalkan.',
                 },
                 'side_effects' => ['session_cancelled'],
@@ -1261,7 +1271,7 @@ class ConversationSessionService
             return false;
         }
 
-        return preg_match('/^(masuk|keluar|transfer)\b/u', $normalized) === 1;
+        return preg_match('/^(masuk|keluar|transfer|saldo)\b/u', $normalized) === 1;
     }
 
     private function helpText(): string
@@ -1270,6 +1280,7 @@ class ConversationSessionService
             'Perintah tersedia:',
             'masuk [nominal] [kategori]',
             'keluar [nominal] [kategori]',
+            'saldo',
             'masuk [nominal] [kategori] [tanggal]',
             'keluar [nominal] [kategori] [tanggal]',
             'transfer [nominal] dari [akun] ke [akun]',
@@ -1278,6 +1289,7 @@ class ConversationSessionService
             'masuk 15rb gaji',
             'keluar 20rb makan 15 juni',
             'transfer 50rb dari cash ke bca',
+            'saldo',
             'ketik menu atau bantuan untuk melihat perintah.',
         ]);
     }

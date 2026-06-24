@@ -681,6 +681,7 @@ class StructuredQuickTransactionParser
             'Perintah tersedia:',
             'masuk [nominal] [kategori]',
             'keluar [nominal] [kategori]',
+            'saldo',
             'masuk [nominal] [kategori] [tanggal]',
             'keluar [nominal] [kategori] [tanggal]',
             'transfer [nominal] dari [akun] ke [akun]',
@@ -689,6 +690,7 @@ class StructuredQuickTransactionParser
             'masuk 15rb gaji',
             'keluar 20rb makan 15 juni',
             'transfer 50rb dari cash ke bca',
+            'saldo',
             'ketik menu atau bantuan untuk melihat perintah.',
         ]);
     }
