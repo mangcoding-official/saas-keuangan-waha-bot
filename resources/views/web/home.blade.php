@@ -2,28 +2,7 @@
 
 @section('body')
 <div class="landing-page">
-    <header class="landing-nav">
-        <div class="header-wrapper">
-            <a href="{{ route('home') }}" class="landing-brand" aria-label="{{ $page['brand'] }}">
-                <span class="landing-brand-mark"></span>
-                <span class="landing-brand-text">{{ $page['brand'] }}</span>
-            </a>
-
-            <nav class="landing-menu" aria-label="Navigasi utama">
-                @foreach ($page['nav'] as $item)
-                <a href="{{ $item['href'] }}">{{ $item['label'] }}</a>
-                @endforeach
-            </nav>
-
-            <div class="landing-nav-actions">
-                <a href="{{ route('tenant.login.create') }}" class="landing-button landing-button-secondary">Masuk</a>
-                <a href="{{ route('tenant.register.create') }}" class="landing-button landing-button-primary">
-                    <span>Daftar Sekarang</span>
-                    <img src="{{ asset('images/landing/arrow-right.svg') }}" alt="" aria-hidden="true">
-                </a>
-            </div>
-        </div>
-    </header>
+    @include('web.partials.landing-header')
 
     <main class="landing-main">
         <section class="landing-hero">
@@ -191,51 +170,6 @@
         </section>
     </main>
 
-    <footer id="footer" class="landing-footer">
-        <div class="footer-wrapper">
-            <div class="landing-footer-top">
-                <div class="landing-footer-brand">
-                    <a href="{{ route('home') }}" class="landing-brand landing-brand-inverse" aria-label="{{ $page['brand'] }}">
-                        <span class="landing-brand-mark"></span>
-                        <span class="landing-brand-text">{{ $page['brand'] }}</span>
-                    </a>
-                    <p>{{ $page['footer']['description'] }}</p>
-                </div>
-
-                <div class="landing-footer-columns">
-                    <div class="landing-footer-column">
-                        <h3>Perusahaan</h3>
-                        @foreach ($page['footer']['companyLinks'] as $label)
-                        <a href="#footer">{{ $label }}</a>
-                        @endforeach
-                    </div>
-
-                    <div class="landing-footer-column">
-                        <h3>Produk</h3>
-                        @foreach ($page['footer']['productLinks'] as $label)
-                        <a href="{{ $label === 'Fitur' ? '#fitur' : '#cta' }}">{{ $label }}</a>
-                        @endforeach
-                    </div>
-
-                    <div class="landing-footer-column landing-footer-subscribe">
-                        <h3>Dapatkan Update</h3>
-                        <form class="landing-subscribe-form" action="#" method="get">
-                            <label class="sr-only" for="landing-email">Email Anda</label>
-                            <input id="landing-email" type="email" name="email" value="" placeholder="Email Anda">
-                            <button type="submit">Ikuti</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <div class="landing-footer-bottom">
-                <p>&copy; {{ now()->year }} {{ $page['brand'] }}. Hak cipta dilindungi.</p>
-                <div>
-                    <a href="#footer">Kebijakan Privasi</a>
-                    <a href="#footer">Syarat & Ketentuan</a>
-                </div>
-            </div>
-        </div>
-    </footer>
+    @include('web.partials.landing-footer')
 </div>
 @endsection
