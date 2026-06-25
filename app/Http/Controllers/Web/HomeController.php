@@ -20,7 +20,6 @@ class HomeController extends Controller
                 'nav' => [
                     ['label' => 'Fitur', 'href' => '#fitur'],
                     ['label' => 'Cara Kerja', 'href' => '#cara-kerja'],
-                    ['label' => 'Harga', 'href' => '#cta'],
                     ['label' => 'FAQ', 'href' => '#footer'],
                 ],
                 'heroStats' => [
