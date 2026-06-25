@@ -1,29 +1,134 @@
-@extends('layouts.auth')
+@extends('layouts.base', ['bodyClass' => 'page-home page-login'])
 
-@section('content')
-    <span class="eyebrow">{{ $page['eyebrow'] }}</span>
-    <h1 class="page-title">{{ $page['title'] }}</h1>
-    <p class="page-copy">{{ $page['description'] }}</p>
+@section('body')
+<div class="landing-page login-page">
+    @include('web.partials.landing-header')
 
-    @if ($demoCredentials)
-        <x-ui.card title="Demo local credentials" description="Akun ini berasal dari seeder foundation agar guard dan layout bisa diuji lebih awal.">
-            <p class="panel-copy">Email: <strong>{{ $demoCredentials['email'] }}</strong></p>
-            <p class="panel-copy">Password: <strong>{{ $demoCredentials['password'] }}</strong></p>
-        </x-ui.card>
-    @endif
+    <main class="login-main">
+        <section class="login-shell">
+            <aside class="login-hero-panel">
+                <img class="login-hero-image" src="{{ asset('images/login/hero-bg.png') }}" alt="" aria-hidden="true">
+                <div class="login-hero-overlay"></div>
 
-    <form action="{{ route('tenant.login.store') }}" method="post" class="field-grid">
-        @csrf
-        <x-ui.input name="email" label="Email" type="email" placeholder="owner@demo.test" full required />
-        <x-ui.input name="password" label="Password" type="password" full required />
+                <div class="login-hero-content">
+                    <span class="login-trust-badge">
+                        <img src="{{ asset('images/login/badge-check.svg') }}" alt="" aria-hidden="true">
+                        Terpercaya oleh 10,000+ Pengguna
+                    </span>
 
-        <label class="checkbox-row field-full">
-            <input type="checkbox" name="remember" value="1">
-            <span>Ingat sesi login tenant</span>
-        </label>
+                    <div class="login-hero-copy">
+                        <h1>Catat dan Kelola Keuangan Lebih Praktis</h1>
+                        <p>Catat pemasukan, pengeluaran, dan transfer dengan lebih praktis melalui WhatsApp. Semua transaksi tersimpan rapi dan dapat dipantau kembali melalui dashboard. Mulai tata catatan keuangan Anda hari ini.</p>
+                    </div>
 
-        <div class="field field-full">
-            <x-ui.button type="submit">Masuk ke Tenant Dashboard</x-ui.button>
-        </div>
-    </form>
+                    <div class="login-benefit-list">
+                        <article class="login-benefit-item">
+                            <span class="login-benefit-icon">
+                                <img src="{{ asset('images/login/benefit-chart.svg') }}" alt="" aria-hidden="true">
+                            </span>
+                            <div>
+                                <h2>Pantau Catatan Terkini</h2>
+                                <p>Lihat pemasukan, pengeluaran, transfer, dan saldo terbaru langsung melalui dashboard.</p>
+                            </div>
+                        </article>
+
+                        <article class="login-benefit-item">
+                            <span class="login-benefit-icon is-users">
+                                <img src="{{ asset('images/login/benefit-users-a.svg') }}" alt="" aria-hidden="true">
+                                <img src="{{ asset('images/login/benefit-users-b.svg') }}" alt="" aria-hidden="true">
+                            </span>
+                            <div>
+                                <h2>Akses Pengguna Terkelola</h2>
+                                <p>Setiap transaksi terhubung dengan akun dan pengguna yang mencatatnya sehingga lebih mudah diperiksa kembali.</p>
+                            </div>
+                        </article>
+                    </div>
+                </div>
+            </aside>
+
+            <section class="login-form-panel">
+                <div class="login-card-shell">
+                    <article class="login-card">
+                        <header class="login-card-head">
+                            <p class="login-brand-label">Macau</p>
+                            <h1>Masuk</h1>
+                            <p>Kelola catatan dan transaksi keuangan Anda.</p>
+                        </header>
+
+                        @if ($demoCredentials)
+                            <div class="login-demo-note">
+                                <strong>Demo lokal</strong>
+                                <span>{{ $demoCredentials['email'] }} / {{ $demoCredentials['password'] }}</span>
+                            </div>
+                        @endif
+
+                        <form action="{{ route('tenant.login.store') }}" method="post" class="login-form">
+                            @csrf
+
+                            <label class="login-field" for="email">
+                                <span class="login-label">Email</span>
+                                <span class="login-input-wrap">
+                                    <img class="login-input-icon" src="{{ asset('images/login/icon-email.svg') }}" alt="" aria-hidden="true">
+                                    <input id="email" name="email" type="email" class="login-input" value="{{ old('email') }}" placeholder="nama@email.com" required>
+                                </span>
+                                @error('email')
+                                    <p class="field-error">{{ $message }}</p>
+                                @enderror
+                            </label>
+
+                            <label class="login-field" for="password">
+                                <span class="login-field-head">
+                                    <span class="login-label">Password</span>
+                                    <span class="login-inline-link is-disabled">Lupa password?</span>
+                                </span>
+                                <span class="login-input-wrap">
+                                    <img class="login-input-icon" src="{{ asset('images/login/icon-lock.svg') }}" alt="" aria-hidden="true">
+                                    <input id="password" name="password" type="password" class="login-input" placeholder="Masukkan password Anda" required data-password-input>
+                                    <button type="button" class="login-password-toggle" data-password-toggle aria-label="Tampilkan atau sembunyikan password">
+                                        <img src="{{ asset('images/login/icon-eye.svg') }}" alt="" aria-hidden="true">
+                                    </button>
+                                </span>
+                                @error('password')
+                                    <p class="field-error">{{ $message }}</p>
+                                @enderror
+                            </label>
+
+                            <label class="login-remember">
+                                <input type="checkbox" name="remember" value="1" @checked(old('remember'))>
+                                <span>Ingat saya</span>
+                            </label>
+
+                            <button type="submit" class="login-submit">
+                                <span>Masuk</span>
+                                <img src="{{ asset('images/login/icon-arrow-right.svg') }}" alt="" aria-hidden="true">
+                            </button>
+                        </form>
+
+                        <div class="login-divider">
+                            <span>atau masuk dengan</span>
+                        </div>
+
+                        <button type="button" class="login-google-button" disabled aria-disabled="true">
+                            <img src="{{ asset('images/login/icon-google.svg') }}" alt="" aria-hidden="true">
+                            <span>Google</span>
+                        </button>
+
+                        <p class="login-register-link">
+                            Belum punya akun?
+                            <a href="{{ route('tenant.register.create') }}">Daftar sekarang</a>
+                        </p>
+                    </article>
+
+                    <div class="login-meta-links">
+                        <a href="{{ route('home') }}#footer">Bantuan</a>
+                        <a href="{{ route('home') }}#footer">Privasi</a>
+                        <a href="{{ route('home') }}#footer">Syarat &amp; Ketentuan</a>
+                    </div>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    @include('web.partials.landing-footer')
+</div>
 @endsection
