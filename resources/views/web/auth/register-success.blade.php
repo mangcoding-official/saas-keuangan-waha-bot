@@ -1,7 +1,9 @@
 @extends('layouts.base', ['bodyClass' => 'page-home page-register-success'])
 
 @section('body')
-<div class="register-success-page">
+<div class="landing-page register-success-page">
+    @include('web.partials.landing-header')
+
     <main class="register-success-main">
         <div class="register-success-glow register-success-glow-top" aria-hidden="true"></div>
         <div class="register-success-glow register-success-glow-bottom" aria-hidden="true"></div>
@@ -62,7 +64,7 @@
                     <p>
                         Kirim ke nomor WhatsApp <strong>{{ $page['bot_name'] }}</strong>
                         @if (! empty($page['bot_display_number']))
-                        <!-- <span class="register-success-number">{{ $page['bot_display_number'] }}</span> -->
+                            <span class="register-success-number">{{ $page['bot_display_number'] }}</span>
                         @endif
                     </p>
 
@@ -72,15 +74,15 @@
 
             <div class="register-success-actions">
                 @if (! empty($page['whatsapp_url']))
-                <a href="{{ $page['whatsapp_url'] }}" class="register-success-button is-whatsapp" target="_blank" rel="noreferrer">
-                    <img src="{{ asset('images/register-success/whatsapp.svg') }}" alt="" aria-hidden="true">
-                    <span>Buka WhatsApp</span>
-                </a>
+                    <a href="{{ $page['whatsapp_url'] }}" class="register-success-button is-whatsapp" target="_blank" rel="noreferrer">
+                        <img src="{{ asset('images/register-success/whatsapp.svg') }}" alt="" aria-hidden="true">
+                        <span>Buka WhatsApp</span>
+                    </a>
                 @else
-                <span class="register-success-button is-whatsapp is-disabled">
-                    <img src="{{ asset('images/register-success/whatsapp.svg') }}" alt="" aria-hidden="true">
-                    <span>WhatsApp bot belum tersedia</span>
-                </span>
+                    <span class="register-success-button is-whatsapp is-disabled">
+                        <img src="{{ asset('images/register-success/whatsapp.svg') }}" alt="" aria-hidden="true">
+                        <span>WhatsApp bot belum tersedia</span>
+                    </span>
                 @endif
 
                 <a href="{{ route('tenant.login.create') }}" class="register-success-button is-primary">Masuk ke Dashboard</a>
@@ -96,5 +98,7 @@
             </footer>
         </section>
     </main>
+
+    @include('web.partials.landing-footer')
 </div>
 @endsection
