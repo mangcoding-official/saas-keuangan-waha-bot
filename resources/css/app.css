@@ -1938,6 +1938,389 @@ h3.register-kicker {
     text-align: center;
 }
 
+.page-register-success .page-shell {
+    padding: 0;
+}
+
+.register-success-page {
+    min-height: 100vh;
+    background:
+        linear-gradient(90deg, #fbf8ff 0%, #fbf8ff 100%),
+        linear-gradient(90deg, #ffffff 0%, #ffffff 100%);
+}
+
+.register-success-main {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 84px 20px;
+    overflow: hidden;
+}
+
+.register-success-glow {
+    position: absolute;
+    border-radius: 999px;
+    filter: blur(32px);
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.register-success-glow-top {
+    top: -128px;
+    right: -128px;
+    width: 384px;
+    height: 384px;
+    background: rgba(30, 64, 175, 0.2);
+}
+
+.register-success-glow-bottom {
+    left: -128px;
+    bottom: -128px;
+    width: 320px;
+    height: 320px;
+    background: rgba(108, 248, 187, 0.2);
+}
+
+.register-success-floating {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 17px;
+    border: 1px solid #c4c5d5;
+    border-radius: 12px;
+    background: #fbf8ff;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+}
+
+.register-success-floating-left {
+    top: 25%;
+    left: 80px;
+}
+
+.register-success-floating-right {
+    right: 80px;
+    bottom: 25%;
+}
+
+.register-success-floating-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+}
+
+.register-success-floating-icon>img {
+    width: 16px;
+    height: 20px;
+}
+
+.register-success-floating-icon.is-green {
+    background: #6cf8bb;
+}
+
+.register-success-floating-icon.is-brown {
+    background: #6b4200;
+}
+
+.register-success-floating img {
+    max-width: 20px;
+}
+
+.register-success-floating small,
+.register-success-floating strong,
+.register-success-header p,
+.register-success-instruction p,
+.register-success-note,
+.register-success-link,
+.register-success-footer p,
+.register-success-number {
+    font-family: 'Geist', var(--font-sans);
+}
+
+.register-success-floating small {
+    display: block;
+    color: #444653;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+}
+
+.register-success-floating strong {
+    display: block;
+    color: #1a1b22;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+.register-success-shell {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    gap: 32px;
+    width: min(100%, 480px);
+}
+
+.register-success-header {
+    display: grid;
+    justify-items: center;
+    gap: 16px;
+    text-align: center;
+}
+
+.register-success-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    background: #1e40af;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+}
+
+.register-success-badge img {
+    width: 33px;
+    height: 33px;
+}
+
+.register-success-header h1,
+.register-success-code-box strong {
+    margin: 0;
+    font-family: 'Outfit', var(--font-sans);
+}
+
+.register-success-header h1 {
+    color: #00288e;
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.register-success-header p {
+    margin: 0;
+    max-width: 360px;
+    color: #444653;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.register-success-card {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    gap: 16px;
+    padding: 25px;
+    border: 1px solid #c4c5d5;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.register-success-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.03;
+    background: radial-gradient(circle at center, rgba(0, 40, 142, 1) 0%, rgba(0, 40, 142, 0) 38%);
+    pointer-events: none;
+}
+
+.register-success-card-label {
+    position: relative;
+    z-index: 1;
+    margin: 0;
+    color: #444653;
+    font-family: 'Geist', var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.register-success-code-box {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 24px;
+    border: 2px dashed rgba(0, 40, 142, 0.3);
+    border-radius: 8px;
+    background: #e8e7f1;
+}
+
+.register-success-code-box strong {
+    color: #00288e;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+}
+
+.register-success-copy {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    cursor: pointer;
+}
+
+.register-success-copy>img {
+    width: 12.75px;
+    height: 17px;
+}
+
+.register-success-copy.is-copied {
+    background: rgba(0, 40, 142, 0.12);
+}
+
+.register-success-timer {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #ba1a1a;
+}
+
+.register-success-timer>img {
+    width: 10.5px;
+    height: 12.25px;
+}
+
+.register-success-timer strong {
+    font-family: 'Geist', var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.register-success-divider {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 1px;
+    background: #c4c5d5;
+}
+
+.register-success-instruction {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    justify-items: center;
+    gap: 16px;
+    text-align: center;
+}
+
+.register-success-instruction p {
+    margin: 0;
+    color: #444653;
+    font-size: 0.875rem;
+    line-height: 1.45;
+}
+
+.register-success-command {
+    padding: 16px;
+    border-radius: 8px;
+    background: #eeedf7;
+}
+
+.register-success-command span {
+    color: #1a1b22;
+    font-family: 'Geist', var(--font-sans);
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.register-success-instruction strong {
+    color: #00288e;
+}
+
+.register-success-number {
+    display: inline-block;
+    margin-left: 4px;
+    color: #1a1b22;
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.register-success-actions {
+    display: grid;
+    gap: 12px;
+}
+
+.register-success-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    min-height: 52px;
+    padding: 0 24px;
+    border-radius: 8px;
+    font-family: 'Geist', var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.register-success-button.is-whatsapp {
+    color: #ffffff;
+    background: #25d366;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+}
+
+.register-success-button.is-whatsapp>img {
+    width: 24px;
+    height: 24px;
+}
+
+.register-success-button.is-primary {
+    color: #ffffff;
+    background: #00288e;
+}
+
+.register-success-button.is-disabled {
+    opacity: 0.72;
+    cursor: default;
+}
+
+.register-success-link {
+    display: inline-flex;
+    justify-content: center;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: #00288e;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.register-success-footer {
+    padding-top: 16px;
+    text-align: center;
+}
+
+.register-success-footer p {
+    margin: 0;
+    color: #444653;
+    font-size: 0.875rem;
+    line-height: 1.45;
+}
+
+.register-success-footer a {
+    color: #00288e;
+    font-weight: 700;
+}
+
 @media (max-width: 1240px) {
     .dashboard-kpi-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2006,6 +2389,16 @@ h3.register-kicker {
     .register-main {
         padding-top: 24px;
     }
+
+    .register-success-main {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .register-success-floating-left,
+    .register-success-floating-right {
+        position: static;
+    }
 }
 
 @media (max-width: 1080px) {
@@ -2069,6 +2462,10 @@ h3.register-kicker {
 
     .register-field-full {
         grid-column: auto;
+    }
+
+    .register-success-shell {
+        width: min(100%, 560px);
     }
 }
 
@@ -2202,5 +2599,35 @@ h3.register-kicker {
     .register-submit {
         width: 100%;
         min-width: 0;
+    }
+
+    .register-success-main {
+        padding: 48px 16px;
+    }
+
+    .register-success-shell {
+        gap: 24px;
+        width: 100%;
+    }
+
+    .register-success-header h1 {
+        font-size: 2rem;
+    }
+
+    .register-success-code-box {
+        width: 100%;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 18px;
+    }
+
+    .register-success-code-box strong {
+        font-size: 1.5rem;
+        letter-spacing: 0.14em;
+    }
+
+    .register-success-floating {
+        width: 100%;
+        max-width: 480px;
     }
 }

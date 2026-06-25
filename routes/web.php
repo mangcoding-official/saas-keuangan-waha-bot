@@ -12,6 +12,8 @@ Route::post('/webhooks/waha', WahaWebhookController::class)->name('webhooks.waha
 Route::middleware('guest:web')->group(function (): void {
     Route::get('/register', [TenantRegistrationController::class, 'create'])->name('tenant.register.create');
     Route::post('/register', [TenantRegistrationController::class, 'store'])->name('tenant.register.store');
+    Route::get('/register/success', [TenantRegistrationController::class, 'success'])->name('tenant.register.success');
+    Route::post('/register/success/regenerate', [TenantRegistrationController::class, 'regenerate'])->name('tenant.register.success.regenerate');
 
     Route::get('/login', [TenantSessionController::class, 'create'])->name('tenant.login.create');
     Route::post('/login', [TenantSessionController::class, 'store'])->name('tenant.login.store');

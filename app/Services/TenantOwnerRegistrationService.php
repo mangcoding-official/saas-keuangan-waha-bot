@@ -30,7 +30,7 @@ class TenantOwnerRegistrationService
 
     /**
      * @param  array<string, mixed>  $payload
-     * @return array{tenant: Tenant, owner: TenantUser, activation_code: string, whatsapp_sent: bool}
+     * @return array{tenant: Tenant, owner: TenantUser, activation_code: string, activation_expires_at: string, whatsapp_sent: bool}
      */
     public function register(array $payload): array
     {
@@ -60,6 +60,7 @@ class TenantOwnerRegistrationService
             ]);
 
             $activationCode = $this->activationCodeService->issue($owner->id, 'owner_created');
+            $activationExpiresAt = now()->addMinutes((int) config('platform.timeouts.activation_code_minutes'))->toIso8601String();
 
             $this->createDefaultAccountFor($tenant->id);
             $this->createCategoryTemplatesFor($tenant->id, TenantType::from((string) $payload['tenant_type']));
@@ -68,6 +69,7 @@ class TenantOwnerRegistrationService
                 'tenant' => $tenant,
                 'owner' => $owner,
                 'activation_code' => $activationCode,
+                'activation_expires_at' => $activationExpiresAt,
                 'whatsapp_sent' => $this->activationCodeDeliveryService->send($owner, $activationCode, 'owner_created'),
             ];
         });
