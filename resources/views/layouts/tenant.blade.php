@@ -1,62 +1,11 @@
 @extends('layouts.base', ['bodyClass' => 'page-tenant'])
 
 @section('body')
-    @php
-        $searchLabel = $toolbar['search_label'] ?? 'Cari data tenant';
-        $searchPlaceholder = $toolbar['search_placeholder'] ?? 'Search tenant workspace';
-        $secondaryAction = $toolbar['secondary_action'] ?? null;
-        $primaryAction = $toolbar['primary_action'] ?? null;
-    @endphp
+    <section class="tenant-shell-grid">
+        @include('tenant.partials.sidebar')
 
-    <section class="shell-grid">
-        <aside class="sidebar" data-sidebar>
-            <div class="sidebar-brand">
-                <h2 class="sidebar-title">{{ $authUser->tenant->name }}</h2>
-                <p class="sidebar-copy">dashboard</p>
-            </div>
-
-            <nav class="sidebar-nav">
-                @foreach ($navigation as $item)
-                    <a href="{{ route($item['route']) }}" class="sidebar-link {{ request()->routeIs($item['pattern']) ? 'is-active' : '' }}">
-                        <span class="sidebar-link-icon" aria-hidden="true"></span>
-                        <span>{{ $item['label'] }}</span>
-                    </a>
-                @endforeach
-            </nav>
-
-            <form action="{{ route('tenant.logout') }}" method="post" class="sidebar-footer">
-                @csrf
-                <button class="button button-ghost" type="submit">Logout</button>
-            </form>
-        </aside>
-
-        <div class="content-shell">
-            <header class="topbar">
-                <div class="topbar-meta">
-                    <h1 class="page-title">{{ $page['title'] ?? '' }}</h1>
-                    <p class="page-copy">{{ $page['description'] ?? '' }}</p>
-                </div>
-
-                <div class="topbar-toolbar">
-                    <label class="dashboard-search">
-                        <span class="dashboard-search-label">{{ $searchLabel }}</span>
-                        <input type="text" class="dashboard-search-input" placeholder="{{ $searchPlaceholder }}">
-                    </label>
-
-                    <div class="button-row">
-                        <button class="button button-secondary sidebar-toggle" type="button" data-sidebar-toggle>Menu</button>
-
-                        @if ($secondaryAction)
-                            <x-ui.button :href="$secondaryAction['href']" :variant="$secondaryAction['variant']">{{ $secondaryAction['label'] }}</x-ui.button>
-                        @endif
-
-                        @if ($primaryAction)
-                            <x-ui.button :href="$primaryAction['href']" :variant="$primaryAction['variant']">{{ $primaryAction['label'] }}</x-ui.button>
-                        @endif
-                    </div>
-                </div>
-            </header>
-
+        <div class="tenant-content-shell">
+            @include('tenant.partials.topbar')
             @yield('content')
         </div>
     </section>

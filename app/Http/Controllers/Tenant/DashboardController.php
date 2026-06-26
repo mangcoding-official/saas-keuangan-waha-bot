@@ -14,6 +14,7 @@ use App\Support\Navigation\TenantNavigation;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 
 class DashboardController extends Controller
 {
@@ -126,6 +127,51 @@ class DashboardController extends Controller
             ],
             $recentTransactions
         ), 0, 3);
+
+        $weeklyExpenseRangeStart = $now->copy()->subDays(6)->toDateString();
+        $weeklyExpenseRangeEnd = $now->toDateString();
+        $rawWeeklyExpenses = (clone $transactionBaseQuery)
+            ->where('type', TransactionType::EXPENSE->value)
+            ->whereBetween('transaction_date', [$weeklyExpenseRangeStart, $weeklyExpenseRangeEnd])
+            ->selectRaw('transaction_date, SUM(amount) as total')
+            ->groupBy('transaction_date')
+            ->pluck('total', 'transaction_date');
+
+        $dayMap = [
+            'Mon' => 'Sen',
+            'Tue' => 'Sel',
+            'Wed' => 'Rab',
+            'Thu' => 'Kam',
+            'Fri' => 'Jum',
+            'Sat' => 'Sab',
+            'Sun' => 'Min',
+        ];
+
+        $spendingChart = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $day = $now->copy()->subDays($i);
+            $key = $day->toDateString();
+            $spendingChart[] = [
+                'label' => $dayMap[$day->format('D')] ?? $day->format('D'),
+                'value' => (float) ($rawWeeklyExpenses[$key] ?? 0.0),
+            ];
+        }
+
+        $maxSpending = collect($spendingChart)->max('value') ?: 0.0;
+        $spendingChart = array_map(
+            fn (array $item): array => [
+                'label' => $item['label'],
+                'value' => $item['value'],
+                'is_peak' => $maxSpending > 0 && $item['value'] === $maxSpending,
+                'height' => $maxSpending > 0 ? max(8, (int) round(($item['value'] / $maxSpending) * 100)) : 8,
+            ],
+            $spendingChart
+        );
+
+        $supportLink = Route::has('tenant.support')
+            ? route('tenant.support')
+            : route('tenant.dashboard');
+
 
         $accountRows = DB::table('accounts')
             ->where('tenant_id', $tenantId)
@@ -264,6 +310,8 @@ class DashboardController extends Controller
                     ['label' => 'Open profile', 'href' => route('tenant.profile.show')],
                 ],
             'alerts' => $alerts,
+            'spendingChart' => $spendingChart,
+            'supportLink' => $supportLink,
         ]);
     }
 
