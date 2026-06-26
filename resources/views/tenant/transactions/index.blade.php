@@ -29,7 +29,7 @@
     <section class="transactions-summary-grid">
         <article class="transactions-summary-card">
             <p>Total Transaksi</p>
-            <h3>Rp {{ number_format($summary['total'], 0, ',', '.') }}</h3>
+            <h3>{{ number_format($summary['total'], 0, ',', '.') }}</h3>
         </article>
         <article class="transactions-summary-card income">
             <p>Pemasukan</p>
@@ -99,7 +99,7 @@
         </form>
     </section>
 
-    <section class="transactions-content-layout {{ $selectedTransaction && ! $isModalOpen ? 'has-detail' : '' }}">
+    <section class="transactions-content-layout">
         <div class="transactions-main-pane">
             <section class="transactions-table-card">
                 <table class="transactions-table">
@@ -164,22 +164,25 @@
                 </div>
             </section>
         </div>
+    </section>
 
-        @if ($selectedTransaction && ! $isModalOpen)
-            @php
-                $detailTypeLabel = $selectedTransaction['type_value'] === 'income'
-                    ? 'Dana Masuk'
-                    : ($selectedTransaction['type_value'] === 'expense' ? 'Dana Keluar' : 'Transfer');
-                $detailInitials = collect(explode(' ', $selectedTransaction['recorder']))
-                    ->filter()
-                    ->map(fn ($word) => strtoupper(substr($word, 0, 1)))
-                    ->take(2)
-                    ->implode('');
-                $showId = str_pad((string) $selectedTransaction['id'], 7, '0', STR_PAD_LEFT);
-                $detailCloseQuery = request()->except(['show']);
-                $detailSourceAccount = $selectedTransaction['source_account'];
-                $detailDestinationAccount = $selectedTransaction['destination_account'];
-            @endphp
+    @if ($selectedTransaction && ! $isModalOpen)
+        @php
+            $detailTypeLabel = $selectedTransaction['type_value'] === 'income'
+                ? 'Dana Masuk'
+                : ($selectedTransaction['type_value'] === 'expense' ? 'Dana Keluar' : 'Transfer');
+            $detailInitials = collect(explode(' ', $selectedTransaction['recorder']))
+                ->filter()
+                ->map(fn ($word) => strtoupper(substr($word, 0, 1)))
+                ->take(2)
+                ->implode('');
+            $showId = str_pad((string) $selectedTransaction['id'], 7, '0', STR_PAD_LEFT);
+            $detailCloseQuery = request()->except(['show']);
+            $detailSourceAccount = $selectedTransaction['source_account'];
+            $detailDestinationAccount = $selectedTransaction['destination_account'];
+        @endphp
+        <div class="transactions-detail-overlay">
+            <a class="transactions-detail-overlay-backdrop" href="{{ route('tenant.transactions.index', $detailCloseQuery) }}" aria-label="Tutup detail"></a>
             <aside class="transactions-detail-drawer">
                 <header class="transactions-detail-head">
                     <div>
@@ -252,14 +255,11 @@
                 </div>
 
                 <footer class="transactions-detail-foot">
-                    <a href="{{ route('tenant.audit.index') }}" class="transactions-button secondary">Beri Catatan</a>
-                    @if ($authUser->role->value === 'owner')
-                        <a href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['edit' => $selectedTransaction['id']])) }}" class="transactions-button primary">Simpan Perubahan</a>
-                    @endif
+
                 </footer>
             </aside>
-        @endif
-    </section>
+        </div>
+    @endif
 
     @if ($isModalOpen)
         <div class="transactions-modal-backdrop">
