@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Tenant;
 
+use App\Enums\AccountType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAccountRequest;
 use App\Http\Requests\UpdateAccountRequest;
@@ -24,7 +25,6 @@ class AccountController extends Controller
     {
         /** @var TenantUser $owner */
         $owner = auth('web')->user();
-        $editingAccount = $this->resolveAccountForEdit($owner);
 
         $accounts = Account::query()
             ->where('tenant_id', $owner->tenant_id)
@@ -35,7 +35,7 @@ class AccountController extends Controller
             ->map(fn (Account $account): array => [
                 'id' => $account->id,
                 'name' => $account->name,
-                'account_type' => strtoupper(str_replace('_', '-', $account->account_type->value)),
+                'account_type' => $this->accountTypeLabel($account->account_type->value),
                 'opening_balance' => number_format((float) $account->opening_balance, 2, ',', '.'),
                 'is_default' => $account->is_default,
                 'is_active' => $account->is_active,
@@ -49,19 +49,18 @@ class AccountController extends Controller
 
         return view('tenant.accounts.index', [
             'page' => [
-                'title' => 'Saldo Accounts',
-                'description' => 'Mengelola akun keuangan.',
+                'title' => '',
+                'description' => '',
                 'eyebrow' => 'Accounts',
             ],
             'toolbar' => [
                 'search_label' => '',
-                'search_placeholder' => 'Search account or type',
+                'search_placeholder' => 'Cari akun...',
                 'secondary_action' => null,
                 'primary_action' => null,
             ],
             'navigation' => TenantNavigation::items($owner),
             'authUser' => $owner,
-            'editingAccount' => $editingAccount,
             'summary' => [
                 'total' => count($accounts),
                 'active' => $activeCount,
@@ -70,6 +69,50 @@ class AccountController extends Controller
             ],
             'accounts' => $accounts,
         ]);
+    }
+
+    public function create(): View
+    {
+        /** @var TenantUser $owner */
+        $owner = auth('web')->user();
+
+        return view('tenant.accounts.create', $this->accountFormPageData(
+            owner: $owner,
+            formTitle: 'Create Account',
+            submitLabel: 'Simpan Akun',
+            formAction: route('tenant.accounts.store'),
+            formMethod: 'post',
+            account: [
+                'name' => '',
+                'account_type' => AccountType::BANK->value,
+                'opening_balance' => '0.00',
+                'is_default' => false,
+                'is_active' => true,
+            ],
+        ));
+    }
+
+    public function edit(int $accountId): View
+    {
+        /** @var TenantUser $owner */
+        $owner = auth('web')->user();
+        $account = $this->findAccount($owner, $accountId);
+
+        return view('tenant.accounts.edit', $this->accountFormPageData(
+            owner: $owner,
+            formTitle: 'Edit Account',
+            submitLabel: 'Simpan Perubahan',
+            formAction: route('tenant.accounts.update', $account->id),
+            formMethod: 'put',
+            account: [
+                'id' => $account->id,
+                'name' => $account->name,
+                'account_type' => $account->account_type->value,
+                'opening_balance' => number_format((float) $account->opening_balance, 2, '.', ''),
+                'is_default' => $account->is_default,
+                'is_active' => $account->is_active,
+            ],
+        ));
     }
 
     public function store(StoreAccountRequest $request): RedirectResponse
@@ -92,7 +135,7 @@ class AccountController extends Controller
         $account = $this->findAccount($owner, $accountId);
         $updated = $this->accountManagementService->update($owner, $account, $request->validated());
 
-        return to_route('tenant.accounts.index')->with(config('platform.flash_session_key'), [
+        return to_route('tenant.accounts.edit', $updated->id)->with(config('platform.flash_session_key'), [
             'tone' => 'success',
             'title' => 'Akun diperbarui',
             'message' => $updated->name.' berhasil diperbarui.',
@@ -141,24 +184,66 @@ class AccountController extends Controller
         ]);
     }
 
-    private function resolveAccountForEdit(TenantUser $owner): ?array
-    {
-        $accountId = request()->integer('edit');
-
-        if ($accountId <= 0) {
-            return null;
-        }
-
-        $account = $this->findAccount($owner, $accountId);
-
+    /**
+     * @param  array<string, mixed>  $account
+     * @return array<string, mixed>
+     */
+    private function accountFormPageData(
+        TenantUser $owner,
+        string $formTitle,
+        string $submitLabel,
+        string $formAction,
+        string $formMethod,
+        array $account,
+    ): array {
         return [
-            'id' => $account->id,
-            'name' => $account->name,
-            'account_type' => $account->account_type->value,
-            'opening_balance' => number_format((float) $account->opening_balance, 2, '.', ''),
-            'is_default' => $account->is_default,
-            'is_active' => $account->is_active,
+            'page' => [
+                'title' => $formTitle,
+                'description' => 'Atur identitas akun, tipe akun, opening balance, dan set default account.',
+                'eyebrow' => 'Accounts',
+            ],
+            'toolbar' => [
+                'search_label' => '',
+                'search_placeholder' => 'Cari transaksi...',
+                'secondary_action' => [
+                    'label' => 'Kembali ke Daftar',
+                    'href' => route('tenant.accounts.index'),
+                    'variant' => 'secondary',
+                ],
+                'primary_action' => null,
+            ],
+            'navigation' => TenantNavigation::items($owner),
+            'authUser' => $owner,
+            'form' => [
+                'title' => $formTitle,
+                'submit_label' => $submitLabel,
+                'action' => $formAction,
+                'method' => $formMethod,
+            ],
+            'account' => $account,
+            'accountTypeOptions' => $this->accountTypeOptions(),
         ];
+    }
+
+    /**
+     * @return array<int, array{value: string, label: string}>
+     */
+    private function accountTypeOptions(): array
+    {
+        return array_map(
+            fn (string $value): array => ['value' => $value, 'label' => $this->accountTypeLabel($value)],
+            AccountType::values()
+        );
+    }
+
+    private function accountTypeLabel(string $value): string
+    {
+        return match ($value) {
+            AccountType::CASH->value => 'Cash',
+            AccountType::BANK->value => 'Bank',
+            AccountType::E_WALLET->value => 'E-Wallet',
+            default => strtoupper(str_replace('_', '-', $value)),
+        };
     }
 
     private function findAccount(TenantUser $owner, int $accountId): Account

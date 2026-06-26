@@ -2,168 +2,103 @@
 
 @section('content')
     @if ($errors->any())
-        <div class="members-alert members-alert-warning">
+        <div class="tenant-inline-alert">
             {{ $errors->first() }}
         </div>
     @endif
 
-    <section class="members-summary-grid">
-        <article class="dashboard-kpi-card">
-            <p class="dashboard-kpi-label">Total akun</p>
-            <h2 class="dashboard-kpi-value">{{ $summary['total'] }}</h2>
-            <p class="dashboard-kpi-note">Semua akun</p>
+    <section class="accounts-page-header">
+        <div>
+            <h2 class="accounts-page-title">Daftar Akun Keuangan</h2>
+            <p class="accounts-page-copy">Kelola saldo dan status akun perbankan serta e-wallet Anda.</p>
+        </div>
+        <a href="{{ route('tenant.accounts.create') }}" class="accounts-add-button">
+            <span aria-hidden="true">+</span>
+            <span>Tambah Akun</span>
+        </a>
+    </section>
+
+    <section class="accounts-summary-grid">
+        <article class="accounts-summary-card">
+            <p class="accounts-summary-label">TOTAL AKUN</p>
+            <h2 class="accounts-summary-value">{{ $summary['total'] }}</h2>
         </article>
 
-        <article class="dashboard-kpi-card">
-            <p class="dashboard-kpi-label">Akun aktif</p>
-            <h2 class="dashboard-kpi-value">{{ $summary['active'] }}</h2>
-            <p class="dashboard-kpi-note"></p>
+        <article class="accounts-summary-card">
+            <p class="accounts-summary-label">AKUN AKTIF</p>
+            <h2 class="accounts-summary-value">{{ $summary['active'] }}</h2>
         </article>
 
-        <article class="dashboard-kpi-card {{ $summary['inactive'] > 0 ? 'is-alert' : '' }}">
-            <p class="dashboard-kpi-label">Akun inactive</p>
-            <h2 class="dashboard-kpi-value">{{ $summary['inactive'] }}</h2>
-            <p class="dashboard-kpi-note"></p>
+        <article class="accounts-summary-card {{ $summary['inactive'] > 0 ? 'is-alert' : '' }}">
+            <p class="accounts-summary-label">AKUN NONAKTIF</p>
+            <h2 class="accounts-summary-value">{{ $summary['inactive'] }}</h2>
         </article>
 
-        <article class="dashboard-kpi-card">
-            <p class="dashboard-kpi-label">Default account</p>
-            <h2 class="dashboard-kpi-value dashboard-kpi-value-compact">{{ $summary['default_name'] }}</h2>
-            <p class="dashboard-kpi-note"></p>
+        <article class="accounts-summary-card">
+            <p class="accounts-summary-label">AKUN DEFAULT</p>
+            <h2 class="accounts-summary-value is-default-name">{{ $summary['default_name'] }}</h2>
         </article>
     </section>
 
-    <section class="members-layout-grid">
-        <article class="dashboard-card members-form-card">
-            <h2 class="dashboard-section-title">{{ $editingAccount ? 'Edit account' : 'Create account' }}</h2>
+    <section class="accounts-table-wrap">
+        <article class="accounts-table-card">
+            <div class="accounts-table-head">
+                <h3>Data Rekening &amp; Saldo</h3>
+            </div>
 
-            <form
-                action="{{ $editingAccount ? route('tenant.accounts.update', $editingAccount['id']) : route('tenant.accounts.store') }}"
-                method="post"
-                class="field-grid"
-            >
-                @csrf
-                @if ($editingAccount)
-                    @method('put')
-                @endif
-
-                <x-ui.input
-                    name="name"
-                    label="Nama akun"
-                    placeholder="Contoh: BCA"
-                    :value="$editingAccount['name'] ?? null"
-                    required
-                />
-
-                <label class="field" for="account_type">
-                    <span class="field-label">Tipe akun</span>
-                    <select id="account_type" name="account_type" class="input-control" required>
-                        <option value="">Pilih tipe akun</option>
-                        <option value="cash" @selected(old('account_type', $editingAccount['account_type'] ?? '') === 'cash')>Cash</option>
-                        <option value="bank" @selected(old('account_type', $editingAccount['account_type'] ?? '') === 'bank')>Bank</option>
-                        <option value="e_wallet" @selected(old('account_type', $editingAccount['account_type'] ?? '') === 'e_wallet')>E-Wallet</option>
-                    </select>
-                    @error('account_type')
-                        <p class="field-error">{{ $message }}</p>
-                    @enderror
-                </label>
-
-                <x-ui.input
-                    name="opening_balance"
-                    label="Opening balance"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    :value="$editingAccount['opening_balance'] ?? '0.00'"
-                    required
-                />
-
-                <div class="field">
-                    <span class="field-label">Setting</span>
-                    <label class="checkbox-row">
-                        <input type="hidden" name="is_active" value="0">
-                        <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $editingAccount['is_active'] ?? true))>
-                        <span>Aktif</span>
-                    </label>
-
-                    <label class="checkbox-row">
-                        <input type="hidden" name="is_default" value="0">
-                        <input type="checkbox" name="is_default" value="1" @checked(old('is_default', $editingAccount['is_default'] ?? false))>
-                        <span>default</span>
-                    </label>
-                </div>
-
-                <div class="field field-full">
-                    <div class="members-form-actions">
-                        <button class="button button-primary" type="submit">{{ $editingAccount ? 'Simpan perubahan' : 'Tambah akun' }}</button>
-
-                        @if ($editingAccount)
-                            <a href="{{ route('tenant.accounts.index') }}" class="button button-secondary">Batal edit</a>
-                        @else
-                            <a href="{{ route('tenant.dashboard') }}" class="button button-secondary">Kembali ke overview</a>
-                        @endif
-                    </div>
-                </div>
-            </form>
-        </article>
-    </section>
-
-    <section class="members-layout-grid">
-        <article class="dashboard-card dashboard-table-card">
-            <table class="dashboard-table">
+            <table class="accounts-table">
                 <thead>
                     <tr>
-                        <th>Akun</th>
-                        <th>Tipe</th>
-                        <th>Opening balance</th>
-                        <th>Status</th>
-                        <th>Last update</th>
-                        <th>Action</th>
+                        <th>NAMA AKUN</th>
+                        <th>TIPE</th>
+                        <th>SALDO AWAL</th>
+                        <th>STATUS</th>
+                        <th>LAST UPDATE</th>
+                        <th>AKSI</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($accounts as $account)
                         <tr>
-                            <td>
+                            <td class="accounts-name-cell">
                                 <strong>{{ $account['name'] }}</strong>
                                 @if ($account['is_default'])
-                                    <div class="members-cell-meta">Dipakai sebagai default account</div>
+                                    <span>Default account aktif</span>
                                 @endif
                             </td>
-                            <td>{{ $account['account_type'] }}</td>
-                            <td>Rp {{ $account['opening_balance'] }}</td>
+                            <td><span class="accounts-type-pill">{{ $account['account_type'] }}</span></td>
+                            <td class="accounts-money-cell">Rp {{ $account['opening_balance'] }}</td>
                             <td>
-                                <div class="members-badge-stack">
+                                <div class="accounts-status-stack">
                                     @if ($account['is_default'])
-                                        <x-ui.badge tone="neutral">default</x-ui.badge>
+                                        <span class="accounts-status-chip neutral">Default</span>
                                     @endif
-                                    <x-ui.badge tone="{{ $account['is_active'] ? 'success' : 'warning' }}">
-                                        {{ $account['is_active'] ? 'active' : 'inactive' }}
-                                    </x-ui.badge>
+                                    <span class="accounts-status-chip {{ $account['is_active'] ? 'success' : 'warning' }}">
+                                        {{ $account['is_active'] ? 'Aktif' : 'Nonaktif' }}
+                                    </span>
                                 </div>
                             </td>
                             <td>{{ $account['updated_at'] }}</td>
                             <td>
-                                <div class="members-action-stack">
-                                    <a href="{{ route('tenant.accounts.index', ['edit' => $account['id']]) }}" class="button button-secondary button-compact">Edit</a>
+                                <div class="accounts-actions-cell">
+                                    <a href="{{ route('tenant.accounts.edit', $account['id']) }}" class="accounts-action-button">Edit</a>
 
                                     @unless ($account['is_default'])
                                         <form action="{{ route('tenant.accounts.set-default', $account['id']) }}" method="post">
                                             @csrf
-                                            <button class="button button-ghost button-compact" type="submit">Set default</button>
+                                            <button class="accounts-action-button ghost" type="submit">Set Default</button>
                                         </form>
                                     @endunless
 
                                     @if ($account['is_active'])
                                         <form action="{{ route('tenant.accounts.deactivate', $account['id']) }}" method="post">
                                             @csrf
-                                            <button class="button button-ghost button-compact" type="submit">Nonaktifkan</button>
+                                            <button class="accounts-action-button ghost" type="submit">Nonaktifkan</button>
                                         </form>
                                     @else
                                         <form action="{{ route('tenant.accounts.activate', $account['id']) }}" method="post">
                                             @csrf
-                                            <button class="button button-secondary button-compact" type="submit">Aktifkan</button>
+                                            <button class="accounts-action-button ghost" type="submit">Aktifkan</button>
                                         </form>
                                     @endif
                                 </div>
@@ -171,18 +106,11 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="dashboard-empty-cell">Belum ada akun untuk tenant ini.</td>
+                            <td colspan="6" class="accounts-empty-cell">Belum ada akun untuk tenant ini.</td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
-        </article>
-        <article class="dashboard-card">
-            <h2 class="dashboard-section-title">Informasi</h2>
-
-            <div class="dashboard-alert-list">
-                <p>xxxx</p>
-            </div>
         </article>
     </section>
 @endsection

@@ -7,7 +7,9 @@
 
 <header class="tenant-topbar">
     <div class="tenant-topbar-meta">
-        <h1 class="tenant-topbar-title">{{ $page['title'] ?? '' }}</h1>
+        @if (!empty($page['title']))
+            <h1 class="tenant-topbar-title">{{ $page['title'] }}</h1>
+        @endif
         @if (!empty($page['description']))
             <p class="tenant-topbar-copy">{{ $page['description'] }}</p>
         @endif

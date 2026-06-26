@@ -28,6 +28,8 @@ Route::prefix(config('platform.route_prefixes.tenant'))
             Route::post('/transactions/{transactionId}/void', [TransactionController::class, 'void'])->name('transactions.void');
 
             Route::get('/accounts', [AccountController::class, 'index'])->name('accounts.index');
+            Route::get('/accounts/create', [AccountController::class, 'create'])->name('accounts.create');
+            Route::get('/accounts/{accountId}/edit', [AccountController::class, 'edit'])->name('accounts.edit');
             Route::post('/accounts', [AccountController::class, 'store'])->name('accounts.store');
             Route::put('/accounts/{accountId}', [AccountController::class, 'update'])->name('accounts.update');
             Route::post('/accounts/{accountId}/set-default', [AccountController::class, 'setDefault'])->name('accounts.set-default');
