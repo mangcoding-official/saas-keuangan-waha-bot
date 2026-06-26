@@ -32,10 +32,12 @@ class TransactionManagementService
 
         return DB::transaction(function () use ($owner, $transaction, $payload): Transaction {
             $beforeSnapshot = $this->snapshot($transaction);
-            $accountIds = $this->resolveAccountIds($owner->tenant_id, $transaction->type, $payload);
-            $categoryId = $this->resolveCategoryId($owner->tenant_id, $transaction->type, $payload);
+            $transactionType = TransactionType::from((string) ($payload['transaction_type'] ?? $transaction->type->value));
+            $accountIds = $this->resolveAccountIds($owner->tenant_id, $transactionType, $payload);
+            $categoryId = $this->resolveCategoryId($owner->tenant_id, $transactionType, $payload);
 
             $transaction->fill([
+                'type' => $transactionType,
                 'amount' => round((float) $payload['amount'], 2),
                 'transaction_date' => (string) $payload['transaction_date'],
                 'description' => $this->normalizeNullableText($payload['description'] ?? null),

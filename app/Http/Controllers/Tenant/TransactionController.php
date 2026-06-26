@@ -16,6 +16,7 @@ use App\Models\Transaction;
 use App\Services\TransactionManagementService;
 use App\Support\Navigation\TenantNavigation;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -61,15 +62,17 @@ class TransactionController extends Controller
                 ->sum('amount'),
         ];
 
-        $transactions = (clone $baseQuery)
+        $filteredQuery = $this->applyFilters((clone $baseQuery), $request);
+        $transactionPaginator = $filteredQuery
             ->orderByDesc('transaction_date')
             ->orderByDesc('id')
-            ->get()
+            ->paginate(10)
+            ->withQueryString();
+        $transactions = $transactionPaginator->getCollection()
             ->map(fn (Transaction $transaction): array => $this->mapTransaction($transaction, $user))
             ->all();
-
-        $selectedTransaction = collect($transactions)->firstWhere('id', $request->integer('show'));
-        $editingTransaction = $this->resolveEditingTransaction($request, $user, $selectedTransaction);
+        $selectedTransaction = $this->resolveSelectedTransaction($request, $user, $baseQuery);
+        $editingTransaction = $this->resolveEditingTransaction($request, $user, $baseQuery);
         $activeAccounts = Account::query()
             ->where('tenant_id', $tenantId)
             ->where('is_active', true)
@@ -94,13 +97,23 @@ class TransactionController extends Controller
             ->get(['id', 'name'])
             ->map(fn (Category $category): array => ['id' => $category->id, 'name' => $category->name])
             ->all();
+        $recorders = TenantUser::query()
+            ->where('tenant_id', $tenantId)
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (TenantUser $tenantUser): array => ['id' => $tenantUser->id, 'name' => $tenantUser->name])
+            ->all();
+        $transactionTypes = [
+            ['value' => '', 'label' => 'Semua Tipe'],
+            ['value' => TransactionType::INCOME->value, 'label' => 'Pemasukan'],
+            ['value' => TransactionType::EXPENSE->value, 'label' => 'Pengeluaran'],
+            ['value' => TransactionType::TRANSFER->value, 'label' => 'Transfer'],
+        ];
 
         return view('tenant.transactions.index', [
             'page' => [
-                'title' => 'Transactions',
-                'description' => $user->role === UserRole::OWNER
-                    ? 'Lihat semua transaksi yang tercatat dari WhatsApp.'
-                    : 'Lihat transaksi yang catat dari WhatsApp.',
+                'title' => null,
+                'description' => null,
                 'eyebrow' => $user->role === UserRole::OWNER ? 'Workspace' : 'Member',
             ],
             'toolbar' => [
@@ -113,11 +126,23 @@ class TransactionController extends Controller
             'authUser' => $user,
             'summary' => $summary,
             'transactions' => $transactions,
+            'transactionPaginator' => $transactionPaginator,
             'selectedTransaction' => $selectedTransaction,
             'editingTransaction' => $editingTransaction,
+            'isCreateModal' => $request->boolean('create') && $user->role === UserRole::OWNER,
             'activeAccounts' => $activeAccounts,
             'incomeCategories' => $incomeCategories,
             'expenseCategories' => $expenseCategories,
+            'recorders' => $recorders,
+            'transactionTypes' => $transactionTypes,
+            'activeFilters' => [
+                'period' => (string) $request->query('period', 'this_month'),
+                'type' => (string) $request->query('type', ''),
+                'category_id' => (string) $request->query('category_id', ''),
+                'account_id' => (string) $request->query('account_id', ''),
+                'recorder_id' => (string) $request->query('recorder_id', ''),
+                'search' => (string) $request->query('search', ''),
+            ],
             'usageExamples' => [
                 'masuk 15000 bonus',
                 'keluar 20rb makan',
@@ -194,17 +219,72 @@ class TransactionController extends Controller
         ];
     }
 
-    /**
-     * @param  array<string, mixed>|null  $selectedTransaction
-     * @return array<string, mixed>|null
-     */
-    private function resolveEditingTransaction(Request $request, TenantUser $user, ?array $selectedTransaction): ?array
+    private function resolveEditingTransaction(Request $request, TenantUser $user, Builder $baseQuery): ?array
     {
-        if ($user->role !== UserRole::OWNER || ! $selectedTransaction) {
+        if ($user->role !== UserRole::OWNER || $request->integer('edit') <= 0) {
             return null;
         }
 
-        return $request->integer('edit') === $selectedTransaction['id'] ? $selectedTransaction : null;
+        $transaction = (clone $baseQuery)->find($request->integer('edit'));
+
+        return $transaction ? $this->mapTransaction($transaction, $user) : null;
+    }
+
+    private function resolveSelectedTransaction(Request $request, TenantUser $user, Builder $baseQuery): ?array
+    {
+        if ($request->integer('show') <= 0) {
+            return null;
+        }
+
+        $transaction = (clone $baseQuery)->find($request->integer('show'));
+
+        return $transaction ? $this->mapTransaction($transaction, $user) : null;
+    }
+
+    private function applyFilters(Builder $query, Request $request): Builder
+    {
+        if ($request->filled('type')) {
+            $query->where('transactions.type', (string) $request->query('type'));
+        }
+
+        if ($request->filled('category_id')) {
+            $query->where('transactions.category_id', (int) $request->query('category_id'));
+        }
+
+        if ($request->filled('account_id')) {
+            $accountId = (int) $request->query('account_id');
+            $query->where(function (Builder $builder) use ($accountId): void {
+                $builder
+                    ->where('transactions.source_account_id', $accountId)
+                    ->orWhere('transactions.destination_account_id', $accountId);
+            });
+        }
+
+        if ($request->filled('recorder_id')) {
+            $query->where('transactions.recorded_by_user_id', (int) $request->query('recorder_id'));
+        }
+
+        $period = (string) $request->query('period', 'this_month');
+        if ($period === 'last_30_days') {
+            $query->whereDate('transactions.transaction_date', '>=', now()->subDays(30)->toDateString());
+        } elseif ($period === 'this_month') {
+            $query->whereBetween('transactions.transaction_date', [
+                now()->startOfMonth()->toDateString(),
+                now()->endOfMonth()->toDateString(),
+            ]);
+        }
+
+        if ($request->filled('search')) {
+            $search = trim((string) $request->query('search'));
+            $query->where(function (Builder $builder) use ($search): void {
+                $builder
+                    ->where('transactions.description', 'like', '%'.$search.'%')
+                    ->orWhereHas('category', fn (Builder $categoryQuery): Builder => $categoryQuery->where('name', 'like', '%'.$search.'%'))
+                    ->orWhereHas('recorder', fn (Builder $recorderQuery): Builder => $recorderQuery->where('name', 'like', '%'.$search.'%'));
+            });
+        }
+
+        return $query;
     }
 
     private function findOwnerTransaction(TenantUser $owner, int $transactionId): Transaction

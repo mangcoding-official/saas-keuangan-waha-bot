@@ -17,6 +17,7 @@ class UpdateTransactionRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'transaction_type' => ['required', 'in:income,expense,transfer'],
             'amount' => ['required', 'numeric', 'gt:0'],
             'transaction_date' => ['required', 'date'],
             'description' => ['nullable', 'string', 'max:255'],
