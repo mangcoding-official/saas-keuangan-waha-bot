@@ -1,7 +1,9 @@
 <header class="landing-nav">
     <div class="header-wrapper">
         <a href="{{ route('home') }}" class="landing-brand" aria-label="Aplikasi Keuangan MACAU Bot">
-            <span class="landing-brand-mark"></span>
+            <span class="landing-brand-mark">
+                <img src="{{ asset('images/macau-bot.svg') }}" alt="macau - aplikasi keuangan" aria-hidden="true">
+            </span>
             <span class="landing-brand-text">Macau</span>
         </a>
 

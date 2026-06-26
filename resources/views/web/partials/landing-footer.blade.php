@@ -3,7 +3,9 @@
         <div class="landing-footer-top">
             <div class="landing-footer-brand">
                 <a href="{{ route('home') }}" class="landing-brand landing-brand-inverse" aria-label="Aplikasi Keuangan MACAU Bot">
-                    <span class="landing-brand-mark"></span>
+                    <span class="landing-brand-mark">
+                        <img src="{{ asset('images/macau-bot.svg') }}" alt="macau - aplikasi keuangan" aria-hidden="true">
+                    </span>
                     <span class="landing-brand-text">MACAU</span>
                 </a>
                 <p>Solusi cerdas pencatatan keuangan harian melalui WhatsApp. Transparan, cepat, dan mudah digunakan untuk rumah tangga maupun bisnis kecil.</p>

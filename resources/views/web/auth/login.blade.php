@@ -24,7 +24,7 @@
                     <div class="login-benefit-list">
                         <article class="login-benefit-item">
                             <span class="login-benefit-icon">
-                                <img src="{{ asset('images/login/benefit-chart.svg') }}" alt="" aria-hidden="true">
+                                <img src="{{ asset('images/login/icon-benefit-chart.svg') }}" alt="" aria-hidden="true">
                             </span>
                             <div>
                                 <h2>Pantau Catatan Terkini</h2>
@@ -35,7 +35,6 @@
                         <article class="login-benefit-item">
                             <span class="login-benefit-icon is-users">
                                 <img src="{{ asset('images/login/benefit-users-a.svg') }}" alt="" aria-hidden="true">
-                                <img src="{{ asset('images/login/benefit-users-b.svg') }}" alt="" aria-hidden="true">
                             </span>
                             <div>
                                 <h2>Akses Pengguna Terkelola</h2>
@@ -82,10 +81,10 @@
                                     <span class="login-inline-link is-disabled">Lupa password?</span>
                                 </span>
                                 <span class="login-input-wrap">
-                                    <img class="login-input-icon" src="{{ asset('images/login/icon-lock.svg') }}" alt="" aria-hidden="true">
+                                    <img class="login-input-icon icon-lock" src="{{ asset('images/login/icon-lock.svg') }}" alt="" aria-hidden="true">
                                     <input id="password" name="password" type="password" class="login-input" placeholder="Masukkan password Anda" required data-password-input>
                                     <button type="button" class="login-password-toggle" data-password-toggle aria-label="Tampilkan atau sembunyikan password">
-                                        <img src="{{ asset('images/login/icon-eye.svg') }}" alt="" aria-hidden="true">
+                                        <img class="login-input-icon icon-eye" src="{{ asset('images/login/icon-eye.svg') }}" alt="" aria-hidden="true">
                                     </button>
                                 </span>
                                 @error('password')
@@ -100,7 +99,7 @@
 
                             <button type="submit" class="login-submit">
                                 <span>Masuk</span>
-                                <img src="{{ asset('images/login/icon-arrow-right.svg') }}" alt="" aria-hidden="true">
+                                <img width="12" height="12" src="{{ asset('images/login/icon-arrow-right.svg') }}" alt="" aria-hidden="true">
                             </button>
                         </form>
 
@@ -109,7 +108,7 @@
                         </div>
 
                         <button type="button" class="login-google-button" disabled aria-disabled="true">
-                            <img src="{{ asset('images/login/icon-google.svg') }}" alt="" aria-hidden="true">
+                            <img width="20" height="20" src="{{ asset('images/login/icon-google.svg') }}" alt="" aria-hidden="true">
                             <span>Google</span>
                         </button>
 

@@ -912,7 +912,6 @@ img {
     width: 32px;
     height: 32px;
     border-radius: 8px;
-    background: #0b36a8;
     flex: 0 0 auto;
 }
 
@@ -1588,9 +1587,6 @@ img {
     width: min(100%, 340px);
 }
 
-.landing-brand-inverse .landing-brand-mark {
-    background: #ffffff;
-}
 
 .landing-footer-brand p,
 .landing-footer-column a,
@@ -1949,9 +1945,9 @@ h3.register-kicker {
 }
 
 .login-main {
-    width: min(100%, 1280px);
+    width: min(100%, 1440px);
     margin: 0 auto;
-    padding: 56px 0 80px;
+    padding: 0;
 }
 
 .login-shell {
@@ -2008,6 +2004,11 @@ h3.register-kicker {
     color: #ffffff;
 }
 
+.login-hero-content .login-trust-badge img {
+    width: 14.67px;
+    height: 14px;
+}
+
 .login-trust-badge {
     display: inline-flex;
     width: fit-content;
@@ -2045,6 +2046,11 @@ h3.register-kicker {
     font-family: 'Geist', var(--font-sans);
 }
 
+.login-benefit-item .login-benefit-icon img{
+    width: 18px;
+    height: 18px;
+}
+
 .login-hero-copy p {
     font-size: 1.125rem;
     line-height: 1.55;
@@ -2065,20 +2071,13 @@ h3.register-kicker {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    min-width: 26px;
-    padding-top: 4px;
-}
-
-.login-benefit-icon.is-users {
     width: 32px;
     min-width: 32px;
-    flex-direction: column;
-    gap: 2px;
-    padding: 5px 4px 4px;
+    height: 32px;
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.2);
 }
+
 
 .login-benefit-item h2 {
     margin: 0 0 2px;
@@ -2123,11 +2122,11 @@ h3.register-kicker {
 
 .login-brand-label {
     margin: 0;
-    color: #00288e;
+    color: #00288e!important;
     font-family: 'Geist', var(--font-sans);
-    font-size: 1.25rem;
-    font-weight: 700;
-    line-height: 1.4;
+    font-size: 1.25rem!important;
+    font-weight: 700!important;
+    line-height: 1.4!important;
 }
 
 .login-card-head h1 {
@@ -2224,6 +2223,20 @@ h3.register-kicker {
     left: 16px;
     transform: translateY(-50%);
     pointer-events: none;
+    width: 20px;
+    height: 16px;
+}
+
+.login-input-icon.icon-lock {
+    width: 16px;
+    height: 20px;
+}
+
+.login-input-icon.icon-eye {
+    width: 22px;
+    height: 19px;
+    left: 0px;
+    right: 16px;
 }
 
 .login-input {
