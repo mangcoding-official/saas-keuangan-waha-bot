@@ -181,21 +181,21 @@
             $detailSourceAccount = $selectedTransaction['source_account'];
             $detailDestinationAccount = $selectedTransaction['destination_account'];
         @endphp
-        <div class="transactions-detail-overlay">
+        <div class="transactions-detail-overlay" data-transactions-detail-overlay>
             <a class="transactions-detail-overlay-backdrop" href="{{ route('tenant.transactions.index', $detailCloseQuery) }}" aria-label="Tutup detail"></a>
-            <aside class="transactions-detail-drawer">
+            <aside class="transactions-detail-drawer" role="dialog" aria-modal="true" aria-labelledby="transactions-detail-title">
                 <header class="transactions-detail-head">
                     <div>
-                        <h3>Detail Transaksi</h3>
+                        <h3 id="transactions-detail-title">Detail Transaksi</h3>
                         <p>ID: TR-{{ $showId }}-MC</p>
                     </div>
-                    <a href="{{ route('tenant.transactions.index', $detailCloseQuery) }}" aria-label="Tutup detail">×</a>
+                    <a href="{{ route('tenant.transactions.index', $detailCloseQuery) }}" aria-label="Tutup detail">&times;</a>
                 </header>
 
                 <div class="transactions-detail-body">
                     <section class="transactions-detail-highlight">
                         <div class="transactions-detail-highlight-head">
-                            <span class="transactions-detail-check">✓</span>
+                            <span class="transactions-detail-check">&#10003;</span>
                             <span class="transactions-status-pill">Berhasil</span>
                         </div>
                         <p>JUMLAH NOMINAL</p>
@@ -244,7 +244,7 @@
                         </article>
                         <article class="is-right">
                             <small>Verifikasi</small>
-                            <strong class="is-verified">✔</strong>
+                            <strong class="is-verified">&#10003;</strong>
                         </article>
                     </section>
 
@@ -254,9 +254,7 @@
                     </section>
                 </div>
 
-                <footer class="transactions-detail-foot">
-
-                </footer>
+                <footer class="transactions-detail-foot"></footer>
             </aside>
         </div>
     @endif
@@ -269,7 +267,7 @@
                         <h3>{{ $editingTransaction ? 'Edit Transaksi' : 'Tambah Transaksi' }}</h3>
                         <p>{{ $editingTransaction ? 'ID: TRN-'.$editingTransaction['id'] : 'Input transaksi baru menggunakan format yang konsisten.' }}</p>
                     </div>
-                    <a href="{{ route('tenant.transactions.index', request()->except(['edit', 'create'])) }}">✕</a>
+                    <a href="{{ route('tenant.transactions.index', request()->except(['edit', 'create'])) }}">&times;</a>
                 </div>
 
                 @if ($editingTransaction)

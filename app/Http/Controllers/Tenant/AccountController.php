@@ -46,6 +46,8 @@ class AccountController extends Controller
                 'name' => $account->name,
                 'account_type_value' => $account->account_type->value,
                 'account_type' => $this->accountTypeLabel($account->account_type->value),
+                'icon_asset' => $this->accountIconAsset($account),
+                'meta' => $this->accountMetaLine($account),
                 'current_balance' => number_format((float) ($accountBalances[(int) $account->id] ?? 0.0), 0, ',', '.'),
                 'opening_balance' => number_format((float) $account->opening_balance, 0, ',', '.'),
                 'is_default' => $account->is_default,
@@ -55,7 +57,7 @@ class AccountController extends Controller
             ->all();
 
         $accountPaginator = (clone $baseQuery)
-            ->paginate(10)
+            ->paginate(4)
             ->withQueryString();
 
         $accounts = $accountPaginator->getCollection()
@@ -64,6 +66,8 @@ class AccountController extends Controller
                 'name' => $account->name,
                 'account_type_value' => $account->account_type->value,
                 'account_type' => $this->accountTypeLabel($account->account_type->value),
+                'icon_asset' => $this->accountIconAsset($account),
+                'meta' => $this->accountMetaLine($account),
                 'current_balance' => number_format((float) ($accountBalances[(int) $account->id] ?? 0.0), 0, ',', '.'),
                 'opening_balance' => number_format((float) $account->opening_balance, 0, ',', '.'),
                 'is_default' => $account->is_default,
@@ -83,8 +87,11 @@ class AccountController extends Controller
                 'eyebrow' => 'Accounts',
             ],
             'toolbar' => [
-                'search_label' => '',
+                'search_label' => 'Cari akun',
                 'search_placeholder' => 'Cari akun...',
+                'search_action' => route('tenant.accounts.index'),
+                'search_name' => 'search',
+                'search_value' => $search,
                 'secondary_action' => null,
                 'primary_action' => null,
             ],
@@ -274,6 +281,26 @@ class AccountController extends Controller
             AccountType::BANK->value => 'Bank',
             AccountType::E_WALLET->value => 'E-Wallet',
             default => strtoupper(str_replace('_', '-', $value)),
+        };
+    }
+
+    private function accountMetaLine(Account $account): string
+    {
+        $suffix = str_pad((string) $account->id, 4, '0', STR_PAD_LEFT);
+
+        return match ($account->account_type) {
+            AccountType::BANK => '***** '.$suffix,
+            AccountType::E_WALLET => '08** **** '.$suffix,
+            AccountType::CASH => 'Laci Kas '.$suffix,
+        };
+    }
+
+    private function accountIconAsset(Account $account): string
+    {
+        return match ($account->account_type) {
+            AccountType::BANK => 'bank-icon.svg',
+            AccountType::E_WALLET => 'ewallet-icon.svg',
+            AccountType::CASH => 'cash-icon.svg',
         };
     }
 

@@ -6,8 +6,10 @@
 
     <nav class="tenant-sidebar-nav">
         @foreach ($navigation as $item)
-            <a href="{{ route($item['route']) }}" class="tenant-sidebar-link {{ request()->routeIs($item['pattern']) ? 'is-active' : '' }}">
-                <span class="tenant-sidebar-link-icon" aria-hidden="true"></span>
+            <a href="{{ route($item['route']) }}" class="tenant-sidebar-link {{ request()->routeIs($item['pattern']) ? 'is-active' : '' }}" data-nav-key="{{ $item['key'] ?? '' }}">
+                <span class="tenant-sidebar-link-icon is-{{ $item['key'] ?? 'default' }}" aria-hidden="true">
+                    <img src="{{ asset('images/figma/accounts/'.($item['key'] ?? 'overview').'.svg') }}" alt="">
+                </span>
                 <span>{{ $item['label'] }}</span>
             </a>
         @endforeach
@@ -15,6 +17,11 @@
 
     <form action="{{ route('tenant.logout') }}" method="post" class="tenant-sidebar-footer">
         @csrf
-        <button class="tenant-sidebar-logout" type="submit">Keluar</button>
+        <button class="tenant-sidebar-logout" type="submit">
+            <span class="tenant-sidebar-logout-icon" aria-hidden="true">
+                <img src="{{ asset('images/figma/accounts/logout.svg') }}" alt="">
+            </span>
+            <span>Keluar</span>
+        </button>
     </form>
 </aside>
