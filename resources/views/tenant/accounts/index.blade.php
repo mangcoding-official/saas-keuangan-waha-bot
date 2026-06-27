@@ -19,7 +19,7 @@
             <p class="accounts-page-copy">Kelola saldo dan status akun perbankan serta e-wallet Anda.</p>
         </div>
         <div class="accounts-page-actions">
-            <a href="{{ route('tenant.accounts.create') }}" class="accounts-add-button">
+            <a href="{{ route('tenant.accounts.index', array_merge(request()->query(), ['create' => 1])) }}" class="accounts-add-button">
                 <span class="accounts-add-button-icon" aria-hidden="true">
                     <img src="{{ asset('images/figma/accounts/plus.svg') }}" alt="">
                 </span>
@@ -105,7 +105,7 @@
                                     <img src="{{ asset('images/figma/accounts/kebab.svg') }}" alt="">
                                 </summary>
                                 <div class="accounts-action-popover">
-                                    <a href="{{ route('tenant.accounts.edit', $account['id']) }}">Edit</a>
+                                    <a href="{{ route('tenant.accounts.index', array_merge(request()->query(), ['edit' => $account['id']])) }}">Edit</a>
                                     @unless ($account['is_default'])
                                         <form action="{{ route('tenant.accounts.set-default', $account['id']) }}" method="post">
                                             @csrf
@@ -162,6 +162,28 @@
             </div>
         </div>
     </section>
+
+    @if ($accountModal)
+        <div class="account-modal-backdrop">
+            <div class="account-modal-card">
+                <div class="account-modal-head">
+                    <div>
+                        <h3>{{ $accountModal['form']['title'] }}</h3>
+                        <p>Atur identitas akun, tipe akun, opening balance, dan set default account.</p>
+                    </div>
+                    <a href="{{ $accountModal['form']['close_url'] }}" aria-label="Tutup modal">&times;</a>
+                </div>
+
+                <div class="account-modal-body">
+                    @include('tenant.accounts.partials.account-form', [
+                        'form' => $accountModal['form'],
+                        'account' => $accountModal['account'],
+                        'accountTypeOptions' => $accountTypeOptions,
+                    ])
+                </div>
+            </div>
+        </div>
+    @endif
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {

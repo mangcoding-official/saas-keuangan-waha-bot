@@ -31,6 +31,8 @@ class AccountController extends Controller
         $tenantId = $owner->tenant_id;
         $accountBalances = $this->accountBalanceService->balancesForTenant($tenantId);
         $search = trim((string) $request->query('search', ''));
+        $createRequested = $request->boolean('create');
+        $editAccountId = max(0, (int) $request->query('edit', 0));
 
         $baseQuery = Account::query()
             ->where('tenant_id', $tenantId)
@@ -79,6 +81,45 @@ class AccountController extends Controller
         $activeCount = count(array_filter($accounts, fn (array $account): bool => $account['is_active']));
         $inactiveCount = count($allAccounts) - count(array_filter($allAccounts, fn (array $account): bool => $account['is_active']));
         $defaultAccount = collect($allAccounts)->firstWhere('is_default', true);
+        $editingAccount = $editAccountId > 0
+            ? Account::query()->where('tenant_id', $tenantId)->find($editAccountId)
+            : null;
+        $accountModal = null;
+
+        if ($editingAccount !== null) {
+            $accountModal = $this->accountFormConfig(
+                formTitle: 'Edit Account',
+                submitLabel: 'Simpan Perubahan',
+                formAction: route('tenant.accounts.update', $editingAccount->id),
+                formMethod: 'put',
+                account: [
+                    'id' => $editingAccount->id,
+                    'name' => $editingAccount->name,
+                    'account_type' => $editingAccount->account_type->value,
+                    'opening_balance' => number_format((float) $editingAccount->opening_balance, 2, '.', ''),
+                    'is_default' => $editingAccount->is_default,
+                    'is_active' => $editingAccount->is_active,
+                ],
+                modalMode: 'edit',
+                closeUrl: route('tenant.accounts.index', $request->except(['edit'])),
+            );
+        } elseif ($createRequested) {
+            $accountModal = $this->accountFormConfig(
+                formTitle: 'Create Account',
+                submitLabel: 'Simpan Akun',
+                formAction: route('tenant.accounts.store'),
+                formMethod: 'post',
+                account: [
+                    'name' => '',
+                    'account_type' => AccountType::BANK->value,
+                    'opening_balance' => '0.00',
+                    'is_default' => false,
+                    'is_active' => true,
+                ],
+                modalMode: 'create',
+                closeUrl: route('tenant.accounts.index', $request->except(['create'])),
+            );
+        }
 
         return view('tenant.accounts.index', [
             'page' => [
@@ -106,51 +147,19 @@ class AccountController extends Controller
             'accounts' => $accounts,
             'accountPaginator' => $accountPaginator,
             'activeSearch' => $search,
+            'accountModal' => $accountModal,
+            'accountTypeOptions' => $this->accountTypeOptions(),
         ]);
     }
 
-    public function create(): View
+    public function create(): RedirectResponse
     {
-        /** @var TenantUser $owner */
-        $owner = auth('web')->user();
-
-        return view('tenant.accounts.create', $this->accountFormPageData(
-            owner: $owner,
-            formTitle: 'Create Account',
-            submitLabel: 'Simpan Akun',
-            formAction: route('tenant.accounts.store'),
-            formMethod: 'post',
-            account: [
-                'name' => '',
-                'account_type' => AccountType::BANK->value,
-                'opening_balance' => '0.00',
-                'is_default' => false,
-                'is_active' => true,
-            ],
-        ));
+        return to_route('tenant.accounts.index', ['create' => 1]);
     }
 
-    public function edit(int $accountId): View
+    public function edit(int $accountId): RedirectResponse
     {
-        /** @var TenantUser $owner */
-        $owner = auth('web')->user();
-        $account = $this->findAccount($owner, $accountId);
-
-        return view('tenant.accounts.edit', $this->accountFormPageData(
-            owner: $owner,
-            formTitle: 'Edit Account',
-            submitLabel: 'Simpan Perubahan',
-            formAction: route('tenant.accounts.update', $account->id),
-            formMethod: 'put',
-            account: [
-                'id' => $account->id,
-                'name' => $account->name,
-                'account_type' => $account->account_type->value,
-                'opening_balance' => number_format((float) $account->opening_balance, 2, '.', ''),
-                'is_default' => $account->is_default,
-                'is_active' => $account->is_active,
-            ],
-        ));
+        return to_route('tenant.accounts.index', ['edit' => $accountId]);
     }
 
     public function store(StoreAccountRequest $request): RedirectResponse
@@ -173,7 +182,7 @@ class AccountController extends Controller
         $account = $this->findAccount($owner, $accountId);
         $updated = $this->accountManagementService->update($owner, $account, $request->validated());
 
-        return to_route('tenant.accounts.edit', $updated->id)->with(config('platform.flash_session_key'), [
+        return to_route('tenant.accounts.index')->with(config('platform.flash_session_key'), [
             'tone' => 'success',
             'title' => 'Akun diperbarui',
             'message' => $updated->name.' berhasil diperbarui.',
@@ -226,40 +235,25 @@ class AccountController extends Controller
      * @param  array<string, mixed>  $account
      * @return array<string, mixed>
      */
-    private function accountFormPageData(
-        TenantUser $owner,
+    private function accountFormConfig(
         string $formTitle,
         string $submitLabel,
         string $formAction,
         string $formMethod,
         array $account,
+        string $modalMode,
+        string $closeUrl,
     ): array {
         return [
-            'page' => [
-                'title' => $formTitle,
-                'description' => 'Atur identitas akun, tipe akun, opening balance, dan set default account.',
-                'eyebrow' => 'Accounts',
-            ],
-            'toolbar' => [
-                'search_label' => '',
-                'search_placeholder' => 'Cari transaksi...',
-                'secondary_action' => [
-                    'label' => 'Kembali ke Daftar',
-                    'href' => route('tenant.accounts.index'),
-                    'variant' => 'secondary',
-                ],
-                'primary_action' => null,
-            ],
-            'navigation' => TenantNavigation::items($owner),
-            'authUser' => $owner,
             'form' => [
                 'title' => $formTitle,
                 'submit_label' => $submitLabel,
                 'action' => $formAction,
                 'method' => $formMethod,
+                'modal' => $modalMode,
+                'close_url' => $closeUrl,
             ],
             'account' => $account,
-            'accountTypeOptions' => $this->accountTypeOptions(),
         ];
     }
 
