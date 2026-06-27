@@ -10,6 +10,7 @@ use App\Models\TenantUser;
 use App\Services\CategoryManagementService;
 use App\Support\Navigation\TenantNavigation;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Carbon;
 
@@ -20,57 +21,99 @@ class CategoryController extends Controller
     ) {
     }
 
-    public function index(): View
+    public function index(Request $request): View
     {
         /** @var TenantUser $owner */
         $owner = auth('web')->user();
-        $editingCategory = $this->resolveCategoryForEdit($owner);
-
-        $categories = Category::query()
+        $baseQuery = Category::query()
             ->where('tenant_id', $owner->tenant_id)
             ->orderByDesc('is_system')
             ->orderByDesc('is_active')
             ->orderBy('type')
-            ->orderBy('name')
+            ->orderBy('name');
+
+        $allCategories = (clone $baseQuery)
             ->get()
             ->map(fn (Category $category): array => [
                 'id' => $category->id,
                 'type' => strtoupper($category->type->value),
+                'type_value' => $category->type->value,
                 'name' => $category->name,
                 'keywords' => $category->keywords ?? [],
                 'is_system' => $category->is_system,
                 'is_active' => $category->is_active,
+                'code' => 'CAT-'.str_pad((string) $category->id, 3, '0', STR_PAD_LEFT),
                 'updated_at' => Carbon::parse($category->updated_at)->timezone($owner->tenant->timezone)->format('d M Y H:i'),
             ])
             ->all();
 
-        $activeCount = count(array_filter($categories, fn (array $category): bool => $category['is_active']));
-        $systemCount = count(array_filter($categories, fn (array $category): bool => $category['is_system']));
-        $incomeCount = count(array_filter($categories, fn (array $category): bool => $category['type'] === 'INCOME'));
+        $activeCount = count(array_filter($allCategories, fn (array $category): bool => $category['is_active']));
+        $systemCount = count(array_filter($allCategories, fn (array $category): bool => $category['is_system']));
+        $incomeCount = count(array_filter($allCategories, fn (array $category): bool => $category['type'] === 'INCOME'));
+        $addedThisMonth = Category::query()
+            ->where('tenant_id', $owner->tenant_id)
+            ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
+            ->count();
+
+        $filteredQuery = (clone $baseQuery);
+        $search = trim((string) $request->query('search', ''));
+
+        if ($search !== '') {
+            $filteredQuery->where(function ($query) use ($search): void {
+                $query
+                    ->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('type', 'like', '%'.$search.'%')
+                    ->orWhereJsonContains('keywords', mb_strtolower($search));
+            });
+        }
+
+        $categoryPaginator = $filteredQuery
+            ->paginate(4)
+            ->withQueryString();
+
+        $categories = $categoryPaginator->getCollection()
+            ->map(fn (Category $category): array => [
+                'id' => $category->id,
+                'type' => strtoupper($category->type->value),
+                'type_value' => $category->type->value,
+                'name' => $category->name,
+                'keywords' => $category->keywords ?? [],
+                'is_system' => $category->is_system,
+                'is_active' => $category->is_active,
+                'code' => 'CAT-'.str_pad((string) $category->id, 3, '0', STR_PAD_LEFT),
+                'updated_at' => Carbon::parse($category->updated_at)->timezone($owner->tenant->timezone)->format('d M Y H:i'),
+            ])
+            ->all();
+
+        $editingCategory = $this->resolveCategoryForEdit($owner);
 
         return view('tenant.categories.index', [
             'page' => [
-                'title' => 'Categories',
-                'description' => 'Mengelola kategori income dan expense.',
+                'title' => 'Kategori',
+                'description' => null,
                 'eyebrow' => '',
             ],
             'toolbar' => [
                 'search_label' => '',
-                'search_placeholder' => 'Search category or keyword',
+                'search_placeholder' => 'Cari kategori...',
                 'secondary_action' => null,
                 'primary_action' => null,
             ],
             'navigation' => TenantNavigation::items($owner),
             'authUser' => $owner,
             'editingCategory' => $editingCategory,
+            'isCreateModal' => $request->boolean('create'),
             'summary' => [
-                'total' => count($categories),
+                'total' => count($allCategories),
                 'active' => $activeCount,
                 'system' => $systemCount,
                 'income' => $incomeCount,
-                'expense' => count($categories) - $incomeCount,
+                'expense' => count($allCategories) - $incomeCount,
+                'added_this_month' => $addedThisMonth,
             ],
             'categories' => $categories,
+            'categoryPaginator' => $categoryPaginator,
+            'activeSearch' => $search,
         ]);
     }
 

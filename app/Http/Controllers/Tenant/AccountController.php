@@ -8,9 +8,11 @@ use App\Http\Requests\StoreAccountRequest;
 use App\Http\Requests\UpdateAccountRequest;
 use App\Models\Account;
 use App\Models\TenantUser;
+use App\Services\AccountBalanceService;
 use App\Services\AccountManagementService;
 use App\Support\Navigation\TenantNavigation;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Carbon;
 
@@ -18,25 +20,52 @@ class AccountController extends Controller
 {
     public function __construct(
         private readonly AccountManagementService $accountManagementService,
+        private readonly AccountBalanceService $accountBalanceService,
     ) {
     }
 
-    public function index(): View
+    public function index(Request $request): View
     {
         /** @var TenantUser $owner */
         $owner = auth('web')->user();
+        $tenantId = $owner->tenant_id;
+        $accountBalances = $this->accountBalanceService->balancesForTenant($tenantId);
+        $search = trim((string) $request->query('search', ''));
 
-        $accounts = Account::query()
-            ->where('tenant_id', $owner->tenant_id)
+        $baseQuery = Account::query()
+            ->where('tenant_id', $tenantId)
+            ->when($search !== '', fn ($query) => $query->where('name', 'like', '%'.$search.'%'))
             ->orderByDesc('is_default')
             ->orderByDesc('is_active')
-            ->orderBy('name')
+            ->orderBy('name');
+
+        $allAccounts = (clone $baseQuery)
             ->get()
             ->map(fn (Account $account): array => [
                 'id' => $account->id,
                 'name' => $account->name,
+                'account_type_value' => $account->account_type->value,
                 'account_type' => $this->accountTypeLabel($account->account_type->value),
-                'opening_balance' => number_format((float) $account->opening_balance, 2, ',', '.'),
+                'current_balance' => number_format((float) ($accountBalances[(int) $account->id] ?? 0.0), 0, ',', '.'),
+                'opening_balance' => number_format((float) $account->opening_balance, 0, ',', '.'),
+                'is_default' => $account->is_default,
+                'is_active' => $account->is_active,
+                'updated_at' => Carbon::parse($account->updated_at)->timezone($owner->tenant->timezone)->format('d M Y H:i'),
+            ])
+            ->all();
+
+        $accountPaginator = (clone $baseQuery)
+            ->paginate(10)
+            ->withQueryString();
+
+        $accounts = $accountPaginator->getCollection()
+            ->map(fn (Account $account): array => [
+                'id' => $account->id,
+                'name' => $account->name,
+                'account_type_value' => $account->account_type->value,
+                'account_type' => $this->accountTypeLabel($account->account_type->value),
+                'current_balance' => number_format((float) ($accountBalances[(int) $account->id] ?? 0.0), 0, ',', '.'),
+                'opening_balance' => number_format((float) $account->opening_balance, 0, ',', '.'),
                 'is_default' => $account->is_default,
                 'is_active' => $account->is_active,
                 'updated_at' => Carbon::parse($account->updated_at)->timezone($owner->tenant->timezone)->format('d M Y H:i'),
@@ -44,8 +73,8 @@ class AccountController extends Controller
             ->all();
 
         $activeCount = count(array_filter($accounts, fn (array $account): bool => $account['is_active']));
-        $inactiveCount = count($accounts) - $activeCount;
-        $defaultAccount = collect($accounts)->firstWhere('is_default', true);
+        $inactiveCount = count($allAccounts) - count(array_filter($allAccounts, fn (array $account): bool => $account['is_active']));
+        $defaultAccount = collect($allAccounts)->firstWhere('is_default', true);
 
         return view('tenant.accounts.index', [
             'page' => [
@@ -62,12 +91,14 @@ class AccountController extends Controller
             'navigation' => TenantNavigation::items($owner),
             'authUser' => $owner,
             'summary' => [
-                'total' => count($accounts),
-                'active' => $activeCount,
+                'total' => count($allAccounts),
+                'active' => count(array_filter($allAccounts, fn (array $account): bool => $account['is_active'])),
                 'inactive' => $inactiveCount,
                 'default_name' => $defaultAccount['name'] ?? '-',
             ],
             'accounts' => $accounts,
+            'accountPaginator' => $accountPaginator,
+            'activeSearch' => $search,
         ]);
     }
 
