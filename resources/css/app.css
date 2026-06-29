@@ -440,7 +440,6 @@ span.tenant-sidebar-link-icon.is-members{
     border-radius: 12px;
     background: #fbf8ff;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    overflow: hidden;
 }
 
 .tenant-table-card,
@@ -3956,21 +3955,6 @@ img {
     line-height: 1.5;
 }
 
-.members-tips-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-}
-
-.members-tip-card {
-    border: 1px solid;
-    border-radius: 16px;
-    padding: 24px;
-    display: flex;
-    gap: 16px;
-    align-items: flex-start;
-}
-
 .members-tip-card.is-security {
     background: rgba(0, 40, 142, 0.05);
     border-color: rgba(0, 40, 142, 0.1);
@@ -4017,19 +4001,6 @@ img {
     color: #444653;
     font-size: 0.875rem;
     line-height: 1.4286;
-}
-
-.members-footer {
-    border-top: 1px solid #c4c5d5;
-    padding: 8px 0 0;
-}
-
-.members-footer p {
-    margin: 24px 0 0;
-    color: #757684;
-    font-size: 0.875rem;
-    line-height: 1.4286;
-    text-align: center;
 }
 
 .members-alert {
@@ -6233,10 +6204,6 @@ h3.register-kicker {
 
     .members-pagination div {
         justify-content: flex-end;
-    }
-
-    .members-tips-grid {
-        grid-template-columns: 1fr;
     }
 
     .sidebar {

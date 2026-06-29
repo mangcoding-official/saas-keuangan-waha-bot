@@ -194,28 +194,6 @@
                 </div>
             </div>
         </section>
-
-        <section class="members-tips-grid">
-            <article class="members-tip-card is-security">
-                <span class="members-tip-icon" aria-hidden="true">i</span>
-                <div>
-                    <h3>Tips Keamanan</h3>
-                    <p>Pastikan selalu melakukan audit log berkala untuk memantau perubahan role yang dilakukan oleh sesama owner.</p>
-                </div>
-            </article>
-
-            <article class="members-tip-card is-verification">
-                <span class="members-tip-icon" aria-hidden="true">&#10003;</span>
-                <div>
-                    <h3>Verifikasi WhatsApp</h3>
-                    <p>Anggota yang terverifikasi WhatsApp akan mendapatkan notifikasi transaksi langsung ke ponsel mereka secara real-time.</p>
-                </div>
-            </article>
-        </section>
-
-        <footer class="members-footer">
-            <p>&copy; 2024 Macau Financial System. Made for Modern Enterprise.</p>
-        </footer>
     </div>
 
     @if ($memberModal)

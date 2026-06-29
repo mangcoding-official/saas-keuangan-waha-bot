@@ -80,7 +80,6 @@
                                                 @if ($authUser->role->value === 'owner')
                                                     <a href="{{ route('tenant.transactions.index', ['edit' => $row['id']]) }}">Edit Transaksi</a>
                                                 @endif
-                                                <a href="{{ route('tenant.transactions.index', ['create' => 1]) }}">Tambah Transaksi</a>
                                             </div>
                                         </details>
                                     </td>

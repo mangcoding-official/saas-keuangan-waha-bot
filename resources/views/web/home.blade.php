@@ -155,7 +155,6 @@
 
                 <div class="landing-cta-actions">
                     <a href="{{ route('tenant.register.create') }}" class="landing-button landing-button-light">Daftar Gratis Sekarang</a>
-                    <a href="{{ route('internal.login.create') }}" class="landing-button landing-button-outline-light">Platform Admin Login</a>
                 </div>
 
                 <div class="landing-cta-benefits">
