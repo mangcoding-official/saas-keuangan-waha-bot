@@ -836,9 +836,9 @@
 
 .accounts-page-title {
     margin: 0;
-    font-size: 1rem;
+    font-size: 1.5rem;
     line-height: 1.5;
-    font-weight: 400;
+    font-weight: 600;
     color: #1a1b22;
 }
 
@@ -1315,309 +1315,124 @@
 }
 
 .categories-summary-grid {
+    margin: 24px 24px 0;
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 24px;
-    margin-bottom: 24px;
 }
 
 .categories-summary-card {
-    border: 1px solid #c4c5d5;
+    min-height: 128px;
     border-radius: 12px;
+    border: 1px solid #c4c5d5;
     background: #ffffff;
     padding: 17px;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
     display: grid;
+    align-content: start;
     gap: 0;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
 }
 
-.categories-summary-card p,
-.categories-summary-card small {
-    margin: 0;
+.categories-summary-icon, .categories-summary-glyph {
+    display: inline-flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+}
+
+.categories-summary-icon.is-total,
+.categories-summary-icon.is-active,
+.categories-summary-glyph.is-income,
+.categories-summary-glyph.is-expense {
+    width: 40px;
+    height: 40px;
+}
+
+
+.categories-summary-label {
+    margin: 8px 0 0;
     color: #444653;
     font-size: 1rem;
     line-height: 1.5;
-}
-
-.categories-summary-card h3 {
-    margin: 0;
-    font-size: 1rem;
-    line-height: 1.5;
-    color: #1a1b22;
     font-weight: 400;
 }
 
-.categories-summary-card.is-accent h3 {
+.categories-summary-value {
+    margin: 0;
+    color: #1a1b22;
+    font-size: 1rem;
+    line-height: 1.5;
+    font-weight: 400;
+}
+
+.categories-summary-card.is-total .categories-summary-value {
     color: #00288e;
 }
 
-.categories-summary-card small {
-    display: none;
-}
-
-.categories-summary-icon {
-    width: 36px;
-    height: 42px;
-    border-radius: 8px;
-    display: inline-flex;
+.categories-summary-glyph.is-income, .categories-summary-glyph.is-expense{
     align-items: center;
     justify-content: center;
-    margin-bottom: 8px;
 }
 
-.categories-summary-icon::before {
-    content: "";
-    width: 18px;
-    height: 18px;
-    border-radius: 4px;
+.categories-summary-glyph.is-income img,
+.categories-summary-glyph.is-expense img{
+    width: 20px;
+    height: 20px;
+    border-radius: 8px;
 }
 
-.categories-summary-icon.is-total {
+.categories-summary-glyph.is-total,
+.categories-summary-glyph.is-active {
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    display: flex;
+    gap: 0;
+    justify-content: center;
+    align-items: center;
+}
+
+.categories-summary-glyph.is-total img,
+.categories-summary-glyph.is-active img{
+    width: 20px;
+    height: 20px;
+}
+
+.categories-summary-glyph.is-total {
     background: #e5ecff;
 }
 
-.categories-summary-icon.is-total::before {
-    background: #335cff;
-}
-
-.categories-summary-icon.is-active {
+.categories-summary-glyph.is-active,
+.categories-summary-glyph.is-income {
     background: #d8fbe6;
 }
 
-.categories-summary-icon.is-active::before {
-    background: #0a8c5b;
-}
-
-.categories-summary-icon.is-income {
-    background: #e6f7eb;
-}
-
-.categories-summary-icon.is-income::before {
-    background: #15803d;
-}
-
-.categories-summary-icon.is-expense {
+.categories-summary-glyph.is-expense {
     background: #ffe2de;
 }
 
-.categories-summary-icon.is-expense::before {
-    background: #dc2626;
-}
 
 .categories-section-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 24px;
-}
-
-.categories-section-head h2 {
-    margin: 0;
-    font-size: 1rem;
-    color: #1a1b22;
-}
-
-.categories-section-head p {
-    margin: 0;
-    color: #444653;
-    font-size: 1rem;
-    line-height: 1.5;
-}
-
-.categories-section-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.categories-clear-search {
-    color: #616784;
-    font-size: 0.88rem;
-}
-
-.categories-add-button,
-.categories-modal-button {
-    min-height: 40px;
-    border-radius: 8px;
-    padding: 8px 24px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    font-weight: 400;
-    border: 1px solid #1e40af;
-    font-size: 1rem;
-    line-height: 1.5;
-}
-
-.categories-add-button,
-.categories-modal-button.primary {
-    background: #1e40af;
-    color: #ffffff;
-}
-
-.categories-modal-button.secondary {
-    background: #ffffff;
-    color: #1e40af;
-}
-
-.categories-table-card {
-    border: 1px solid #c4c5d5;
-    border-radius: 16px;
-    background: #ffffff;
-    overflow: hidden;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-.categories-table-head {
-    min-height: 80px;
-    padding: 24px;
-    border-bottom: 1px solid #c4c5d5;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-}
-
-.categories-table-head h3 {
-    margin: 0;
-    font-size: 1rem;
-    line-height: 1.5;
-    font-weight: 400;
-    color: #1a1b22;
-}
-
-.categories-table-tools {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.categories-tool-button {
-    width: 26px;
-    height: 26px;
-    border-radius: 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: #444653;
-}
-
-.categories-tool-icon {
-    position: relative;
-    display: inline-block;
-    width: 16px;
-    height: 16px;
-}
-
-.categories-tool-icon.is-add::before,
-.categories-tool-icon.is-add::after,
-.categories-tool-icon.is-reset::before,
-.categories-tool-icon.is-reset::after {
-    content: "";
-    position: absolute;
-    background: currentColor;
-    border-radius: 999px;
-}
-
-.categories-tool-icon.is-add::before {
-    inset: 7px 2px;
-}
-
-.categories-tool-icon.is-add::after {
-    inset: 2px 7px;
-}
-
-.categories-tool-icon.is-reset::before {
-    width: 12px;
-    height: 12px;
-    left: 2px;
-    top: 2px;
-    border: 1.8px solid currentColor;
-    border-right-color: transparent;
-    border-bottom-color: transparent;
-    background: transparent;
-    border-radius: 999px;
-    transform: rotate(-35deg);
-}
-
-.categories-tool-icon.is-reset::after {
-    width: 6px;
-    height: 2px;
-    right: 1px;
-    top: 2px;
-    transform: rotate(35deg);
-}
-
-.categories-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.categories-table thead {
-    background: #f4f2fc;
-}
-
-.categories-table th,
-.categories-table td {
-    padding: 16px 24px;
-    border-bottom: 1px solid #d9dbe8;
-    text-align: left;
-    vertical-align: middle;
-}
-
-.categories-table th {
-    font-size: 1rem;
-    font-weight: 700;
-    line-height: 1.5;
-    letter-spacing: 0.05em;
-    color: #444653;
+    margin: 24px 24px 0;
 }
 
 .categories-name-cell {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.categories-name-cell strong,
-.categories-name-cell span {
-    display: block;
-}
-
-.categories-name-cell strong {
-    color: #1a1b22;
-    font-size: 1rem;
-    line-height: 1.5;
-    font-weight: 400;
-}
-
-.categories-name-cell span:not(.categories-name-icon) {
-    margin-top: 0;
-    color: #76788a;
-    font-size: 1rem;
-    line-height: 1.5;
+    min-width: 280px;
 }
 
 .categories-name-icon {
     width: 40px;
     height: 40px;
-    border-radius: 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
+    border-radius: 999px;
 }
 
 .categories-name-icon.is-income {
-    background: #e7f8ed;
-    color: #0a8c5b;
+    background: #daf9e6;
+    color: #16794f;
 }
 
 .categories-name-icon.is-expense {
-    background: #f0edf7;
-    color: #5b4b8a;
+    background: #ece4ff;
+    color: #5c42a6;
 }
 
 .categories-name-glyph {
@@ -1626,74 +1441,24 @@
 }
 
 .categories-name-glyph.is-income {
-    width: 22px;
+    width: 18px;
     height: 16px;
 }
 
-.categories-name-glyph.is-income::before,
-.categories-name-glyph.is-income::after,
-.categories-name-glyph.is-expense::before,
-.categories-name-glyph.is-expense::after {
-    content: "";
-    position: absolute;
-}
-
-.categories-name-glyph.is-income::before {
-    inset: 2px 2px 8px;
-    border: 2px solid currentColor;
-    border-radius: 4px;
-}
-
-.categories-name-glyph.is-income::after {
-    width: 10px;
-    height: 2px;
-    left: 6px;
-    bottom: 2px;
-    background: currentColor;
-    border-radius: 999px;
-}
-
-.categories-name-glyph.is-expense {
-    width: 18px;
-    height: 20px;
-}
-
-.categories-name-glyph.is-expense::before {
-    inset: 0 4px 0 6px;
-    border-left: 2px solid currentColor;
-    border-right: 2px solid currentColor;
-    border-radius: 2px;
-}
-
-.categories-name-glyph.is-expense::after {
-    width: 10px;
-    height: 2px;
-    left: 4px;
-    top: 4px;
-    background: currentColor;
-    box-shadow: 0 5px 0 currentColor, 0 10px 0 currentColor;
-    border-radius: 999px;
-}
-
 .categories-type-pill {
-    min-height: 32px;
-    padding: 4px 8px;
-    border-radius: 999px;
-    display: inline-flex;
-    align-items: center;
-    font-size: 1rem;
-    line-height: 1.5;
-    font-weight: 600;
+    min-height: 29px;
+    border-radius: 6px;
+    padding: 2.5px 8px;
 }
 
 .categories-type-pill.income {
-    background: #d8fbe6;
-    color: #006c49;
+    background: #e3faec;
+    color: #16794f;
 }
 
 .categories-type-pill.expense {
-    background: #ffdad6;
-    color: #ba1a1a;
+    background: #ece9ff;
+    color: #5c42a6;
 }
 
 .categories-keyword-group {
@@ -1714,143 +1479,6 @@
 .categories-empty-keywords,
 .categories-locked-action {
     color: #76788a;
-    font-size: 1rem;
-    line-height: 1.5;
-}
-
-.categories-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    color: #1a1b22;
-    font-size: 1rem;
-    line-height: 1.5;
-}
-
-.categories-status span {
-    width: 8px;
-    height: 8px;
-    border-radius: 999px;
-    display: inline-block;
-}
-
-.categories-status.is-active span {
-    background: #006c49;
-}
-
-.categories-status.is-inactive span {
-    background: #757684;
-}
-
-.categories-action-cell {
-    width: 80px;
-}
-
-.categories-action-menu {
-    position: relative;
-}
-
-.categories-action-menu summary {
-    list-style: none;
-    cursor: pointer;
-    width: 20px;
-    height: 38px;
-    border-radius: 999px;
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    color: #444653;
-}
-
-.categories-action-menu summary span {
-    width: 4px;
-    height: 4px;
-    border-radius: 999px;
-    background: currentColor;
-}
-
-.categories-action-menu summary::-webkit-details-marker {
-    display: none;
-}
-
-.categories-action-menu:not([open]) .categories-action-popover {
-    display: none;
-}
-
-.categories-action-popover {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 6px);
-    min-width: 160px;
-    border: 1px solid #c4c5d5;
-    border-radius: 10px;
-    background: #ffffff;
-    box-shadow: 0 18px 40px rgba(32, 32, 32, 0.1);
-    padding: 8px;
-    display: grid;
-    gap: 4px;
-    z-index: 5;
-}
-
-.categories-action-popover a,
-.categories-action-popover button {
-    min-height: 36px;
-    border: 0;
-    background: transparent;
-    padding: 0 10px;
-    border-radius: 8px;
-    text-align: left;
-    color: #1a1b22;
-    font: inherit;
-    cursor: pointer;
-}
-
-.categories-action-popover a:hover,
-.categories-action-popover button:hover {
-    background: #f4f2fc;
-}
-
-.categories-empty-cell {
-    text-align: center;
-    color: #76788a;
-    font-size: 1rem;
-    line-height: 1.5;
-}
-
-.categories-pagination {
-    padding: 25px 24px 24px;
-    border-top: 1px solid #c4c5d5;
-    background: #f4f2fc;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-}
-
-.categories-pagination p {
-    margin: 0;
-    color: #757684;
-    font-size: 1rem;
-    line-height: 1.5;
-}
-
-.categories-pagination div {
-    display: flex;
-    gap: 4px;
-}
-
-.categories-page {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    border: 1px solid #c4c5d5;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: #757684;
-    background: #ffffff;
     font-size: 1rem;
     line-height: 1.5;
 }
@@ -2636,6 +2264,10 @@
 }
 
 @media (max-width: 1100px) {
+    .categories-page-shell {
+        width: 100%;
+    }
+
     .categories-summary-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -2684,6 +2316,10 @@
 
     .accounts-page {
         width: 100%;
+    }
+
+    .categories-page-shell {
+        padding: 16px;
     }
 
     .categories-summary-grid {

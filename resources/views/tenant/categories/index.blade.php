@@ -14,73 +14,87 @@
         <div class="tenant-inline-alert">{{ $errors->first() }}</div>
     @endif
 
-    <section class="categories-summary-grid">
-        <article class="categories-summary-card is-accent">
-            <span class="categories-summary-icon is-total"></span>
-            <p>Total Kategori</p>
-            <h3>{{ str_pad((string) $summary['total'], 2, '0', STR_PAD_LEFT) }}</h3>
-            <small>+{{ $summary['added_this_month'] }} bulan ini</small>
-        </article>
-
-        <article class="categories-summary-card">
-            <span class="categories-summary-icon is-active"></span>
-            <p>Kategori Aktif</p>
-            <h3>{{ str_pad((string) $summary['active'], 2, '0', STR_PAD_LEFT) }}</h3>
-            <small>{{ $summary['total'] > 0 ? round(($summary['active'] / $summary['total']) * 100) : 0 }}% dari total</small>
-        </article>
-
-        <article class="categories-summary-card">
-            <span class="categories-summary-icon is-income"></span>
-            <p>Tipe Pemasukan</p>
-            <h3>{{ str_pad((string) $summary['income'], 2, '0', STR_PAD_LEFT) }}</h3>
-            <small>{{ $summary['total'] > 0 ? round(($summary['income'] / $summary['total']) * 100) : 0 }}% dari total</small>
-        </article>
-
-        <article class="categories-summary-card">
-            <span class="categories-summary-icon is-expense"></span>
-            <p>Tipe Pengeluaran</p>
-            <h3>{{ str_pad((string) $summary['expense'], 2, '0', STR_PAD_LEFT) }}</h3>
-            <small>{{ $summary['total'] > 0 ? round(($summary['expense'] / $summary['total']) * 100) : 0 }}% dari total</small>
-        </article>
-    </section>
-
-    <section class="categories-section-head">
+    <section class="accounts-page-header categories-page-header">
         <div>
-            <h2>Manajemen Kategori</h2>
-            <p>Atur kategori transaksi untuk pelaporan keuangan yang lebih detail.</p>
+            <h2 class="accounts-page-title">Manajemen Kategori</h2>
+            <p class="accounts-page-copy">Atur kategori transaksi untuk pelaporan keuangan yang lebih detail.</p>
         </div>
-        <div class="categories-section-actions">
-            <a href="{{ route('tenant.categories.index', array_merge(request()->query(), ['create' => 1])) }}" class="categories-add-button">
-                <span>+</span>
+        <div class="accounts-page-actions">
+            <a href="{{ route('tenant.categories.index', array_merge(request()->query(), ['create' => 1])) }}" class="accounts-add-button">
+                <span class="accounts-add-button-icon" aria-hidden="true">
+                    <img src="{{ asset('images/figma/accounts/plus.svg') }}" alt="">
+                </span>
                 <span>Tambah Kategori</span>
             </a>
         </div>
     </section>
 
-    <section class="categories-table-card">
-        <header class="categories-table-head">
+    <section class="categories-summary-grid">
+        <article class="categories-summary-card is-total">
+            <div class="categories-summary-icon is-total" aria-hidden="true">
+                <span class="categories-summary-glyph is-total">
+                    <img src="{{ asset('images/Icon-category.png') }}" alt="">
+                </span>
+            </div>
+            <p class="categories-summary-label">Total Kategori</p>
+            <h2 class="categories-summary-value">{{ str_pad((string) $summary['total'], 2, '0', STR_PAD_LEFT) }}</h2>
+        </article>
+
+        <article class="categories-summary-card is-active">
+            <div class="categories-summary-icon is-active" aria-hidden="true">
+                <span class="categories-summary-glyph is-active">
+                    <img src="{{ asset('images/Icon-checklist.png') }}" alt="">
+                </span>
+            </div>
+            <p class="categories-summary-label">Kategori Aktif</p>
+            <h2 class="categories-summary-value">{{ str_pad((string) $summary['active'], 2, '0', STR_PAD_LEFT) }}</h2>
+        </article>
+
+        <article class="categories-summary-card is-income">
+            <div class="categories-summary-icon is-income" aria-hidden="true">
+                <span class="categories-summary-glyph is-income">
+                    <img src="{{ asset('images/Icon-income.png') }}" alt="">
+                </span>
+            </div>
+            <p class="categories-summary-label">Tipe Pemasukan</p>
+            <h2 class="categories-summary-value">{{ str_pad((string) $summary['income'], 2, '0', STR_PAD_LEFT) }}</h2>
+        </article>
+
+        <article class="categories-summary-card is-expense">
+            <div class="categories-summary-icon is-expense" aria-hidden="true">
+                <span class="categories-summary-glyph is-expense">
+                    <img src="{{ asset('images/Icon-expanse.png') }}" alt="">
+                </span>
+            </div>
+            <p class="categories-summary-label">Tipe Pengeluaran</p>
+            <h2 class="categories-summary-value">{{ str_pad((string) $summary['expense'], 2, '0', STR_PAD_LEFT) }}</h2>
+        </article>
+    </section>
+
+    <section class="accounts-table-card categories-table-card">
+        <div class="accounts-table-head">
             <h3>Data Kategori</h3>
-            <div class="categories-table-tools">
+            <div class="accounts-table-tools">
                 <a
                     href="{{ $activeSearch !== '' ? route('tenant.categories.index', request()->except(['search'])) : route('tenant.categories.index', request()->query()) }}"
-                    class="categories-tool-button"
-                    aria-label="{{ $activeSearch !== '' ? 'Reset pencarian' : 'Muat ulang daftar kategori' }}"
-                    title="{{ $activeSearch !== '' ? 'Reset pencarian' : 'Muat ulang daftar kategori' }}"
+                    class="accounts-table-tool"
+                    aria-label="{{ $activeSearch !== '' ? 'Reset pencarian' : 'Urutkan data' }}"
+                    title="{{ $activeSearch !== '' ? 'Reset pencarian' : 'Urutkan data' }}"
                 >
-                    <span class="categories-tool-icon is-reset"></span>
+                    <img src="{{ asset('images/figma/accounts/table-list.svg') }}" alt="">
                 </a>
                 <a
                     href="{{ route('tenant.categories.index', array_merge(request()->query(), ['create' => 1])) }}"
-                    class="categories-tool-button"
+                    class="accounts-table-tool"
                     aria-label="Tambah kategori"
                     title="Tambah kategori"
                 >
-                    <span class="categories-tool-icon is-add"></span>
+                    <img src="{{ asset('images/figma/accounts/plus.svg') }}" alt="">
                 </a>
             </div>
-        </header>
+        </div>
 
-        <table class="categories-table">
+        <table class="accounts-table categories-table">
             <thead>
                 <tr>
                     <th>NAMA KATEGORI</th>
@@ -92,9 +106,9 @@
             </thead>
             <tbody>
                 @forelse ($categories as $category)
-                    <tr>
-                        <td class="categories-name-cell">
-                            <span class="categories-name-icon {{ $category['type_value'] === 'income' ? 'is-income' : 'is-expense' }}">
+                    <tr class="{{ $category['is_active'] ? '' : 'is-inactive-row' }}">
+                        <td class="accounts-name-cell categories-name-cell">
+                            <span class="accounts-name-icon categories-name-icon {{ $category['type_value'] === 'income' ? 'is-income' : 'is-expense' }}">
                                 <span class="categories-name-glyph {{ $category['type_value'] === 'income' ? 'is-income' : 'is-expense' }}"></span>
                             </span>
                             <div>
@@ -103,7 +117,7 @@
                             </div>
                         </td>
                         <td>
-                            <span class="categories-type-pill {{ $category['type_value'] }}">
+                            <span class="accounts-type-pill categories-type-pill {{ $category['type_value'] }}">
                                 {{ $category['type_value'] === 'income' ? 'Pemasukan' : 'Pengeluaran' }}
                             </span>
                         </td>
@@ -119,22 +133,20 @@
                             @endif
                         </td>
                         <td>
-                            <span class="categories-status {{ $category['is_active'] ? 'is-active' : 'is-inactive' }}">
+                            <span class="accounts-status-inline {{ $category['is_active'] ? 'is-active' : 'is-inactive' }}">
                                 <span></span>
                                 {{ $category['is_active'] ? 'Aktif' : 'Nonaktif' }}
                             </span>
                         </td>
-                        <td class="categories-action-cell">
+                        <td class="accounts-action-menu-cell">
                             @if ($category['is_system'])
                                 <span class="categories-locked-action">Sistem</span>
                             @else
-                                <details class="categories-action-menu" data-category-action-menu>
+                                <details class="accounts-action-menu" data-category-action-menu>
                                     <summary aria-label="Aksi kategori">
-                                        <span></span>
-                                        <span></span>
-                                        <span></span>
+                                        <img src="{{ asset('images/figma/accounts/kebab.svg') }}" alt="">
                                     </summary>
-                                    <div class="categories-action-popover">
+                                    <div class="accounts-action-popover">
                                         <a href="{{ route('tenant.categories.index', array_merge(request()->query(), ['edit' => $category['id']])) }}">Edit</a>
                                         @if ($category['is_active'])
                                             <form action="{{ route('tenant.categories.deactivate', $category['id']) }}" method="post">
@@ -154,27 +166,35 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="categories-empty-cell">Belum ada kategori untuk tenant ini.</td>
+                        <td colspan="5" class="accounts-empty-cell">Belum ada kategori untuk tenant ini.</td>
                     </tr>
                 @endforelse
             </tbody>
         </table>
 
-        <div class="categories-pagination">
+        <div class="accounts-pagination">
             <p>Menampilkan {{ $categoryPaginator->firstItem() ?? 0 }}-{{ $categoryPaginator->lastItem() ?? 0 }} dari {{ $categoryPaginator->total() }} kategori</p>
             <div>
                 @if ($categoryPaginator->onFirstPage())
-                    <span class="categories-page disabled">&lsaquo;</span>
+                    <span class="accounts-page is-prev disabled" aria-hidden="true">
+                        <img src="{{ asset('images/figma/accounts/page-prev.svg') }}" alt="">
+                    </span>
                 @else
-                    <a href="{{ $categoryPaginator->previousPageUrl() }}" class="categories-page">&lsaquo;</a>
+                    <a href="{{ $categoryPaginator->previousPageUrl() }}" class="accounts-page is-prev" aria-label="Halaman sebelumnya">
+                        <img src="{{ asset('images/figma/accounts/page-prev.svg') }}" alt="">
+                    </a>
                 @endif
                 @foreach ($visiblePages as $page)
-                    <a href="{{ $categoryPaginator->url($page) }}" class="categories-page {{ $page === $currentPage ? 'active' : '' }}">{{ $page }}</a>
+                    <a href="{{ $categoryPaginator->url($page) }}" class="accounts-page {{ $page === $currentPage ? 'active' : '' }}">{{ $page }}</a>
                 @endforeach
                 @if ($categoryPaginator->hasMorePages())
-                    <a href="{{ $categoryPaginator->nextPageUrl() }}" class="categories-page">&rsaquo;</a>
+                    <a href="{{ $categoryPaginator->nextPageUrl() }}" class="accounts-page is-next" aria-label="Halaman berikutnya">
+                        <img src="{{ asset('images/figma/accounts/page-next.svg') }}" alt="">
+                    </a>
                 @else
-                    <span class="categories-page disabled">&rsaquo;</span>
+                    <span class="accounts-page is-next disabled" aria-hidden="true">
+                        <img src="{{ asset('images/figma/accounts/page-next.svg') }}" alt="">
+                    </span>
                 @endif
             </div>
         </div>
