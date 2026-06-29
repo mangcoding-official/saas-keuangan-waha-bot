@@ -50,9 +50,6 @@
             <p>Atur kategori transaksi untuk pelaporan keuangan yang lebih detail.</p>
         </div>
         <div class="categories-section-actions">
-            @if ($activeSearch !== '')
-                <a href="{{ route('tenant.categories.index') }}" class="categories-clear-search">Reset pencarian</a>
-            @endif
             <a href="{{ route('tenant.categories.index', array_merge(request()->query(), ['create' => 1])) }}" class="categories-add-button">
                 <span>+</span>
                 <span>Tambah Kategori</span>
@@ -61,6 +58,28 @@
     </section>
 
     <section class="categories-table-card">
+        <header class="categories-table-head">
+            <h3>Data Kategori</h3>
+            <div class="categories-table-tools">
+                <a
+                    href="{{ $activeSearch !== '' ? route('tenant.categories.index', request()->except(['search'])) : route('tenant.categories.index', request()->query()) }}"
+                    class="categories-tool-button"
+                    aria-label="{{ $activeSearch !== '' ? 'Reset pencarian' : 'Muat ulang daftar kategori' }}"
+                    title="{{ $activeSearch !== '' ? 'Reset pencarian' : 'Muat ulang daftar kategori' }}"
+                >
+                    <span class="categories-tool-icon is-reset"></span>
+                </a>
+                <a
+                    href="{{ route('tenant.categories.index', array_merge(request()->query(), ['create' => 1])) }}"
+                    class="categories-tool-button"
+                    aria-label="Tambah kategori"
+                    title="Tambah kategori"
+                >
+                    <span class="categories-tool-icon is-add"></span>
+                </a>
+            </div>
+        </header>
+
         <table class="categories-table">
             <thead>
                 <tr>
@@ -76,7 +95,7 @@
                     <tr>
                         <td class="categories-name-cell">
                             <span class="categories-name-icon {{ $category['type_value'] === 'income' ? 'is-income' : 'is-expense' }}">
-                                {{ $category['type_value'] === 'income' ? 'IN' : 'EX' }}
+                                <span class="categories-name-glyph {{ $category['type_value'] === 'income' ? 'is-income' : 'is-expense' }}"></span>
                             </span>
                             <div>
                                 <strong>{{ $category['name'] }}</strong>
@@ -110,7 +129,11 @@
                                 <span class="categories-locked-action">Sistem</span>
                             @else
                                 <details class="categories-action-menu" data-category-action-menu>
-                                    <summary aria-label="Aksi kategori">...</summary>
+                                    <summary aria-label="Aksi kategori">
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                    </summary>
                                     <div class="categories-action-popover">
                                         <a href="{{ route('tenant.categories.index', array_merge(request()->query(), ['edit' => $category['id']])) }}">Edit</a>
                                         @if ($category['is_active'])
@@ -141,17 +164,17 @@
             <p>Menampilkan {{ $categoryPaginator->firstItem() ?? 0 }}-{{ $categoryPaginator->lastItem() ?? 0 }} dari {{ $categoryPaginator->total() }} kategori</p>
             <div>
                 @if ($categoryPaginator->onFirstPage())
-                    <span class="categories-page disabled">&lt;</span>
+                    <span class="categories-page disabled">&lsaquo;</span>
                 @else
-                    <a href="{{ $categoryPaginator->previousPageUrl() }}" class="categories-page">&lt;</a>
+                    <a href="{{ $categoryPaginator->previousPageUrl() }}" class="categories-page">&lsaquo;</a>
                 @endif
                 @foreach ($visiblePages as $page)
                     <a href="{{ $categoryPaginator->url($page) }}" class="categories-page {{ $page === $currentPage ? 'active' : '' }}">{{ $page }}</a>
                 @endforeach
                 @if ($categoryPaginator->hasMorePages())
-                    <a href="{{ $categoryPaginator->nextPageUrl() }}" class="categories-page">&gt;</a>
+                    <a href="{{ $categoryPaginator->nextPageUrl() }}" class="categories-page">&rsaquo;</a>
                 @else
-                    <span class="categories-page disabled">&gt;</span>
+                    <span class="categories-page disabled">&rsaquo;</span>
                 @endif
             </div>
         </div>

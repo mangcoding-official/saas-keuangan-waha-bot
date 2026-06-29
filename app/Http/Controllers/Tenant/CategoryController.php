@@ -89,7 +89,7 @@ class CategoryController extends Controller
 
         return view('tenant.categories.index', [
             'page' => [
-                'title' => 'Kategori',
+                'title' => null,
                 'description' => null,
                 'eyebrow' => '',
             ],

@@ -178,18 +178,19 @@
                 ->implode('');
             $showId = str_pad((string) $selectedTransaction['id'], 7, '0', STR_PAD_LEFT);
             $detailCloseQuery = request()->except(['show']);
+            $detailCloseUrl = route('tenant.transactions.index', $detailCloseQuery);
             $detailSourceAccount = $selectedTransaction['source_account'];
             $detailDestinationAccount = $selectedTransaction['destination_account'];
         @endphp
         <div class="transactions-detail-overlay" data-transactions-detail-overlay>
-            <a class="transactions-detail-overlay-backdrop" href="{{ route('tenant.transactions.index', $detailCloseQuery) }}" aria-label="Tutup detail"></a>
-            <aside class="transactions-detail-drawer" role="dialog" aria-modal="true" aria-labelledby="transactions-detail-title">
+            <a class="transactions-detail-overlay-backdrop" href="{{ $detailCloseUrl }}" aria-label="Tutup detail"></a>
+            <aside class="transactions-detail-drawer" role="dialog" aria-modal="true" aria-labelledby="transactions-detail-title" tabindex="-1">
                 <header class="transactions-detail-head">
                     <div>
                         <h3 id="transactions-detail-title">Detail Transaksi</h3>
                         <p>ID: TR-{{ $showId }}-MC</p>
                     </div>
-                    <a href="{{ route('tenant.transactions.index', $detailCloseQuery) }}" aria-label="Tutup detail">&times;</a>
+                    <a href="{{ $detailCloseUrl }}" aria-label="Tutup detail">&times;</a>
                 </header>
 
                 <div class="transactions-detail-body">
@@ -254,7 +255,12 @@
                     </section>
                 </div>
 
-                <footer class="transactions-detail-foot"></footer>
+                <footer class="transactions-detail-foot">
+                    <a href="{{ $detailCloseUrl }}" class="transactions-button secondary">Tutup</a>
+                    @if ($authUser->role->value === 'owner')
+                        <a href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['edit' => $selectedTransaction['id']])) }}" class="transactions-button primary">Edit transaksi</a>
+                    @endif
+                </footer>
             </aside>
         </div>
     @endif
@@ -384,6 +390,36 @@
                 });
 
                 syncTypeState(typeInput.value);
+            });
+        </script>
+    @endif
+
+    @if ($selectedTransaction && ! $isModalOpen)
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const detailOverlay = document.querySelector('[data-transactions-detail-overlay]');
+                const detailDrawer = detailOverlay?.querySelector('.transactions-detail-drawer');
+                const closeUrl = @json($detailCloseUrl);
+
+                if (!detailOverlay || !detailDrawer || !closeUrl) {
+                    return;
+                }
+
+                document.body.classList.add('has-modal-open');
+                detailDrawer.focus();
+
+                const handleKeydown = (event) => {
+                    if (event.key === 'Escape') {
+                        window.location.href = closeUrl;
+                    }
+                };
+
+                document.addEventListener('keydown', handleKeydown);
+
+                window.addEventListener('beforeunload', function () {
+                    document.body.classList.remove('has-modal-open');
+                    document.removeEventListener('keydown', handleKeydown);
+                }, { once: true });
             });
         </script>
     @endif
