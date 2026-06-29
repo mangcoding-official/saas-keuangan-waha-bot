@@ -5,8 +5,6 @@ namespace App\Http\Controllers\Tenant;
 use App\Enums\TransactionStatus;
 use App\Enums\TransactionType;
 use App\Enums\UserRole;
-use App\Enums\UserStatus;
-use App\Enums\VerificationStatus;
 use App\Http\Controllers\Controller;
 use App\Models\TenantUser;
 use App\Services\AccountBalanceService;
@@ -31,6 +29,8 @@ class DashboardController extends Controller
         $now = now()->timezone($user->tenant->timezone);
         $monthStart = $now->copy()->startOfMonth()->toDateString();
         $monthEnd = $now->copy()->endOfMonth()->toDateString();
+        $previousMonthStart = $now->copy()->subMonthNoOverflow()->startOfMonth()->toDateString();
+        $previousMonthEnd = $now->copy()->subMonthNoOverflow()->endOfMonth()->toDateString();
         $transactionBaseQuery = DB::table('transactions')
             ->where('tenant_id', $tenantId)
             ->where('status', TransactionStatus::COMPLETED->value);
@@ -39,59 +39,41 @@ class DashboardController extends Controller
             $transactionBaseQuery->where('recorded_by_user_id', $user->id);
         }
 
-        $latestActivationCode = DB::table('activation_codes')
-            ->where('tenant_user_id', $user->id)
-            ->where('status', 'active')
-            ->latest('created_at')
-            ->first(['code_last4', 'expires_at']);
-
-        $activeAccountsCount = (int) DB::table('accounts')
-            ->where('tenant_id', $tenantId)
-            ->where('is_active', true)
-            ->count();
-
         $accountBalances = $this->accountBalanceService->balancesForTenant($tenantId);
         $totalBalance = (float) DB::table('accounts')
             ->where('tenant_id', $tenantId)
             ->where('is_active', true)
             ->get(['id'])
             ->sum(fn (object $account): float => $accountBalances[(int) $account->id] ?? 0.0);
+        $previousTotalBalance = $this->totalBalanceUntil($tenantId, $previousMonthEnd);
 
         $monthlyIncome = (float) (clone $transactionBaseQuery)
             ->where('type', TransactionType::INCOME->value)
             ->whereBetween('transaction_date', [$monthStart, $monthEnd])
+            ->sum('amount');
+        $previousMonthlyIncome = (float) (clone $transactionBaseQuery)
+            ->where('type', TransactionType::INCOME->value)
+            ->whereBetween('transaction_date', [$previousMonthStart, $previousMonthEnd])
             ->sum('amount');
 
         $monthlyExpense = (float) (clone $transactionBaseQuery)
             ->where('type', TransactionType::EXPENSE->value)
             ->whereBetween('transaction_date', [$monthStart, $monthEnd])
             ->sum('amount');
+        $previousMonthlyExpense = (float) (clone $transactionBaseQuery)
+            ->where('type', TransactionType::EXPENSE->value)
+            ->whereBetween('transaction_date', [$previousMonthStart, $previousMonthEnd])
+            ->sum('amount');
 
         $monthlyTransactionCount = (int) (clone $transactionBaseQuery)
             ->whereBetween('transaction_date', [$monthStart, $monthEnd])
             ->count();
-
-        $membersTotal = (int) DB::table('tenant_users')
-            ->where('tenant_id', $tenantId)
-            ->count();
-
-        $membersActive = (int) DB::table('tenant_users')
-            ->where('tenant_id', $tenantId)
-            ->where('user_status', UserStatus::ACTIVE->value)
-            ->count();
-
-        $membersPending = (int) DB::table('tenant_users')
-            ->where('tenant_id', $tenantId)
-            ->where('verification_status', VerificationStatus::PENDING_VERIFICATION->value)
-            ->count();
-
-        $membersInactive = (int) DB::table('tenant_users')
-            ->where('tenant_id', $tenantId)
-            ->where('user_status', UserStatus::INACTIVE->value)
+        $previousMonthlyTransactionCount = (int) (clone $transactionBaseQuery)
+            ->whereBetween('transaction_date', [$previousMonthStart, $previousMonthEnd])
             ->count();
 
         $recentTransactions = DB::table('transactions')
-            ->leftJoin('tenant_users', 'tenant_users.id', '=', 'transactions.recorded_by_user_id')
+            ->leftJoin('categories', 'categories.id', '=', 'transactions.category_id')
             ->where('transactions.tenant_id', $tenantId)
             ->where('transactions.status', TransactionStatus::COMPLETED->value)
             ->when(
@@ -100,33 +82,26 @@ class DashboardController extends Controller
             )
             ->orderByDesc('transactions.transaction_date')
             ->orderByDesc('transactions.id')
-            ->limit(4)
+            ->limit(3)
             ->get([
+                'transactions.id',
                 'transactions.transaction_date',
-                'transactions.created_at',
                 'transactions.description',
                 'transactions.type',
                 'transactions.amount',
-                'tenant_users.name as recorder_name',
+                'categories.name as category_name',
             ])
             ->map(fn (object $transaction): array => [
-                'date' => Carbon::parse($transaction->transaction_date)->format('d M'),
-                'flow_stamp' => Carbon::parse($transaction->created_at)->timezone($user->tenant->timezone)->format('d M H:i'),
+                'id' => (int) $transaction->id,
+                'date' => Carbon::parse($transaction->transaction_date)->format('d M Y'),
                 'description' => $transaction->description ?: self::defaultTransactionDescription($transaction->type),
-                'recorder' => $transaction->recorder_name ?: 'System',
-                'type' => ucfirst($transaction->type),
-                'amount' => self::formatCurrency((float) $transaction->amount),
+                'meta' => 'ID: TRX-'.str_pad((string) $transaction->id, 4, '0', STR_PAD_LEFT),
+                'type_key' => $transaction->type,
+                'icon_label' => self::transactionIconLabel((string) $transaction->type),
+                'category' => $transaction->category_name ?: 'Tanpa kategori',
+                'amount' => self::formatSignedCurrency((string) $transaction->type, (float) $transaction->amount),
             ])
             ->all();
-
-        $transactionFlow = array_slice(array_map(
-            fn (array $transaction): array => [
-                'stamp' => $transaction['flow_stamp'],
-                'summary' => $transaction['description'],
-                'amount' => $transaction['amount'],
-            ],
-            $recentTransactions
-        ), 0, 3);
 
         $weeklyExpenseRangeStart = $now->copy()->subDays(6)->toDateString();
         $weeklyExpenseRangeEnd = $now->toDateString();
@@ -163,7 +138,8 @@ class DashboardController extends Controller
                 'label' => $item['label'],
                 'value' => $item['value'],
                 'is_peak' => $maxSpending > 0 && $item['value'] === $maxSpending,
-                'height' => $maxSpending > 0 ? max(8, (int) round(($item['value'] / $maxSpending) * 100)) : 8,
+                'height' => $maxSpending > 0 ? max(18, (int) round(($item['value'] / $maxSpending) * 100)) : 18,
+                'tooltip' => self::formatCompactCurrency((float) $item['value']),
             ],
             $spendingChart
         );
@@ -172,76 +148,76 @@ class DashboardController extends Controller
             ? route('tenant.support')
             : route('tenant.dashboard');
 
-
         $accountRows = DB::table('accounts')
             ->where('tenant_id', $tenantId)
             ->orderByDesc('is_default')
             ->orderByDesc('is_active')
             ->orderBy('name')
-            ->limit(4)
-            ->get(['id', 'name', 'is_active', 'is_default'])
+            ->limit(2)
+            ->get(['id', 'name', 'account_type', 'is_active', 'is_default'])
             ->map(fn (object $account): array => [
+                'id' => (int) $account->id,
                 'name' => $account->name,
+                'type' => self::accountTypeLabel((string) $account->account_type),
                 'balance' => self::formatCurrency($accountBalances[(int) $account->id] ?? 0.0),
-                'status' => $account->is_active ? 'Active' : 'Inactive',
-                'note' => $account->is_default ? 'Default account' : 'Other account',
+                'meta' => self::accountMeta((int) $account->id, (string) $account->account_type),
+                'icon_asset' => self::accountIconAsset((string) $account->account_type),
+                'is_active' => (bool) $account->is_active,
+                'is_default' => (bool) $account->is_default,
             ])
             ->all();
 
-        $attentionItems = $user->role === UserRole::OWNER
-            ? $membersPending + $membersInactive + ($user->verification_status === VerificationStatus::PENDING_VERIFICATION ? 1 : 0)
-            : ($user->verification_status === VerificationStatus::PENDING_VERIFICATION ? 1 : 0);
-        $attentionNotes = [];
+        $balanceTrend = self::comparisonMeta($totalBalance, $previousTotalBalance);
+        $incomeTrend = self::comparisonMeta($monthlyIncome, $previousMonthlyIncome);
+        $expenseTrend = self::comparisonMeta($monthlyExpense, $previousMonthlyExpense, true);
+        $transactionTrend = self::comparisonMeta((float) $monthlyTransactionCount, (float) $previousMonthlyTransactionCount);
+        $transactionProgress = self::comparisonProgress($monthlyTransactionCount, $previousMonthlyTransactionCount);
 
-        if ($user->role === UserRole::OWNER && $membersPending > 0) {
-            $attentionNotes[] = $membersPending.' pending verification';
-        }
+        $ownerQuickActions = [
+            [
+                'label' => 'Tambah Anggota',
+                'href' => route('tenant.members.index', ['create' => 1]),
+                'icon' => asset('images/figma/accounts/members.svg'),
+                'is_primary' => true,
+            ],
+            [
+                'label' => 'Tambah Akun',
+                'href' => route('tenant.accounts.index', ['create' => 1]),
+                'icon' => asset('images/figma/accounts/accounts.svg'),
+                'is_primary' => false,
+            ],
+            [
+                'label' => 'Tambah Kategori',
+                'href' => route('tenant.categories.index', ['create' => 1]),
+                'icon' => asset('images/figma/accounts/categories.svg'),
+                'is_primary' => false,
+            ],
+        ];
 
-        if ($user->role === UserRole::OWNER && $membersInactive > 0) {
-            $attentionNotes[] = $membersInactive.' inactive';
-        }
-
-        if ($user->verification_status === VerificationStatus::PENDING_VERIFICATION) {
-            $attentionNotes[] = 'owner belum verified';
-        }
-
-        $alerts = [];
-
-        if ($user->role === UserRole::OWNER && $membersPending > 0) {
-            $alerts[] = $membersPending.' member masih menunggu verifikasi.';
-        }
-
-        if ($latestActivationCode && $user->verification_status === VerificationStatus::PENDING_VERIFICATION) {
-            $alerts[] = 'Kode aktivasi owner aktif sampai '.Carbon::parse($latestActivationCode->expires_at)->timezone($user->tenant->timezone)->format('d M Y H:i').'.';
-        }
-
-        if ($monthlyExpense > $monthlyIncome && $monthlyExpense > 0) {
-            $alerts[] = 'Pengeluaran bulan ini lebih tinggi dari pemasukan.';
-        }
-
-        if ($activeAccountsCount === 0) {
-            $alerts[] = 'Belum ada akun aktif untuk menerima transaksi.';
-        }
-
-        if ($recentTransactions === []) {
-            $alerts[] = $user->role === UserRole::OWNER
-                ? 'Belum ada transaksi tercatat. Onboarding tenant masih di tahap awal.'
-                : 'Belum ada transaksi yang kamu catat dari WhatsApp.';
-        }
-
-        if ($alerts === []) {
-            $alerts[] = 'Tidak ada alert operasional untuk tenant ini.';
-        }
+        $memberQuickActions = [
+            [
+                'label' => 'Lihat Transaksi',
+                'href' => route('tenant.transactions.index'),
+                'icon' => asset('images/figma/accounts/transactions.svg'),
+                'is_primary' => true,
+            ],
+            [
+                'label' => 'Profil Saya',
+                'href' => route('tenant.profile.show'),
+                'icon' => asset('images/figma/accounts/members.svg'),
+                'is_primary' => false,
+            ],
+        ];
 
         return view('tenant.dashboard', [
             'page' => [
-                'title' => 'Overview',
+                'title' => '',
                 'description' => '',
                 'eyebrow' => strtoupper($user->role->value),
             ],
             'toolbar' => [
                 'search_label' => '',
-                'search_placeholder' => 'Search transaction, account, category, or member',
+                'search_placeholder' => 'Cari akun...',
                 'secondary_action' => null,
                 'primary_action' => null,
             ],
@@ -249,70 +225,77 @@ class DashboardController extends Controller
             'authUser' => $user,
             'kpis' => [
                 [
-                    'label' => $user->role === UserRole::OWNER ? 'Saldo total' : 'Transaksi bulan ini',
-                    'value' => $user->role === UserRole::OWNER
-                        ? self::formatCompactCurrency($totalBalance)
-                        : (string) $monthlyTransactionCount,
-                    'note' => $user->role === UserRole::OWNER
-                        ? $activeAccountsCount.' akun aktif'
-                        : 'Jumlah transaksi yang kamu catat bulan berjalan',
+                    'label' => 'Total Saldo',
+                    'icon' => asset('images/icon-wallet.svg'),
+                    'value_prefix' => 'Rp',
+                    'value_main' => number_format($totalBalance, 0, ',', '.'),
+                    'note' => $balanceTrend['text'],
+                    'note_tone' => $balanceTrend['tone'],
                     'tone' => 'neutral',
                 ],
                 [
-                    'label' => 'Pemasukan bulan ini',
-                    'value' => self::formatCompactCurrency($monthlyIncome),
-                    'note' => 'Total pemasukan dari semua transaksi tipe income bulan berjalan',
+                    'label' => 'Pemasukan Bulan Ini',
+                    'icon' => asset('images/icon-owner.svg'),
+                    'value_prefix' => 'Rp',
+                    'value_main' => number_format($monthlyIncome, 0, ',', '.'),
+                    'note' => $incomeTrend['text'],
+                    'note_tone' => $incomeTrend['tone'],
                     'tone' => 'neutral',
                 ],
                 [
-                    'label' => 'Pengeluaran bulan ini',
-                    'value' => self::formatCompactCurrency($monthlyExpense),
-                    'note' => $user->role === UserRole::OWNER
-                        ? 'Total pengeluaran dari semua transaksi tipe expense bulan berjalan'
-                        : 'Pengeluaran pribadi yang kamu catat',
-                    'tone' => 'neutral',
+                    'label' => 'Pengeluaran Bulan Ini',
+                    'icon' => asset('images/icon-member.svg'),
+                    'value_prefix' => 'Rp',
+                    'value_main' => number_format($monthlyExpense, 0, ',', '.'),
+                    'note' => $expenseTrend['text'],
+                    'note_tone' => $expenseTrend['tone'],
+                    'tone' => 'alert',
                 ],
                 [
-                    'label' => 'Butuh perhatian',
-                    'value' => $attentionItems.' item',
-                    'note' => $attentionNotes === [] ? 'Tidak ada antrian' : implode(', ', $attentionNotes),
-                    'tone' => $attentionItems > 0 ? 'alert' : 'neutral',
+                    'label' => 'Transaksi Bulan Ini',
+                    'icon' => asset('images/icon-need-verification.svg'),
+                    'value_prefix' => null,
+                    'value_main' => number_format($monthlyTransactionCount, 0, ',', '.'),
+                    'note' => $transactionTrend['text'],
+                    'note_tone' => $transactionTrend['tone'],
+                    'progress' => $transactionProgress,
+                    'tone' => 'neutral',
                 ],
             ],
-            'transactionFlow' => $transactionFlow,
             'transactionRows' => $recentTransactions,
             'accountRows' => $accountRows,
-            'memberStatus' => $user->role === UserRole::OWNER
-                ? [
-                    ['label' => 'Total member', 'value' => (string) $membersTotal],
-                    ['label' => 'Active', 'value' => (string) $membersActive],
-                    ['label' => 'Pending verification', 'value' => (string) $membersPending],
-                    ['label' => 'Inactive', 'value' => (string) $membersInactive],
-                ]
-                : [
-                    ['label' => 'Role', 'value' => strtoupper($user->role->value)],
-                    ['label' => 'Status', 'value' => $user->user_status->value],
-                    ['label' => 'Verification', 'value' => $user->verification_status->value],
-                    ['label' => 'Nomor WA', 'value' => $user->whatsapp_number],
-                ],
-            'pendingBadge' => $user->role === UserRole::OWNER
-                ? ($membersPending > 0 ? $membersPending.' pending verification' : null)
-                : ($user->verification_status === VerificationStatus::PENDING_VERIFICATION ? 'Nomor kamu masih pending verification' : null),
             'quickActions' => $user->role === UserRole::OWNER
-                ? [
-                    ['label' => 'Tambah member', 'href' => route('tenant.members.index')],
-                    ['label' => 'Catat transaksi', 'href' => route('tenant.transactions.index')],
-                    ['label' => 'Kelola akun', 'href' => route('tenant.accounts.index')],
-                    ['label' => 'Review audit log', 'href' => route('tenant.audit.index')],
-                ]
-                : [
-                    ['label' => 'Lihat transaksi saya', 'href' => route('tenant.transactions.index')],
-                    ['label' => 'Open profile', 'href' => route('tenant.profile.show')],
-                ],
-            'alerts' => $alerts,
+                ? $ownerQuickActions
+                : $memberQuickActions,
             'spendingChart' => $spendingChart,
             'supportLink' => $supportLink,
+            'supportCopy' => 'Tim kami siap membantu Anda mengelola keuangan '.($user->tenant->name ?: 'tenant').'.',
         ]);
+    }
+
+    private function totalBalanceUntil(int $tenantId, string $endDate): float
+    {
+        $openingBalance = (float) DB::table('accounts')
+            ->where('tenant_id', $tenantId)
+            ->sum('opening_balance');
+
+        $incomingBalance = (float) DB::table('transactions')
+            ->where('tenant_id', $tenantId)
+            ->where('status', TransactionStatus::COMPLETED->value)
+            ->whereIn('type', [TransactionType::INCOME->value, TransactionType::TRANSFER->value])
+            ->whereNotNull('destination_account_id')
+            ->whereDate('transaction_date', '<=', $endDate)
+            ->sum('amount');
+
+        $outgoingBalance = (float) DB::table('transactions')
+            ->where('tenant_id', $tenantId)
+            ->where('status', TransactionStatus::COMPLETED->value)
+            ->whereIn('type', [TransactionType::EXPENSE->value, TransactionType::TRANSFER->value])
+            ->whereNotNull('source_account_id')
+            ->whereDate('transaction_date', '<=', $endDate)
+            ->sum('amount');
+
+        return $openingBalance + $incomingBalance - $outgoingBalance;
     }
 
     private static function defaultTransactionDescription(string $type): string
@@ -330,6 +313,17 @@ class DashboardController extends Controller
         return 'Rp '.number_format($amount, 0, ',', '.');
     }
 
+    private static function formatSignedCurrency(string $type, float $amount): string
+    {
+        $formatted = number_format($amount, 0, ',', '.');
+
+        return match ($type) {
+            TransactionType::INCOME->value => '+ Rp '.$formatted,
+            TransactionType::EXPENSE->value => '- Rp '.$formatted,
+            default => 'Rp '.$formatted,
+        };
+    }
+
     private static function formatCompactCurrency(float $amount): string
     {
         if ($amount >= 1000000000) {
@@ -345,5 +339,89 @@ class DashboardController extends Controller
         }
 
         return 'Rp '.number_format($amount, 0, ',', '.');
+    }
+
+    /**
+     * @return array{text: string, tone: string}
+     */
+    private static function comparisonMeta(float $current, float $previous, bool $positiveWhenLower = false): array
+    {
+        if (abs($current - $previous) < 0.01) {
+            return [
+                'text' => 'Sama dengan bulan lalu',
+                'tone' => 'neutral',
+            ];
+        }
+
+        if ($previous <= 0.0) {
+            return [
+                'text' => $current > 0 ? 'Naik 100% dari bulan lalu' : 'Belum ada data bulan lalu',
+                'tone' => $positiveWhenLower ? 'negative' : 'positive',
+            ];
+        }
+
+        $isIncrease = $current > $previous;
+        $percentage = (int) round((abs($current - $previous) / $previous) * 100);
+        $isPositive = $positiveWhenLower ? ! $isIncrease : $isIncrease;
+
+        return [
+            'text' => ($isIncrease ? 'Naik ' : 'Turun ').$percentage.'% dari bulan lalu',
+            'tone' => $isPositive ? 'positive' : 'negative',
+        ];
+    }
+
+    private static function comparisonProgress(int $current, int $previous): int
+    {
+        if ($current <= 0) {
+            return 0;
+        }
+
+        if ($previous <= 0) {
+            return 100;
+        }
+
+        return max(12, min(100, (int) round(($current / $previous) * 100)));
+    }
+
+    private static function transactionIconLabel(string $type): string
+    {
+        return match ($type) {
+            TransactionType::INCOME->value => 'IN',
+            TransactionType::EXPENSE->value => 'EX',
+            TransactionType::TRANSFER->value => 'TR',
+            default => 'TX',
+        };
+    }
+
+    private static function accountTypeLabel(string $type): string
+    {
+        return match ($type) {
+            'cash' => 'Cash',
+            'bank' => 'Bank',
+            'e_wallet' => 'E-Wallet',
+            default => strtoupper(str_replace('_', '-', $type)),
+        };
+    }
+
+    private static function accountMeta(int $accountId, string $type): string
+    {
+        $suffix = str_pad((string) $accountId, 4, '0', STR_PAD_LEFT);
+
+        return match ($type) {
+            'bank' => '***** '.$suffix,
+            'e_wallet' => '08** **** '.$suffix,
+            'cash' => 'Laci Kas '.$suffix,
+            default => 'Akun '.$suffix,
+        };
+    }
+
+    private static function accountIconAsset(string $type): string
+    {
+        return match ($type) {
+            'bank' => 'bank-icon.svg',
+            'e_wallet' => 'ewallet-icon.svg',
+            'cash' => 'cash-icon.svg',
+            default => 'bank-icon-muted.svg',
+        };
     }
 }
