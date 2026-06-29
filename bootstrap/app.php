@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'webhooks/waha',
         ]);
+        $middleware->redirectGuestsTo(fn () => route('tenant.login.create'));
 
         $middleware->alias([
             'tenant.role' => EnsureTenantUserRole::class,

@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $page['title'] ?? config('app.name') }} | {{ config('app.name') }}</title>
+    <title>{{ $page['html_title'] ?? $page['title'] ?? config('app.name') }} | {{ config('app.name') }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="{{ $bodyClass ?? '' }}">

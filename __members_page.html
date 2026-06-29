@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Manajemen Anggota | SaaS Keuangan WAHA</title>
+    <script type="module" src="http://[::1]:5173/@vite/client"></script><link rel="stylesheet" href="http://[::1]:5173/resources/css/app.css" /><script type="module" src="http://[::1]:5173/resources/js/app.js"></script></head>
+<body class="page-tenant">
+    <div class="flash-stack">
+                    </div>
+
+    <div class="page-shell">
+            <section class="tenant-shell-grid">
+        <aside class="tenant-sidebar" data-sidebar>
+    <div class="tenant-sidebar-brand">
+        <h2 class="tenant-sidebar-name">Demo Tenant Alpha</h2>
+        <p class="tenant-sidebar-copy">Selamat datang, Demo Owner</p>
+    </div>
+
+    <nav class="tenant-sidebar-nav">
+                    <a href="http://127.0.0.1:8000/app" class="tenant-sidebar-link " data-nav-key="overview">
+                <span class="tenant-sidebar-link-icon is-overview" aria-hidden="true">
+                    <img src="http://127.0.0.1:8000/images/figma/accounts/overview.svg" alt="">
+                </span>
+                <span>Overview</span>
+            </a>
+                    <a href="http://127.0.0.1:8000/app/transactions" class="tenant-sidebar-link " data-nav-key="transactions">
+                <span class="tenant-sidebar-link-icon is-transactions" aria-hidden="true">
+                    <img src="http://127.0.0.1:8000/images/figma/accounts/transactions.svg" alt="">
+                </span>
+                <span>Transaksi</span>
+            </a>
+                    <a href="http://127.0.0.1:8000/app/accounts" class="tenant-sidebar-link " data-nav-key="accounts">
+                <span class="tenant-sidebar-link-icon is-accounts" aria-hidden="true">
+                    <img src="http://127.0.0.1:8000/images/figma/accounts/accounts.svg" alt="">
+                </span>
+                <span>Akun Keuangan</span>
+            </a>
+                    <a href="http://127.0.0.1:8000/app/categories" class="tenant-sidebar-link " data-nav-key="categories">
+                <span class="tenant-sidebar-link-icon is-categories" aria-hidden="true">
+                    <img src="http://127.0.0.1:8000/images/figma/accounts/categories.svg" alt="">
+                </span>
+                <span>Kategori</span>
+            </a>
+                    <a href="http://127.0.0.1:8000/app/members" class="tenant-sidebar-link is-active" data-nav-key="members">
+                <span class="tenant-sidebar-link-icon is-members" aria-hidden="true">
+                    <img src="http://127.0.0.1:8000/images/figma/accounts/members.svg" alt="">
+                </span>
+                <span>Anggota</span>
+            </a>
+            </nav>
+
+    <form action="http://127.0.0.1:8000/logout" method="post" class="tenant-sidebar-footer">
+        <input type="hidden" name="_token" value="y4cfIR9QzCfYYtJ9q0UDiF6ThLxcAbsK5ulfH9VI" autocomplete="off">        <button class="tenant-sidebar-logout" type="submit">
+            <span class="tenant-sidebar-logout-icon" aria-hidden="true">
+                <img src="http://127.0.0.1:8000/images/figma/accounts/logout.svg" alt="">
+            </span>
+            <span>Keluar</span>
+        </button>
+    </form>
+</aside>
+
+        <div class="tenant-content-shell">
+            <header class="tenant-topbar">
+    
+    <div class="tenant-topbar-toolbar">
+        <form method="get" action="http://127.0.0.1:8000/app/members" class="tenant-topbar-search" aria-label="Cari anggota">
+            <input type="text" name="search" value="" class="tenant-topbar-search-input" placeholder="Cari anggota...">
+        </form>
+
+        <div class="tenant-topbar-actions">
+            
+            
+                            <button class="tenant-topbar-icon-button" type="button" aria-label="Notifikasi">
+                    <span class="tenant-topbar-icon-bell"></span>
+                </button>
+
+                <div class="tenant-topbar-profile">
+                    <div class="tenant-topbar-profile-copy">
+                        <strong>Demo Owner</strong>
+                        <span>Owner</span>
+                    </div>
+                    <span class="tenant-topbar-avatar">D</span>
+                </div>
+            
+            <button class="button button-secondary sidebar-toggle" type="button" data-sidebar-toggle>Menu</button>
+        </div>
+    </div>
+</header>
+                
+    <div class="members-page">
+        <section class="members-page-header">
+            <div>
+                <h1 class="members-page-title">Manajemen Anggota</h1>
+                <p class="members-page-copy">Kelola dan pantau akses seluruh anggota tim Anda.</p>
+            </div>
+            <a href="http://127.0.0.1:8000/app/members?create=1" class="members-add-button">
+                <span class="members-add-button-icon" aria-hidden="true">
+                    <img src="http://127.0.0.1:8000/images/figma/accounts/plus.svg" alt="">
+                </span>
+                <span>Tambah Anggota</span>
+            </a>
+        </section>
+
+        <section class="members-summary-grid">
+            <article class="members-summary-card members-summary-card-total">
+                <div class="members-summary-card-head">
+                    <div>
+                        <p class="members-summary-label">TOTAL PENGGUNA</p>
+                        <div class="members-summary-ratio">
+                            <strong>2</strong>
+                            <span>/ 5</span>
+                        </div>
+                    </div>
+                    <span class="members-summary-icon is-total" aria-hidden="true">
+                        <img src="http://127.0.0.1:8000/images/icon-total-pengguna.svg" alt="">
+                    </span>
+                </div>
+                <div class="members-summary-progress" aria-hidden="true">
+                    <span style="width: 40%;"></span>
+                </div>
+            </article>
+
+            <article class="members-summary-card">
+                <div class="members-summary-card-head">
+                    <div>
+                        <p class="members-summary-label">OWNER</p>
+                        <strong class="members-summary-value">1</strong>
+                    </div>
+                    <span class="members-summary-icon is-owner" aria-hidden="true">
+                        <img src="http://127.0.0.1:8000/images/icon-owner.svg" alt="">
+                    </span>
+                </div>
+                <p class="members-summary-note is-positive">Akses Penuh</p>
+            </article>
+
+            <article class="members-summary-card">
+                <div class="members-summary-card-head">
+                    <div>
+                        <p class="members-summary-label">MEMBER</p>
+                        <strong class="members-summary-value">1</strong>
+                    </div>
+                    <span class="members-summary-icon is-member" aria-hidden="true">
+                        <img src="http://127.0.0.1:8000/images/icon-member.svg" alt="">
+                    </span>
+                </div>
+                <p class="members-summary-note">Aktif Berlangganan</p>
+            </article>
+
+            <article class="members-summary-card is-alert">
+                <div class="members-summary-card-head">
+                    <div>
+                        <p class="members-summary-label">MENUNGGU VERIFIKASI</p>
+                        <strong class="members-summary-value">0</strong>
+                    </div>
+                    <span class="members-summary-icon is-alert" aria-hidden="true">
+                        <img src="http://127.0.0.1:8000/images/icon-need-verification.svg" alt="">
+                    </span>
+                </div>
+                <p class="members-summary-note is-danger">
+                    Semua data bersih
+                </p>
+            </article>
+        </section>
+
+        <section class="members-table-card">
+            <div class="members-table-head">
+                <h2>Daftar Anggota</h2>
+                <div class="members-table-tools">
+                    <button type="button" class="accounts-table-tool" aria-label="Urutkan data">
+                        <img src="http://127.0.0.1:8000/images/figma/accounts/table-list.svg" alt="">
+                    </button>
+                </div>
+            </div>
+
+            <div class="members-table-wrap">
+                <table class="members-table">
+                    <thead>
+                        <tr>
+                            <th>NAMA</th>
+                            <th>ROLE</th>
+                            <th>WHATSAPP</th>
+                            <th>STATUS AKUN</th>
+                            <th>VERIFIKASI WA</th>
+                            <th>TERAKHIR AKTIF</th>
+                            <th>AKSI</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                                                    <tr>
+                                <td class="members-name-cell">
+                                    <span class="members-avatar">DO</span>
+                                    <div>
+                                        <strong>Demo Owner</strong>
+                                        <span>owner@demo.test</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="members-role-pill is-owner">
+                                        Owner
+                                    </span>
+                                </td>
+                                <td class="members-whatsapp-cell">0812****0001</td>
+                                <td>
+                                    <span class="members-status-pill is-active">
+                                        <span aria-hidden="true"></span>
+                                        Aktif
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="members-status-pill is-verified">
+                                        <span aria-hidden="true"></span>
+                                        Terverifikasi
+                                    </span>
+                                </td>
+                                <td class="members-last-active-cell">2 detik yang lalu</td>
+                                <td class="accounts-action-menu-cell">
+                                    <details class="accounts-action-menu" data-account-action-menu>
+                                        <summary aria-label="Aksi anggota">
+                                            <img src="http://127.0.0.1:8000/images/figma/accounts/kebab.svg" alt="">
+                                        </summary>
+                                        <div class="accounts-action-popover">
+                                                                                            <button type="button" disabled>Tidak ada aksi</button>
+                                                                                    </div>
+                                    </details>
+                                </td>
+                            </tr>
+                                                    <tr>
+                                <td class="members-name-cell">
+                                    <span class="members-avatar">DM</span>
+                                    <div>
+                                        <strong>Demo Member</strong>
+                                        <span>member@demo.test</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="members-role-pill is-member">
+                                        Member
+                                    </span>
+                                </td>
+                                <td class="members-whatsapp-cell">0812****0002</td>
+                                <td>
+                                    <span class="members-status-pill is-active">
+                                        <span aria-hidden="true"></span>
+                                        Aktif
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="members-status-pill is-verified">
+                                        <span aria-hidden="true"></span>
+                                        Terverifikasi
+                                    </span>
+                                </td>
+                                <td class="members-last-active-cell">Belum pernah</td>
+                                <td class="accounts-action-menu-cell">
+                                    <details class="accounts-action-menu" data-account-action-menu>
+                                        <summary aria-label="Aksi anggota">
+                                            <img src="http://127.0.0.1:8000/images/figma/accounts/kebab.svg" alt="">
+                                        </summary>
+                                        <div class="accounts-action-popover">
+                                                                                            <button type="button" disabled>Tidak ada aksi</button>
+                                                                                    </div>
+                                    </details>
+                                </td>
+                            </tr>
+                                            </tbody>
+                </table>
+            </div>
+
+            <div class="accounts-pagination members-pagination">
+                <p>Menampilkan 1-2 dari 2 anggota</p>
+                <div>
+                                            <span class="accounts-page is-prev disabled" aria-hidden="true">
+                            <img src="http://127.0.0.1:8000/images/page-prev.svg" alt="">
+                        </span>
+                    
+                    <span class="accounts-page active">1</span>
+
+                                            <span class="accounts-page is-next disabled" aria-hidden="true">
+                            <img src="http://127.0.0.1:8000/images/page-next.svg" alt="">
+                        </span>
+                                    </div>
+            </div>
+        </section>
+
+        <section class="members-tips-grid">
+            <article class="members-tip-card is-security">
+                <span class="members-tip-icon" aria-hidden="true">i</span>
+                <div>
+                    <h3>Tips Keamanan</h3>
+                    <p>Pastikan selalu melakukan audit log berkala untuk memantau perubahan role yang dilakukan oleh sesama owner.</p>
+                </div>
+            </article>
+
+            <article class="members-tip-card is-verification">
+                <span class="members-tip-icon" aria-hidden="true">&#10003;</span>
+                <div>
+                    <h3>Verifikasi WhatsApp</h3>
+                    <p>Anggota yang terverifikasi WhatsApp akan mendapatkan notifikasi transaksi langsung ke ponsel mereka secara real-time.</p>
+                </div>
+            </article>
+        </section>
+
+        <footer class="members-footer">
+            <p>&copy; 2024 Macau Financial System. Made for Modern Enterprise.</p>
+        </footer>
+    </div>
+
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const actionMenus = Array.from(document.querySelectorAll('[data-account-action-menu]'));
+
+            if (actionMenus.length === 0) {
+                return;
+            }
+
+            document.addEventListener('click', function (event) {
+                actionMenus.forEach(function (menu) {
+                    if (menu.open && !menu.contains(event.target)) {
+                        menu.open = false;
+                    }
+                });
+            });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key !== 'Escape') {
+                    return;
+                }
+
+                actionMenus.forEach(function (menu) {
+                    menu.open = false;
+                });
+            });
+        });
+    </script>
+        </div>
+    </section>
+    </div>
+</body>
+</html>
+
