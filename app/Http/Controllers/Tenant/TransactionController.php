@@ -36,6 +36,8 @@ class TransactionController extends Controller
         $now = now()->timezone($user->tenant->timezone);
         $monthStart = $now->copy()->startOfMonth()->toDateString();
         $monthEnd = $now->copy()->endOfMonth()->toDateString();
+        $previousMonthStart = $now->copy()->subMonthNoOverflow()->startOfMonth()->toDateString();
+        $previousMonthEnd = $now->copy()->subMonthNoOverflow()->endOfMonth()->toDateString();
 
         $baseQuery = Transaction::query()
             ->with(['recorder', 'category', 'sourceAccount', 'destinationAccount', 'attachments'])
@@ -46,8 +48,10 @@ class TransactionController extends Controller
             $baseQuery->where('transactions.recorded_by_user_id', $user->id);
         }
 
-        $summary = [
-            'total' => (clone $baseQuery)->count('transactions.id'),
+        $currentMonthSummary = [
+            'total' => (float) (clone $baseQuery)
+                ->whereBetween('transactions.transaction_date', [$monthStart, $monthEnd])
+                ->sum('amount'),
             'income' => (float) (clone $baseQuery)
                 ->where('transactions.type', TransactionType::INCOME->value)
                 ->whereBetween('transactions.transaction_date', [$monthStart, $monthEnd])
@@ -60,6 +64,57 @@ class TransactionController extends Controller
                 ->where('transactions.type', TransactionType::TRANSFER->value)
                 ->whereBetween('transactions.transaction_date', [$monthStart, $monthEnd])
                 ->sum('amount'),
+        ];
+        $previousMonthSummary = [
+            'total' => (float) (clone $baseQuery)
+                ->whereBetween('transactions.transaction_date', [$previousMonthStart, $previousMonthEnd])
+                ->sum('amount'),
+            'income' => (float) (clone $baseQuery)
+                ->where('transactions.type', TransactionType::INCOME->value)
+                ->whereBetween('transactions.transaction_date', [$previousMonthStart, $previousMonthEnd])
+                ->sum('amount'),
+            'expense' => (float) (clone $baseQuery)
+                ->where('transactions.type', TransactionType::EXPENSE->value)
+                ->whereBetween('transactions.transaction_date', [$previousMonthStart, $previousMonthEnd])
+                ->sum('amount'),
+            'transfer' => (float) (clone $baseQuery)
+                ->where('transactions.type', TransactionType::TRANSFER->value)
+                ->whereBetween('transactions.transaction_date', [$previousMonthStart, $previousMonthEnd])
+                ->sum('amount'),
+        ];
+        $summaryCards = [
+            [
+                'label' => 'Total Transaksi',
+                'value' => $this->formatCurrency($currentMonthSummary['total']),
+                'icon' => asset('images/icon-wallet.svg'),
+                'icon_alt' => 'Total transaksi',
+                'tone' => 'total',
+                'change' => $this->formatTrend($currentMonthSummary['total'], $previousMonthSummary['total']),
+            ],
+            [
+                'label' => 'Pemasukan',
+                'value' => $this->formatCurrency($currentMonthSummary['income']),
+                'icon' => asset('images/icon-arrow-up.svg'),
+                'icon_alt' => 'Pemasukan',
+                'tone' => 'income',
+                'change' => $this->formatTrend($currentMonthSummary['income'], $previousMonthSummary['income']),
+            ],
+            [
+                'label' => 'Pengeluaran',
+                'value' => $this->formatCurrency($currentMonthSummary['expense']),
+                'icon' => asset('images/icon-arrow-down.svg'),
+                'icon_alt' => 'Pengeluaran',
+                'tone' => 'expense',
+                'change' => $this->formatTrend($currentMonthSummary['expense'], $previousMonthSummary['expense']),
+            ],
+            [
+                'label' => 'Transfer',
+                'value' => $this->formatCurrency($currentMonthSummary['transfer']),
+                'icon' => asset('images/icon-arrow-transfer.svg'),
+                'icon_alt' => 'Transfer',
+                'tone' => 'transfer',
+                'change' => 'Bulan ini',
+            ],
         ];
 
         $filteredQuery = $this->applyFilters((clone $baseQuery), $request);
@@ -117,14 +172,17 @@ class TransactionController extends Controller
                 'eyebrow' => $user->role === UserRole::OWNER ? 'Workspace' : 'Member',
             ],
             'toolbar' => [
-                'search_label' => '',
-                'search_placeholder' => 'Search transactions or categories',
+                'search_label' => 'Cari transaksi',
+                'search_placeholder' => 'Cari transaksi...',
+                'search_action' => route('tenant.transactions.index'),
+                'search_name' => 'search',
+                'search_value' => (string) $request->query('search', ''),
                 'secondary_action' => null,
                 'primary_action' => null,
             ],
             'navigation' => TenantNavigation::items($user),
             'authUser' => $user,
-            'summary' => $summary,
+            'summaryCards' => $summaryCards,
             'transactions' => $transactions,
             'transactionPaginator' => $transactionPaginator,
             'selectedTransaction' => $selectedTransaction,
@@ -186,24 +244,38 @@ class TransactionController extends Controller
      */
     private function mapTransaction(Transaction $transaction, TenantUser $user): array
     {
+        $recorderName = $transaction->recorder?->name ?: 'System';
+        $recorderInitials = collect(explode(' ', $recorderName))
+            ->filter()
+            ->map(fn (string $word): string => strtoupper(substr($word, 0, 1)))
+            ->take(2)
+            ->implode('');
+
         return [
             'id' => $transaction->id,
             'date' => Carbon::parse($transaction->transaction_date)->format('d M Y'),
+            'date_short' => Carbon::parse($transaction->transaction_date)->format('d M'),
+            'date_year' => Carbon::parse($transaction->transaction_date)->format('Y'),
             'transaction_date_value' => $transaction->transaction_date?->toDateString(),
+            'logged_time' => Carbon::parse($transaction->created_at)->timezone($user->tenant->timezone)->format('H:i'),
             'logged_at' => Carbon::parse($transaction->created_at)->timezone($user->tenant->timezone)->format('d M Y H:i'),
             'description' => $transaction->description ?: '-',
             'description_value' => $transaction->description,
+            'reference' => 'TRX #'.str_pad((string) $transaction->id, 5, '0', STR_PAD_LEFT),
             'type' => strtoupper($transaction->type->value),
             'type_value' => $transaction->type->value,
             'amount' => 'Rp '.number_format((float) $transaction->amount, 0, ',', '.'),
             'amount_value' => number_format((float) $transaction->amount, 2, '.', ''),
-            'recorder' => $transaction->recorder?->name ?: 'System',
+            'recorder' => $recorderName,
+            'recorder_initials' => $recorderInitials !== '' ? $recorderInitials : 'SY',
             'category' => $transaction->category?->name ?: '-',
             'category_id' => $transaction->category_id,
             'source_account' => $transaction->sourceAccount?->name ?: '-',
             'source_account_id' => $transaction->source_account_id,
             'destination_account' => $transaction->destinationAccount?->name ?: '-',
             'destination_account_id' => $transaction->destination_account_id,
+            'status_label' => 'Berhasil',
+            'status_key' => 'success',
             'attachments' => $transaction->attachments
                 ->map(fn ($attachment): array => [
                     'id' => $attachment->id,
@@ -293,5 +365,22 @@ class TransactionController extends Controller
             ->where('tenant_id', $owner->tenant_id)
             ->where('status', TransactionStatus::COMPLETED->value)
             ->findOrFail($transactionId);
+    }
+
+    private function formatCurrency(float $amount): string
+    {
+        return 'Rp '.number_format($amount, 0, ',', '.');
+    }
+
+    private function formatTrend(float $currentValue, float $previousValue): string
+    {
+        if ($previousValue <= 0.0) {
+            return $currentValue > 0.0 ? 'Baru' : '0%';
+        }
+
+        $change = (($currentValue - $previousValue) / $previousValue) * 100;
+        $prefix = $change > 0 ? '+' : '';
+
+        return $prefix.number_format($change, 1, ',', '').'%';
     }
 }

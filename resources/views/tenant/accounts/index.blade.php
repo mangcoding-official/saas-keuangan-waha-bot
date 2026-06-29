@@ -80,7 +80,6 @@
                             </span>
                             <div>
                                 <strong>{{ $account['name'] }}</strong>
-                                <span>{{ $account['meta'] }}</span>
                             </div>
                         </td>
                         <td>

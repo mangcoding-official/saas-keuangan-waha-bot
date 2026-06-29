@@ -3,7 +3,12 @@
 @php
     $pageCount = max(1, (int) $transactionPaginator->lastPage());
     $currentPage = (int) $transactionPaginator->currentPage();
-    $visiblePages = collect(range(max(1, $currentPage - 2), min($pageCount, $currentPage + 2)))->all();
+    $visiblePages = collect([1, 2, 3, $currentPage - 1, $currentPage, $currentPage + 1, $pageCount - 1, $pageCount])
+        ->filter(fn (int $page): bool => $page >= 1 && $page <= $pageCount)
+        ->unique()
+        ->sort()
+        ->values()
+        ->all();
     $isModalOpen = $editingTransaction !== null || $isCreateModal;
     $modalType = old('transaction_type', $editingTransaction['type_value'] ?? 'expense');
 @endphp
@@ -13,95 +18,46 @@
         <div class="tenant-inline-alert">{{ $errors->first() }}</div>
     @endif
 
-    <section class="transactions-page-header">
-        <div>
-            <h2 class="transactions-page-title">Daftar Transaksi</h2>
-            <p class="transactions-page-copy">Pantau seluruh arus kas keuangan Anda secara real-time.</p>
-        </div>
-        <div class="transactions-page-actions">
-            <a href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['export' => 1])) }}" class="transactions-button secondary">Export</a>
-            @if ($authUser->role->value === 'owner')
-                <a href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['create' => 1])) }}" class="transactions-button primary">+ Tambah Transaksi</a>
-            @endif
-        </div>
-    </section>
+    <section class="transactions-overview-shell">
+        <section class="transactions-page-header">
+            <div>
+                <h2 class="transactions-page-title">Daftar Transaksi</h2>
+                <p class="transactions-page-copy">Pantau seluruh arus kas keuangan Anda secara real-time.</p>
+            </div>
+            <div class="transactions-page-actions">
+                <a href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['export' => 1])) }}" class="transactions-button secondary">
+                    <span class="transactions-button-icon" aria-hidden="true">
+                        <img src="{{ asset('images/figma/accounts/table-download.svg') }}" alt="">
+                    </span>
+                    <span>Export</span>
+                </a>
+                @if ($authUser->role->value === 'owner')
+                    <a href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['create' => 1])) }}" class="transactions-button primary">
+                        <span class="transactions-button-icon" aria-hidden="true">
+                            <img src="{{ asset('images/figma/accounts/plus.svg') }}" alt="">
+                        </span>
+                        <span>Tambah Transaksi</span>
+                    </a>
+                @endif
+            </div>
+        </section>
 
-    <section class="transactions-summary-grid">
-        <article class="transactions-summary-card">
-            <p>Total Transaksi</p>
-            <h3>{{ number_format($summary['total'], 0, ',', '.') }}</h3>
-        </article>
-        <article class="transactions-summary-card income">
-            <p>Pemasukan</p>
-            <h3>Rp {{ number_format($summary['income'], 0, ',', '.') }}</h3>
-        </article>
-        <article class="transactions-summary-card expense">
-            <p>Pengeluaran</p>
-            <h3>Rp {{ number_format($summary['expense'], 0, ',', '.') }}</h3>
-        </article>
-        <article class="transactions-summary-card">
-            <p>Transfer</p>
-            <h3>Rp {{ number_format($summary['transfer'], 0, ',', '.') }}</h3>
-        </article>
-    </section>
+        <section class="transactions-summary-grid">
+            @foreach ($summaryCards as $card)
+                <article class="transactions-summary-card is-{{ $card['tone'] }}">
+                    <div class="transactions-summary-card-head">
+                        <span class="transactions-summary-icon" aria-hidden="true">
+                            <img src="{{ $card['icon'] }}" alt="{{ $card['icon_alt'] }}">
+                        </span>
+                        <span class="transactions-summary-trend">{{ $card['change'] }}</span>
+                    </div>
+                    <p class="transactions-summary-label">{{ $card['label'] }}</p>
+                    <h3 class="transactions-summary-value">{{ $card['value'] }}</h3>
+                </article>
+            @endforeach
+        </section>
 
-    <section class="transactions-filter-card">
-        <h3>Filter Lanjutan</h3>
-        <form method="get" class="transactions-filter-grid">
-            <label>
-                <span>Periode</span>
-                <select name="period">
-                    <option value="this_month" @selected($activeFilters['period'] === 'this_month')>Bulan Ini</option>
-                    <option value="last_30_days" @selected($activeFilters['period'] === 'last_30_days')>30 Hari Terakhir</option>
-                    <option value="all" @selected($activeFilters['period'] === 'all')>Semua Data</option>
-                </select>
-            </label>
-            <label>
-                <span>Tipe</span>
-                <select name="type">
-                    @foreach ($transactionTypes as $option)
-                        <option value="{{ $option['value'] }}" @selected($activeFilters['type'] === $option['value'])>{{ $option['label'] }}</option>
-                    @endforeach
-                </select>
-            </label>
-            <label>
-                <span>Kategori</span>
-                <select name="category_id">
-                    <option value="">Semua Kategori</option>
-                    @foreach (array_merge($incomeCategories, $expenseCategories) as $category)
-                        <option value="{{ $category['id'] }}" @selected($activeFilters['category_id'] === (string) $category['id'])>{{ $category['name'] }}</option>
-                    @endforeach
-                </select>
-            </label>
-            <label>
-                <span>Akun</span>
-                <select name="account_id">
-                    <option value="">Semua Akun</option>
-                    @foreach ($activeAccounts as $account)
-                        <option value="{{ $account['id'] }}" @selected($activeFilters['account_id'] === (string) $account['id'])>{{ $account['name'] }}</option>
-                    @endforeach
-                </select>
-            </label>
-            <label>
-                <span>Pencatat</span>
-                <select name="recorder_id">
-                    <option value="">Semua Anggota</option>
-                    @foreach ($recorders as $recorder)
-                        <option value="{{ $recorder['id'] }}" @selected($activeFilters['recorder_id'] === (string) $recorder['id'])>{{ $recorder['name'] }}</option>
-                    @endforeach
-                </select>
-            </label>
-            <label>
-                <span>Pencarian</span>
-                <input type="text" name="search" value="{{ $activeFilters['search'] }}" placeholder="Cari transaksi...">
-            </label>
-            <button type="submit" class="transactions-button primary">Terapkan</button>
-        </form>
-    </section>
-
-    <section class="transactions-content-layout">
-        <div class="transactions-main-pane">
-            <section class="transactions-table-card">
+        <section class="transactions-table-card">
                 <table class="transactions-table">
                     <thead>
                         <tr>
@@ -119,21 +75,50 @@
                     <tbody>
                         @forelse ($transactions as $transaction)
                             <tr class="{{ $selectedTransaction && $selectedTransaction['id'] === $transaction['id'] ? 'is-selected' : '' }}">
-                                <td>{{ $transaction['date'] }}</td>
-                                <td>{{ $transaction['description'] }}</td>
-                                <td><span class="transactions-type-pill {{ $transaction['type_value'] }}">{{ ucfirst($transaction['type_value']) }}</span></td>
-                                <td>{{ $transaction['category'] }}</td>
-                                <td>{{ $transaction['source_account'] !== '-' ? $transaction['source_account'] : $transaction['destination_account'] }}</td>
-                                <td>{{ $transaction['recorder'] }}</td>
-                                <td class="{{ $transaction['type_value'] === 'expense' ? 'is-expense' : 'is-income' }}">{{ $transaction['amount'] }}</td>
-                                <td><span class="transactions-status-pill">Berhasil</span></td>
+                                <td class="transactions-date-cell">
+                                    <strong>{{ $transaction['date_short'] }} {{ $transaction['date_year'] }}</strong>
+                                    {{-- <span>{{ $transaction['logged_time'] }}</span> --}}
+                                </td>
+                                <td class="transactions-description-cell">
+                                    <strong>{{ $transaction['description'] }}</strong>
+                                    <span>{{ $transaction['reference'] }}</span>
+                                </td>
                                 <td>
-                                    <div class="transactions-actions">
-                                        <a href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['show' => $transaction['id']])) }}" class="transactions-link-button">Detail</a>
-                                        @if ($authUser->role->value === 'owner')
-                                            <a href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['show' => $transaction['id'], 'edit' => $transaction['id']])) }}" class="transactions-link-button">Edit</a>
-                                        @endif
-                                    </div>
+                                    <span class="transactions-type-pill {{ $transaction['type_value'] }}">
+                                        {{ $transaction['type_value'] === 'income' ? 'Pemasukan' : ($transaction['type_value'] === 'expense' ? 'Pengeluaran' : 'Transfer') }}
+                                    </span>
+                                </td>
+                                <td>{{ $transaction['category'] }}</td>
+                                <td class="transactions-account-cell">
+                                    @if ($transaction['type_value'] === 'transfer')
+                                        <span>{{ $transaction['source_account'] }}</span>
+                                        <span>{{ $transaction['destination_account'] }}</span>
+                                    @else
+                                        <span>{{ $transaction['source_account'] !== '-' ? $transaction['source_account'] : $transaction['destination_account'] }}</span>
+                                    @endif
+                                </td>
+                                <td class="transactions-recorder-cell">
+                                    <span class="transactions-recorder-avatar">{{ $transaction['recorder_initials'] }}</span>
+                                    <span>{{ $transaction['recorder'] }}</span>
+                                </td>
+                                <td class="transactions-amount-cell {{ $transaction['type_value'] === 'expense' ? 'is-expense' : ($transaction['type_value'] === 'income' ? 'is-income' : 'is-transfer') }}">
+                                    <strong>Rp. {{ number_format((float) $transaction['amount_value'], 0, ',', '.') }}</strong>
+                                </td>
+                                <td>
+                                    <span class="transactions-status-pill is-{{ $transaction['status_key'] }}">{{ strtoupper($transaction['status_label']) }}</span>
+                                </td>
+                                <td class="transactions-action-menu-cell">
+                                    <details class="transactions-action-menu" data-transaction-action-menu>
+                                        <summary aria-label="Aksi transaksi">
+                                            <img src="{{ asset('images/figma/accounts/kebab.svg') }}" alt="">
+                                        </summary>
+                                        <div class="transactions-action-popover">
+                                            <a href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['show' => $transaction['id']])) }}">Detail</a>
+                                            @if ($authUser->role->value === 'owner')
+                                                <a href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['show' => $transaction['id'], 'edit' => $transaction['id']])) }}">Edit</a>
+                                            @endif
+                                        </div>
+                                    </details>
                                 </td>
                             </tr>
                         @empty
@@ -148,22 +133,32 @@
                     <p>Menampilkan {{ $transactionPaginator->firstItem() ?? 0 }}-{{ $transactionPaginator->lastItem() ?? 0 }} dari {{ $transactionPaginator->total() }} transaksi</p>
                     <div>
                         @if ($transactionPaginator->onFirstPage())
-                            <span class="transactions-page disabled">&lt;</span>
+                            <span class="transactions-page is-prev disabled" aria-hidden="true">
+                                <img src="{{ asset('images/figma/accounts/page-prev.svg') }}" alt="">
+                            </span>
                         @else
-                            <a href="{{ $transactionPaginator->previousPageUrl() }}" class="transactions-page">&lt;</a>
+                            <a href="{{ $transactionPaginator->previousPageUrl() }}" class="transactions-page is-prev" aria-label="Halaman sebelumnya">
+                                <img src="{{ asset('images/figma/accounts/page-prev.svg') }}" alt="">
+                            </a>
                         @endif
                         @foreach ($visiblePages as $page)
+                            @if ($loop->index > 0 && $page - $visiblePages[$loop->index - 1] > 1)
+                                <span class="transactions-page-gap">...</span>
+                            @endif
                             <a href="{{ $transactionPaginator->url($page) }}" class="transactions-page {{ $page === $currentPage ? 'active' : '' }}">{{ $page }}</a>
                         @endforeach
                         @if ($transactionPaginator->hasMorePages())
-                            <a href="{{ $transactionPaginator->nextPageUrl() }}" class="transactions-page">&gt;</a>
+                            <a href="{{ $transactionPaginator->nextPageUrl() }}" class="transactions-page is-next" aria-label="Halaman berikutnya">
+                                <img src="{{ asset('images/figma/accounts/page-next.svg') }}" alt="">
+                            </a>
                         @else
-                            <span class="transactions-page disabled">&gt;</span>
+                            <span class="transactions-page is-next disabled" aria-hidden="true">
+                                <img src="{{ asset('images/figma/accounts/page-next.svg') }}" alt="">
+                            </span>
                         @endif
                     </div>
                 </div>
-            </section>
-        </div>
+        </section>
     </section>
 
     @if ($selectedTransaction && ! $isModalOpen)
@@ -346,6 +341,7 @@
     @if ($editingTransaction)
         <script>
             document.addEventListener('DOMContentLoaded', function () {
+                const actionMenus = Array.from(document.querySelectorAll('[data-transaction-action-menu]'));
                 const typeInput = document.querySelector('[data-transaction-type-input]');
                 const typeButtons = Array.from(document.querySelectorAll('[data-type-option]'));
                 const sourceSelect = document.querySelector('[data-source-account-select]');
@@ -390,6 +386,42 @@
                 });
 
                 syncTypeState(typeInput.value);
+
+                document.addEventListener('click', function (event) {
+                    actionMenus.forEach(function (menu) {
+                        if (menu.open && !menu.contains(event.target)) {
+                            menu.open = false;
+                        }
+                    });
+                });
+            });
+        </script>
+    @else
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const actionMenus = Array.from(document.querySelectorAll('[data-transaction-action-menu]'));
+
+                if (actionMenus.length === 0) {
+                    return;
+                }
+
+                document.addEventListener('click', function (event) {
+                    actionMenus.forEach(function (menu) {
+                        if (menu.open && !menu.contains(event.target)) {
+                            menu.open = false;
+                        }
+                    });
+                });
+
+                document.addEventListener('keydown', function (event) {
+                    if (event.key !== 'Escape') {
+                        return;
+                    }
+
+                    actionMenus.forEach(function (menu) {
+                        menu.open = false;
+                    });
+                });
             });
         </script>
     @endif

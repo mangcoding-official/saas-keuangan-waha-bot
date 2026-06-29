@@ -4,10 +4,10 @@
     <section class="tenant-dashboard-frame">
         <section class="tenant-dashboard-kpi-grid">
             @foreach ($kpis as $item)
-                <article class="tenant-kpi-card {{ $item['tone'] === 'alert' ? 'is-alert' : '' }}">
+                <article class="tenant-kpi-card">
                     <div class="tenant-kpi-head">
                         <p class="tenant-kpi-label">{{ $item['label'] }}</p>
-                        <span class="tenant-kpi-icon" aria-hidden="true">
+                        <span class="tenant-kpi-icon {{ $item['tone'] === 'alert' ? 'is-alert' : $item['tone'] }}" aria-hidden="true">
                             <img src="{{ $item['icon'] }}" alt="">
                         </span>
                     </div>
@@ -101,7 +101,6 @@
                                     <div>
                                         <p class="tenant-account-name">{{ $row['name'] }}</p>
                                         <p class="tenant-account-type">{{ $row['type'] }}</p>
-                                        <p class="tenant-account-note">{{ $row['meta'] }}</p>
                                     </div>
                                 </div>
                                 <div class="tenant-account-right">
