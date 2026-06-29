@@ -21,9 +21,9 @@
     @endif
 
     <div class="tenant-topbar-toolbar">
-        <form method="get" action="{{ $searchAction }}" class="tenant-topbar-search" aria-label="{{ $searchLabel }}">
+        {{-- <form method="get" action="{{ $searchAction }}" class="tenant-topbar-search" aria-label="{{ $searchLabel }}">
             <input type="text" name="{{ $searchName }}" value="{{ $searchValue }}" class="tenant-topbar-search-input" placeholder="{{ $searchPlaceholder }}">
-        </form>
+        </form> --}}
 
         <div class="tenant-topbar-actions">
             @if ($secondaryAction)
@@ -35,10 +35,6 @@
             @endif
 
             @if (isset($authUser))
-                <button class="tenant-topbar-icon-button" type="button" aria-label="Notifikasi">
-                    <span class="tenant-topbar-icon-bell"></span>
-                </button>
-
                 <div class="tenant-topbar-profile">
                     <div class="tenant-topbar-profile-copy">
                         <strong>{{ $authUser->name }}</strong>

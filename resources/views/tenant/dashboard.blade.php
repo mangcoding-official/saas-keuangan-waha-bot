@@ -2,6 +2,12 @@
 
 @section('content')
     <section class="tenant-dashboard-frame">
+        <section class="transactions-page-header">
+            <div>
+                <h2 class="transactions-page-title">Overview</h2>
+                <p class="transactions-page-copy">Dashboard overview untuk memantau keuangan Anda.</p>
+            </div>
+        </section>
         <section class="tenant-dashboard-kpi-grid">
             @foreach ($kpis as $item)
                 <article class="tenant-kpi-card">

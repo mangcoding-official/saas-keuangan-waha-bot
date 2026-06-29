@@ -20,7 +20,7 @@
 
 .tenant-shell-grid {
     display: grid;
-    grid-template-columns: 256px minmax(0, 1fr);
+    grid-template-columns: 360px minmax(0, 1fr);
     min-height: 100vh;
     background: #fbf8ff;
 }
@@ -29,20 +29,20 @@
     padding: 24px;
     border-right: 1px solid #c4c5d5;
     background: #f4f2fc;
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: 24px;
-    align-content: start;
 }
 
 .tenant-sidebar-brand {
     display: grid;
     gap: 0;
-    padding-bottom: 64px;
+    padding-bottom: 0px;
 }
 
 .tenant-sidebar-name {
     margin: 0;
-    font-size: 1rem;
+    font-size: 1.75rem;
     line-height: 1.5;
     font-weight: 700;
     color: #00288e;
@@ -81,6 +81,10 @@
     flex: 0 0 auto;
 }
 
+span.tenant-sidebar-link-icon.is-members{
+    height: 16px;
+}
+
 .tenant-sidebar-link-icon img {
     display: block;
     width: 100%;
@@ -89,8 +93,8 @@
 
 .tenant-sidebar-link.is-active,
 .tenant-sidebar-link:hover {
-    background: #1e40af;
-    color: #a8b8ff;
+    background: #a8b8ff;
+    color: #1e40af;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
@@ -136,7 +140,7 @@
 }
 
 .tenant-topbar {
-    height: 64px;
+    height: 80px;
     border-bottom: 1px solid #c4c5d5;
     display: flex;
     align-items: center;
@@ -219,16 +223,6 @@
     display: flex;
     align-items: center;
     gap: 10px;
-}
-
-.tenant-topbar-icon-button {
-    width: 24px;
-    height: 34px;
-    border: 0;
-    background: transparent;
-    position: relative;
-    cursor: pointer;
-    padding: 0;
 }
 
 .tenant-topbar-icon-bell {
@@ -347,7 +341,7 @@
 }
 
 .tenant-kpi-icon.is-transaction {
-    background: #e3ecff80;
+    background: #FFDAD6;
 }
 
 .tenant-kpi-icon.is-saldo {
