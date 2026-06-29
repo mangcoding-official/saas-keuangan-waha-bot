@@ -83,14 +83,6 @@
                 >
                     <img src="{{ asset('images/figma/accounts/table-list.svg') }}" alt="">
                 </a>
-                <a
-                    href="{{ route('tenant.categories.index', array_merge(request()->query(), ['create' => 1])) }}"
-                    class="accounts-table-tool"
-                    aria-label="Tambah kategori"
-                    title="Tambah kategori"
-                >
-                    <img src="{{ asset('images/figma/accounts/plus.svg') }}" alt="">
-                </a>
             </div>
         </div>
 

@@ -57,9 +57,6 @@
                 <button type="button" class="accounts-table-tool is-list" aria-label="Urutkan data">
                     <img src="{{ asset('images/figma/accounts/table-list.svg') }}" alt="">
                 </button>
-                <button type="button" class="accounts-table-tool is-download" aria-label="Unduh data">
-                    <img src="{{ asset('images/figma/accounts/table-download.svg') }}" alt="">
-                </button>
             </div>
         </div>
 
