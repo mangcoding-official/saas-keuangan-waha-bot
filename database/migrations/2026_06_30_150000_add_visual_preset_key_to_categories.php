@@ -28,11 +28,11 @@ return new class extends Migration
             $defaults = [];
 
             foreach (CategoryCatalog::templatesForTenantType($tenantType) as $template) {
-                $defaults[$template['type']][$template['key']] = $template['preset_key'];
+                $defaults[$template['type']][$template['key']] = $template['icon_key'];
             }
 
-            $fallbackIncomePreset = CategoryVisualCatalog::defaultPresetKeyForCustomCategory($tenantType, CategoryType::INCOME);
-            $fallbackExpensePreset = CategoryVisualCatalog::defaultPresetKeyForCustomCategory($tenantType, CategoryType::EXPENSE);
+            $fallbackIncomePreset = CategoryVisualCatalog::defaultIconKeyForCustomCategory($tenantType, CategoryType::INCOME);
+            $fallbackExpensePreset = CategoryVisualCatalog::defaultIconKeyForCustomCategory($tenantType, CategoryType::EXPENSE);
 
             $categories = DB::table('categories')
                 ->where('tenant_id', (int) $tenant->id)

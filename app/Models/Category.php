@@ -14,6 +14,8 @@ class Category extends Model
         'key',
         'name',
         'visual_preset_key',
+        'icon_key',
+        'color_preset_key',
         'keywords',
         'is_system',
         'is_active',

@@ -7,7 +7,8 @@
     $isModalOpen = $editingCategory !== null || $isCreateModal;
     $selectedType = old('type', $editingCategory['type'] ?? 'expense');
     $selectedKeywords = old('keywords', $editingCategory['keywords'] ?? '');
-    $selectedPresetKey = old('visual_preset_key', $editingCategory['visual_preset_key'] ?? $defaultCreatePresetKey);
+    $selectedIconKey = old('icon_key', $editingCategory['icon_key'] ?? $defaultCreateIconKey);
+    $selectedColorPresetKey = old('color_preset_key', $editingCategory['color_preset_key'] ?? $defaultCreateColorPresetKey);
 @endphp
 
 @section('content')
@@ -102,13 +103,17 @@
                     <tr class="{{ $category['is_active'] ? '' : 'is-inactive-row' }}">
                         <td class="accounts-name-cell categories-name-cell">
                             <span class="accounts-name-icon categories-name-icon">
-                                @if ($category['visual_asset'])
-                                    <img src="{{ $category['visual_asset'] }}" alt="" class="categories-name-icon-image">
-                                @endif
+                                <span
+                                    class="category-visual-badge category-visual-badge--sm"
+                                    style="--category-bg: {{ $category['bg_color'] }}; --category-icon: {{ $category['icon_color'] }}; --category-mask: url('{{ $category['icon_mask_asset'] }}');"
+                                    aria-hidden="true"
+                                >
+                                    <span class="category-visual-badge__glyph"></span>
+                                </span>
                             </span>
                             <div>
                                 <strong>{{ $category['name'] }}</strong>
-                                <span>ID: {{ $category['code'] }} @if($category['key']) · Key: {{ $category['key'] }} @endif</span>
+                                <span>ID: {{ $category['code'] }} @if ($category['key']) · Key: {{ $category['key'] }} @endif</span>
                             </div>
                         </td>
                         <td>
@@ -214,7 +219,7 @@
 
                 @if (($editingCategory['is_system'] ?? false) === true)
                     <div class="categories-modal-alert">
-                        Kategori fallback wajib tetap dikunci untuk nama, tipe, status, dan kata kunci. Preset icon tetap bisa Anda ganti.
+                        Kategori fallback wajib tetap dikunci untuk nama, tipe, status, dan kata kunci. Icon dan warna masih bisa Anda ganti.
                     </div>
                 @endif
 
@@ -262,45 +267,89 @@
                     <section class="categories-preset-picker">
                         <div class="categories-preset-head">
                             <div>
-                                <span>Pilih Icon & Warna</span>
-                                <p>Pilih preset visual tenant ini. User tidak perlu atur icon dan warna secara terpisah.</p>
+                                <span>Preview Kategori</span>
+                                <p>Icon dan warna dipilih terpisah. User cukup memilih dari opsi sistem yang sudah tersedia.</p>
                             </div>
                             <div class="categories-preset-preview">
-                                @foreach ($presetGroups as $group)
-                                    @foreach ($group['presets'] as $preset)
-                                        @if ($preset['key'] === $selectedPresetKey)
-                                            <img src="{{ asset($preset['asset_path']) }}" alt="{{ $preset['label'] }}" data-active-preset-preview>
-                                        @endif
-                                    @endforeach
-                                @endforeach
+                                <span
+                                    class="category-visual-badge category-visual-badge--preview"
+                                    data-category-preview
+                                    style="--category-bg: #eef2ff; --category-icon: #1e40af; --category-mask: none;"
+                                    aria-hidden="true"
+                                >
+                                    <span class="category-visual-badge__glyph"></span>
+                                </span>
                             </div>
                         </div>
 
                         <div class="categories-preset-groups">
-                            @foreach ($presetGroups as $group)
-                                <section class="categories-preset-group">
-                                    <div class="categories-preset-group-head">
-                                        <strong>{{ $group['group_label'] }}</strong>
-                                        <span>{{ $group['is_recommended'] ? 'Rekomendasi tenant ini' : 'Preset tambahan' }}</span>
+                            <section class="categories-preset-group">
+                                <div class="categories-preset-group-head">
+                                    <strong>Pilih Icon</strong>
+                                    <span>Hanya icon tenant {{ $iconGroups[0]['group_label'] ?? '' }} yang ditampilkan.</span>
+                                </div>
+
+                                @foreach ($iconGroups as $group)
+                                    <div class="categories-icon-group">
+                                        <div class="categories-preset-group-head">
+                                            <strong>{{ $group['group_label'] }}</strong>
+                                            <span>{{ $group['is_recommended'] ? 'Rekomendasi tenant ini' : 'Pilihan lain' }}</span>
+                                        </div>
+                                        <div class="categories-preset-grid">
+                                            @foreach ($group['icons'] as $icon)
+                                                <label class="categories-preset-option categories-icon-option">
+                                                    <input
+                                                        type="radio"
+                                                        name="icon_key"
+                                                        value="{{ $icon['key'] }}"
+                                                        @checked($selectedIconKey === $icon['key'])
+                                                        data-icon-option
+                                                        data-icon-mask="{{ asset($icon['asset_path']) }}"
+                                                        data-icon-label="{{ $icon['label'] }}"
+                                                    >
+                                                    <span class="categories-preset-card categories-icon-card">
+                                                        <span
+                                                            class="category-visual-badge category-visual-badge--sm"
+                                                            style="--category-bg: #eef2ff; --category-icon: #1e40af; --category-mask: url('{{ asset($icon['asset_path']) }}');"
+                                                            aria-hidden="true"
+                                                        >
+                                                            <span class="category-visual-badge__glyph"></span>
+                                                        </span>
+                                                        <small>{{ $icon['label'] }}</small>
+                                                    </span>
+                                                </label>
+                                            @endforeach
+                                        </div>
                                     </div>
-                                    <div class="categories-preset-grid">
-                                        @foreach ($group['presets'] as $preset)
-                                            <label class="categories-preset-option">
-                                                <input
-                                                    type="radio"
-                                                    name="visual_preset_key"
-                                                    value="{{ $preset['key'] }}"
-                                                    @checked($selectedPresetKey === $preset['key'])
-                                                    data-preset-option
-                                                >
-                                                <span class="categories-preset-card">
-                                                    <img src="{{ asset($preset['asset_path']) }}" alt="{{ $preset['label'] }}" data-preset-image>
-                                                </span>
-                                            </label>
-                                        @endforeach
-                                    </div>
-                                </section>
-                            @endforeach
+                                @endforeach
+                            </section>
+
+                            <section class="categories-preset-group">
+                                <div class="categories-preset-group-head">
+                                    <strong>Pilih Warna</strong>
+                                    <span>Warna berlaku global. Background soft dan warna icon akan mengikuti preset yang dipilih.</span>
+                                </div>
+                                <div class="categories-color-grid">
+                                    @foreach ($colorPresets as $colorPreset)
+                                        <label class="categories-preset-option categories-color-option">
+                                            <input
+                                                type="radio"
+                                                name="color_preset_key"
+                                                value="{{ $colorPreset['key'] }}"
+                                                @checked($selectedColorPresetKey === $colorPreset['key'])
+                                                data-color-option
+                                                data-bg-color="{{ $colorPreset['bg_color'] }}"
+                                                data-icon-color="{{ $colorPreset['icon_color'] }}"
+                                                data-color-label="{{ $colorPreset['label'] }}"
+                                            >
+                                            <span class="categories-color-card">
+                                                <span class="categories-color-swatch" style="--category-bg: {{ $colorPreset['bg_color'] }}; --category-icon: {{ $colorPreset['icon_color'] }};"></span>
+                                                <small>{{ $colorPreset['label'] }}</small>
+                                            </span>
+                                        </label>
+                                    @endforeach
+                                </div>
+                            </section>
                         </div>
                     </section>
 
@@ -326,8 +375,8 @@
                             @checked(old('is_active', $editingCategory['is_active'] ?? true))
                             @disabled(($editingCategory['is_system'] ?? false) === true)
                         >
-                            <span>Aktifkan kategori ini</span>
-                        </label>
+                        <span>Aktifkan kategori ini</span>
+                    </label>
 
                     @if (($editingCategory['is_system'] ?? false) === true)
                         <input type="hidden" name="is_active" value="{{ ($editingCategory['is_active'] ?? true) ? 1 : 0 }}">
@@ -347,21 +396,34 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const actionMenus = Array.from(document.querySelectorAll('[data-category-action-menu]'));
-            const presetInputs = Array.from(document.querySelectorAll('[data-preset-option]'));
-            const activePresetPreview = document.querySelector('[data-active-preset-preview]');
+            const iconInputs = Array.from(document.querySelectorAll('[data-icon-option]'));
+            const colorInputs = Array.from(document.querySelectorAll('[data-color-option]'));
+            const categoryPreview = document.querySelector('[data-category-preview]');
 
-            if (presetInputs.length > 0 && activePresetPreview) {
-                presetInputs.forEach(function (input) {
-                    input.addEventListener('change', function () {
-                        const image = this.closest('.categories-preset-option')?.querySelector('[data-preset-image]');
-                        if (!image) {
-                            return;
-                        }
+            if (categoryPreview && (iconInputs.length > 0 || colorInputs.length > 0)) {
+                const syncPreview = function () {
+                    const activeIcon = iconInputs.find((input) => input.checked);
+                    const activeColor = colorInputs.find((input) => input.checked);
 
-                        activePresetPreview.src = image.getAttribute('src');
-                        activePresetPreview.alt = image.getAttribute('alt') || '';
-                    });
+                    if (activeIcon) {
+                        categoryPreview.style.setProperty('--category-mask', "url('" + activeIcon.dataset.iconMask + "')");
+                    }
+
+                    if (activeColor) {
+                        categoryPreview.style.setProperty('--category-bg', activeColor.dataset.bgColor || '#eef2ff');
+                        categoryPreview.style.setProperty('--category-icon', activeColor.dataset.iconColor || '#1e40af');
+                    }
+                };
+
+                iconInputs.forEach(function (input) {
+                    input.addEventListener('change', syncPreview);
                 });
+
+                colorInputs.forEach(function (input) {
+                    input.addEventListener('change', syncPreview);
+                });
+
+                syncPreview();
             }
 
             if (actionMenus.length > 0) {

@@ -33,9 +33,10 @@ class StoreCategoryRequest extends FormRequest
                     ->where('tenant_id', $tenantId)
                     ->where('type', $type)),
             ],
-            'visual_preset_key' => ['required', 'string', Rule::in(
-                $tenantType ? CategoryVisualCatalog::allowedPresetKeysForTenantType($tenantType) : CategoryVisualCatalog::presetKeys()
+            'icon_key' => ['required', 'string', Rule::in(
+                $tenantType ? CategoryVisualCatalog::allowedIconKeysForTenantType($tenantType) : CategoryVisualCatalog::iconKeys()
             )],
+            'color_preset_key' => ['required', 'string', Rule::in(CategoryVisualCatalog::colorPresetKeys())],
             'keywords' => ['nullable', 'string', 'max:1000'],
             'is_active' => ['nullable', 'boolean'],
         ];

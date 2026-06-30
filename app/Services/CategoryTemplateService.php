@@ -36,12 +36,12 @@ class CategoryTemplateService
         DB::table('categories')->upsert(
             $rows,
             ['tenant_id', 'type', 'key'],
-            ['name', 'keywords', 'is_system', 'is_active', 'updated_at'],
+            ['name', 'visual_preset_key', 'icon_key', 'color_preset_key', 'keywords', 'is_system', 'is_active', 'updated_at'],
         );
     }
 
     /**
-     * @param  array{key: string, type: string, label: string, is_system: bool, preset_key: string}  $template
+     * @param  array{key: string, type: string, label: string, is_system: bool, icon_key: string, color_preset_key: string}  $template
      * @return array<string, mixed>
      */
     private function rowForTemplate(int $tenantId, array $template): array
@@ -51,7 +51,9 @@ class CategoryTemplateService
             'type' => $template['type'],
             'key' => $template['key'],
             'name' => $template['label'],
-            'visual_preset_key' => $template['preset_key'],
+            'visual_preset_key' => $template['icon_key'],
+            'icon_key' => $template['icon_key'],
+            'color_preset_key' => $template['color_preset_key'],
             'keywords' => null,
             'is_system' => $template['is_system'],
             'is_active' => true,

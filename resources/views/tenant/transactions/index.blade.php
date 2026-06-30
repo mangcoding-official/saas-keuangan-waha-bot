@@ -90,9 +90,13 @@
                                 </td>
                                 <td>
                                     <span class="transactions-category-pill">
-                                        @if ($transaction['category_visual_asset'])
-                                            <img src="{{ $transaction['category_visual_asset'] }}" alt="" class="transactions-category-pill-icon">
-                                        @endif
+                                        <span
+                                            class="category-visual-badge category-visual-badge--xs"
+                                            style="--category-bg: {{ $transaction['category_bg_color'] }}; --category-icon: {{ $transaction['category_icon_color'] }}; --category-mask: url('{{ $transaction['category_icon_mask_asset'] }}');"
+                                            aria-hidden="true"
+                                        >
+                                            <span class="category-visual-badge__glyph"></span>
+                                        </span>
                                         <span>{{ $transaction['category'] }}</span>
                                     </span>
                                 </td>
@@ -219,9 +223,13 @@
                     <section class="transactions-detail-block">
                         <small>Kategori</small>
                         <strong class="transactions-detail-category">
-                            @if ($selectedTransaction['category_visual_asset'])
-                                <img src="{{ $selectedTransaction['category_visual_asset'] }}" alt="">
-                            @endif
+                            <span
+                                class="category-visual-badge category-visual-badge--xs"
+                                style="--category-bg: {{ $selectedTransaction['category_bg_color'] }}; --category-icon: {{ $selectedTransaction['category_icon_color'] }}; --category-mask: url('{{ $selectedTransaction['category_icon_mask_asset'] }}');"
+                                aria-hidden="true"
+                            >
+                                <span class="category-visual-badge__glyph"></span>
+                            </span>
                             <span>{{ $selectedTransaction['category'] }}</span>
                         </strong>
                     </section>

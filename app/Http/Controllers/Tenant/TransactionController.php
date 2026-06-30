@@ -271,7 +271,7 @@ class TransactionController extends Controller
             'recorder_initials' => $recorderInitials !== '' ? $recorderInitials : 'SY',
             'category' => $transaction->category?->name ?: '-',
             'category_id' => $transaction->category_id,
-            'category_visual_asset' => $this->resolveCategoryVisualAsset($transaction),
+            ...$this->resolveCategoryVisual($transaction),
             'source_account' => $transaction->sourceAccount?->name ?: '-',
             'source_account_id' => $transaction->source_account_id,
             'destination_account' => $transaction->destinationAccount?->name ?: '-',
@@ -386,14 +386,35 @@ class TransactionController extends Controller
         return $prefix.number_format($change, 1, ',', '').'%';
     }
 
-    private function resolveCategoryVisualAsset(Transaction $transaction): ?string
+    /**
+     * @return array{category_icon_mask_asset: ?string, category_bg_color: string, category_icon_color: string}
+     */
+    private function resolveCategoryVisual(Transaction $transaction): array
     {
         if (! $transaction->category) {
-            return null;
+            return [
+                'category_icon_mask_asset' => null,
+                'category_bg_color' => '#eef2ff',
+                'category_icon_color' => '#1e40af',
+            ];
         }
 
-        $preset = CategoryVisualCatalog::findPreset($transaction->category->visual_preset_key);
+        $tenantType = $transaction->category->tenant->tenant_type;
+        $defaultIconKey = CategoryVisualCatalog::defaultIconKeyForCustomCategory($tenantType, $transaction->category->type);
+        $defaultColorPresetKey = CategoryVisualCatalog::defaultColorPresetKeyForCustomCategory($tenantType, $transaction->category->type);
+        $iconKey = CategoryVisualCatalog::hasIconKey($transaction->category->icon_key)
+            ? $transaction->category->icon_key
+            : ($transaction->category->visual_preset_key ?: $defaultIconKey);
+        $colorPresetKey = CategoryVisualCatalog::hasColorPresetKey($transaction->category->color_preset_key)
+            ? $transaction->category->color_preset_key
+            : ($transaction->category->visual_preset_key ?: $defaultColorPresetKey);
+        $icon = CategoryVisualCatalog::findIcon($iconKey);
+        $colorPreset = CategoryVisualCatalog::findColorPreset($colorPresetKey);
 
-        return $preset ? asset($preset['asset_path']) : null;
+        return [
+            'category_icon_mask_asset' => $icon ? asset($icon['asset_path']) : null,
+            'category_bg_color' => $colorPreset['bg_color'] ?? '#eef2ff',
+            'category_icon_color' => $colorPreset['icon_color'] ?? '#1e40af',
+        ];
     }
 }

@@ -91,19 +91,34 @@ class DashboardController extends Controller
                 'transactions.type',
                 'transactions.amount',
                 'categories.name as category_name',
+                'categories.type as category_type',
                 'categories.visual_preset_key as category_visual_preset_key',
+                'categories.icon_key as category_icon_key',
+                'categories.color_preset_key as category_color_preset_key',
             ])
-            ->map(fn (object $transaction): array => [
-                'id' => (int) $transaction->id,
-                'date' => Carbon::parse($transaction->transaction_date)->format('d M Y'),
-                'description' => $transaction->description ?: self::defaultTransactionDescription($transaction->type),
-                'meta' => 'ID: TRX-'.str_pad((string) $transaction->id, 4, '0', STR_PAD_LEFT),
-                'type_key' => $transaction->type,
-                'icon_label' => self::transactionIconLabel((string) $transaction->type),
-                'category' => $transaction->category_name ?: 'Tanpa kategori',
-                'category_visual_asset' => self::categoryVisualAsset($transaction->category_visual_preset_key ?? null),
-                'amount' => self::formatSignedCurrency((string) $transaction->type, (float) $transaction->amount),
-            ])
+            ->map(function (object $transaction) use ($user): array {
+                $visual = self::categoryVisual(
+                    $user->tenant->tenant_type,
+                    $transaction->category_type ? (string) $transaction->category_type : null,
+                    $transaction->category_visual_preset_key ? (string) $transaction->category_visual_preset_key : null,
+                    $transaction->category_icon_key ? (string) $transaction->category_icon_key : null,
+                    $transaction->category_color_preset_key ? (string) $transaction->category_color_preset_key : null,
+                );
+
+                return [
+                    'id' => (int) $transaction->id,
+                    'date' => Carbon::parse($transaction->transaction_date)->format('d M Y'),
+                    'description' => $transaction->description ?: self::defaultTransactionDescription($transaction->type),
+                    'meta' => 'ID: TRX-'.str_pad((string) $transaction->id, 4, '0', STR_PAD_LEFT),
+                    'type_key' => $transaction->type,
+                    'icon_label' => self::transactionIconLabel((string) $transaction->type),
+                    'category' => $transaction->category_name ?: 'Tanpa kategori',
+                    'category_icon_mask_asset' => $visual['icon_mask_asset'],
+                    'category_bg_color' => $visual['bg_color'],
+                    'category_icon_color' => $visual['icon_color'],
+                    'amount' => self::formatSignedCurrency((string) $transaction->type, (float) $transaction->amount),
+                ];
+            })
             ->all();
 
         $weeklyExpenseRangeStart = $now->copy()->subDays(6)->toDateString();
@@ -428,10 +443,41 @@ class DashboardController extends Controller
         };
     }
 
-    private static function categoryVisualAsset(?string $presetKey): ?string
+    /**
+     * @return array{icon_mask_asset: ?string, bg_color: string, icon_color: string}
+     */
+    private static function categoryVisual(
+        \App\Enums\TenantType $tenantType,
+        ?string $categoryType,
+        ?string $legacyPresetKey,
+        ?string $iconKey,
+        ?string $colorPresetKey,
+    ): array
     {
-        $preset = CategoryVisualCatalog::findPreset($presetKey);
+        if ($categoryType === null) {
+            return [
+                'icon_mask_asset' => null,
+                'bg_color' => '#eef2ff',
+                'icon_color' => '#1e40af',
+            ];
+        }
 
-        return $preset ? asset($preset['asset_path']) : null;
+        $type = TransactionType::INCOME->value === $categoryType
+            ? \App\Enums\CategoryType::INCOME
+            : \App\Enums\CategoryType::EXPENSE;
+        $resolvedIconKey = CategoryVisualCatalog::hasIconKey($iconKey)
+            ? $iconKey
+            : ($legacyPresetKey ?: CategoryVisualCatalog::defaultIconKeyForCustomCategory($tenantType, $type));
+        $resolvedColorPresetKey = CategoryVisualCatalog::hasColorPresetKey($colorPresetKey)
+            ? $colorPresetKey
+            : ($legacyPresetKey ?: CategoryVisualCatalog::defaultColorPresetKeyForCustomCategory($tenantType, $type));
+        $icon = CategoryVisualCatalog::findIcon($resolvedIconKey);
+        $colorPreset = CategoryVisualCatalog::findColorPreset($resolvedColorPresetKey);
+
+        return [
+            'icon_mask_asset' => $icon ? asset($icon['asset_path']) : null,
+            'bg_color' => $colorPreset['bg_color'] ?? '#eef2ff',
+            'icon_color' => $colorPreset['icon_color'] ?? '#1e40af',
+        ];
     }
 }

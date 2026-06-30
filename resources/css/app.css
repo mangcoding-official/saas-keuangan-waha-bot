@@ -585,12 +585,47 @@ span.tenant-sidebar-link-icon.is-members{
     gap: 8px;
 }
 
-.tenant-category-pill img {
+.category-visual-badge {
+    --category-bg: #eef2ff;
+    --category-icon: #1e40af;
+    --category-mask: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    background: var(--category-bg);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.category-visual-badge--preview {
+    width: 56px;
+    height: 56px;
+}
+
+.category-visual-badge--sm {
+    width: 40px;
+    height: 40px;
+}
+
+.category-visual-badge--xs {
     width: 28px;
     height: 28px;
-    border-radius: 999px;
-    display: block;
-    flex: 0 0 auto;
+}
+
+.category-visual-badge__glyph {
+    width: 52%;
+    height: 52%;
+    background: var(--category-icon);
+    -webkit-mask-image: var(--category-mask);
+    mask-image: var(--category-mask);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
 }
 
 .tenant-table-date {
@@ -1784,15 +1819,7 @@ span.tenant-sidebar-link-icon.is-members{
     width: 40px;
     height: 40px;
     border-radius: 999px;
-    overflow: hidden;
-    background: #f7f7fb;
-}
-
-.categories-name-icon-image {
-    width: 100%;
-    height: 100%;
-    display: block;
-    object-fit: cover;
+    background: transparent;
 }
 
 .categories-type-pill {
@@ -2024,23 +2051,14 @@ span.tenant-sidebar-link-icon.is-members{
 }
 
 .categories-preset-preview {
-    width: 56px;
-    height: 56px;
     border-radius: 16px;
     background: #f8f9ff;
     border: 1px solid #d9dbe8;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 4px;
+    padding: 10px;
     flex: 0 0 auto;
-}
-
-.categories-preset-preview img {
-    width: 48px;
-    height: 48px;
-    display: block;
-    object-fit: cover;
 }
 
 .categories-preset-groups {
@@ -2080,7 +2098,7 @@ span.tenant-sidebar-link-icon.is-members{
 
 .categories-preset-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(56px, 56px));
+    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
     gap: 10px;
 }
 
@@ -2097,23 +2115,25 @@ span.tenant-sidebar-link-icon.is-members{
 }
 
 .categories-preset-card {
-    width: 56px;
-    height: 56px;
     border: 1px solid #d9dbe8;
     border-radius: 16px;
     background: #ffffff;
-    padding: 4px;
-    display: inline-flex;
+    min-height: 98px;
+    padding: 10px 8px;
+    display: grid;
     align-items: center;
     justify-content: center;
+    justify-items: center;
+    gap: 8px;
     transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
 }
 
-.categories-preset-card img {
-    width: 48px;
-    height: 48px;
-    display: block;
-    object-fit: cover;
+.categories-preset-card small,
+.categories-color-card small {
+    color: #616784;
+    font-size: 0.72rem;
+    line-height: 1.35;
+    text-align: center;
 }
 
 .categories-preset-option input:checked + .categories-preset-card {
@@ -2125,6 +2145,57 @@ span.tenant-sidebar-link-icon.is-members{
 .categories-preset-option input:focus-visible + .categories-preset-card {
     outline: 2px solid #00288e;
     outline-offset: 2px;
+}
+
+.categories-icon-group {
+    display: grid;
+    gap: 12px;
+}
+
+.categories-color-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+    gap: 10px;
+}
+
+.categories-color-card {
+    min-height: 98px;
+    border: 1px solid #d9dbe8;
+    border-radius: 16px;
+    background: #ffffff;
+    padding: 10px 8px;
+    display: grid;
+    justify-items: center;
+    align-items: center;
+    gap: 8px;
+    transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.categories-preset-option input:checked + .categories-color-card {
+    border-color: #1e40af;
+    background: #eef3ff;
+    box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.12);
+}
+
+.categories-preset-option input:focus-visible + .categories-color-card {
+    outline: 2px solid #00288e;
+    outline-offset: 2px;
+}
+
+.categories-color-swatch {
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    background: var(--category-bg);
+    position: relative;
+}
+
+.categories-color-swatch::after {
+    content: '';
+    position: absolute;
+    inset: 10px;
+    border-radius: 999px;
+    background: var(--category-icon);
 }
 
 .categories-modal-actions {
@@ -2499,14 +2570,6 @@ span.tenant-sidebar-link-icon.is-members{
     align-items: center;
     gap: 8px;
     color: #1a1b22;
-}
-
-.transactions-category-pill-icon {
-    width: 28px;
-    height: 28px;
-    border-radius: 999px;
-    display: block;
-    flex: 0 0 auto;
 }
 
 .transactions-status-pill.is-success {

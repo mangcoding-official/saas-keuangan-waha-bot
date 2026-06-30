@@ -67,9 +67,13 @@
                                     </td>
                                     <td>
                                         <span class="tenant-category-pill">
-                                            @if ($row['category_visual_asset'])
-                                                <img src="{{ $row['category_visual_asset'] }}" alt="">
-                                            @endif
+                                            <span
+                                                class="category-visual-badge category-visual-badge--xs"
+                                                style="--category-bg: {{ $row['category_bg_color'] }}; --category-icon: {{ $row['category_icon_color'] }}; --category-mask: url('{{ $row['category_icon_mask_asset'] }}');"
+                                                aria-hidden="true"
+                                            >
+                                                <span class="category-visual-badge__glyph"></span>
+                                            </span>
                                             <span class="tenant-pill is-{{ $row['type_key'] }}">{{ $row['category'] }}</span>
                                         </span>
                                     </td>

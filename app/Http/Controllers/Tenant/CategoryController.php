@@ -11,8 +11,8 @@ use App\Services\CategoryManagementService;
 use App\Support\CategoryVisualCatalog;
 use App\Support\Navigation\TenantNavigation;
 use Illuminate\Contracts\View\View;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 class CategoryController extends Controller
@@ -69,15 +69,25 @@ class CategoryController extends Controller
 
         $editingCategory = $this->resolveCategoryForEdit($owner);
         $selectedType = old('type', $editingCategory['type'] ?? 'expense');
-        $defaultCreatePresetKey = CategoryVisualCatalog::defaultPresetKeyForCustomCategory(
+        $selectedCategoryType = \App\Enums\CategoryType::from($selectedType);
+        $defaultCreateIconKey = CategoryVisualCatalog::defaultIconKeyForCustomCategory(
             $tenantType,
-            \App\Enums\CategoryType::from($selectedType),
+            $selectedCategoryType,
         );
-        $allowedPresetKeys = CategoryVisualCatalog::allowedPresetKeysForTenantType($tenantType);
-        $selectedPresetKey = old('visual_preset_key', $editingCategory['visual_preset_key'] ?? $defaultCreatePresetKey);
+        $defaultCreateColorPresetKey = CategoryVisualCatalog::defaultColorPresetKeyForCustomCategory(
+            $tenantType,
+            $selectedCategoryType,
+        );
+        $allowedIconKeys = CategoryVisualCatalog::allowedIconKeysForTenantType($tenantType);
+        $selectedIconKey = old('icon_key', $editingCategory['icon_key'] ?? $defaultCreateIconKey);
+        $selectedColorPresetKey = old('color_preset_key', $editingCategory['color_preset_key'] ?? $defaultCreateColorPresetKey);
 
-        if (! in_array($selectedPresetKey, $allowedPresetKeys, true)) {
-            $selectedPresetKey = $defaultCreatePresetKey;
+        if (! in_array($selectedIconKey, $allowedIconKeys, true)) {
+            $selectedIconKey = $defaultCreateIconKey;
+        }
+
+        if (! CategoryVisualCatalog::hasColorPresetKey($selectedColorPresetKey)) {
+            $selectedColorPresetKey = $defaultCreateColorPresetKey;
         }
 
         return view('tenant.categories.index', [
@@ -96,8 +106,10 @@ class CategoryController extends Controller
             'authUser' => $owner,
             'editingCategory' => $editingCategory,
             'isCreateModal' => $request->boolean('create'),
-            'defaultCreatePresetKey' => $selectedPresetKey,
-            'presetGroups' => CategoryVisualCatalog::groupedPresetsForTenantType($tenantType),
+            'defaultCreateIconKey' => $selectedIconKey,
+            'defaultCreateColorPresetKey' => $selectedColorPresetKey,
+            'iconGroups' => CategoryVisualCatalog::groupedIconsForTenantType($tenantType),
+            'colorPresets' => CategoryVisualCatalog::allColorPresets(),
             'summary' => [
                 'total' => count($allCategories),
                 'active' => $activeCount,
@@ -182,7 +194,8 @@ class CategoryController extends Controller
             'type' => $category->type->value,
             'key' => $category->key,
             'name' => $category->name,
-            'visual_preset_key' => $category->visual_preset_key,
+            'icon_key' => $category->icon_key,
+            'color_preset_key' => $category->color_preset_key,
             'keywords' => implode(', ', $category->keywords ?? []),
             'is_system' => $category->is_system,
             'is_active' => $category->is_active,
@@ -201,9 +214,7 @@ class CategoryController extends Controller
      */
     private function mapCategory(Category $category, TenantUser $owner): array
     {
-        $presetKey = $category->visual_preset_key
-            ?: CategoryVisualCatalog::defaultPresetKeyForCustomCategory($owner->tenant->tenant_type, $category->type);
-        $preset = CategoryVisualCatalog::findPreset($presetKey);
+        $visual = $this->resolveCategoryVisual($category, $owner);
 
         return [
             'id' => $category->id,
@@ -211,14 +222,44 @@ class CategoryController extends Controller
             'type_value' => $category->type->value,
             'key' => $category->key,
             'name' => $category->name,
-            'visual_preset_key' => $presetKey,
-            'visual_asset' => $preset ? asset($preset['asset_path']) : null,
-            'visual_label' => $preset['label'] ?? $category->name,
+            'icon_key' => $visual['icon_key'],
+            'icon_mask_asset' => $visual['icon_mask_asset'],
+            'color_preset_key' => $visual['color_preset_key'],
+            'bg_color' => $visual['bg_color'],
+            'icon_color' => $visual['icon_color'],
+            'visual_label' => $visual['label'] ?? $category->name,
             'keywords' => $category->keywords ?? [],
             'is_system' => $category->is_system,
             'is_active' => $category->is_active,
             'code' => 'CAT-'.str_pad((string) $category->id, 3, '0', STR_PAD_LEFT),
             'updated_at' => Carbon::parse($category->updated_at)->timezone($owner->tenant->timezone)->format('d M Y H:i'),
+        ];
+    }
+
+    /**
+     * @return array{icon_key: string, color_preset_key: string, icon_mask_asset: ?string, bg_color: string, icon_color: string, label: string}
+     */
+    private function resolveCategoryVisual(Category $category, TenantUser $owner): array
+    {
+        $tenantType = $owner->tenant->tenant_type;
+        $defaultIconKey = CategoryVisualCatalog::defaultIconKeyForCustomCategory($tenantType, $category->type);
+        $defaultColorPresetKey = CategoryVisualCatalog::defaultColorPresetKeyForCustomCategory($tenantType, $category->type);
+        $iconKey = CategoryVisualCatalog::hasIconKey($category->icon_key)
+            ? $category->icon_key
+            : ($category->visual_preset_key ?: $defaultIconKey);
+        $colorPresetKey = CategoryVisualCatalog::hasColorPresetKey($category->color_preset_key)
+            ? $category->color_preset_key
+            : ($category->visual_preset_key ?: $defaultColorPresetKey);
+        $icon = CategoryVisualCatalog::findIcon($iconKey);
+        $colorPreset = CategoryVisualCatalog::findColorPreset($colorPresetKey);
+
+        return [
+            'icon_key' => $iconKey,
+            'color_preset_key' => $colorPresetKey,
+            'icon_mask_asset' => $icon ? asset($icon['asset_path']) : null,
+            'bg_color' => $colorPreset['bg_color'] ?? '#eef2ff',
+            'icon_color' => $colorPreset['icon_color'] ?? '#1e40af',
+            'label' => $icon['label'] ?? $colorPreset['label'] ?? $category->name,
         ];
     }
 }

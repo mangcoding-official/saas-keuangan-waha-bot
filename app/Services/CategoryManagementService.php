@@ -24,10 +24,15 @@ class CategoryManagementService
             'type' => $categoryType->value,
             'key' => $this->generateUniqueKey($owner->tenant_id, $categoryType->value, trim((string) $payload['name'])),
             'name' => trim((string) $payload['name']),
-            'visual_preset_key' => $this->resolveVisualPresetKey(
+            'icon_key' => $this->resolveIconKey(
                 $categoryType,
                 $tenantType,
-                $payload['visual_preset_key'] ?? null,
+                $payload['icon_key'] ?? null,
+            ),
+            'color_preset_key' => $this->resolveColorPresetKey(
+                $categoryType,
+                $tenantType,
+                $payload['color_preset_key'] ?? null,
             ),
             'keywords' => $this->parseKeywords($payload['keywords'] ?? null),
             'is_system' => false,
@@ -41,15 +46,21 @@ class CategoryManagementService
     public function update(Category $category, array $payload): Category
     {
         $categoryType = CategoryType::from((string) $payload['type']);
-        $visualPresetKey = $this->resolveVisualPresetKey(
+        $iconKey = $this->resolveIconKey(
             $categoryType,
             $category->tenant->tenant_type,
-            $payload['visual_preset_key'] ?? $category->visual_preset_key,
+            $payload['icon_key'] ?? $category->icon_key,
+        );
+        $colorPresetKey = $this->resolveColorPresetKey(
+            $categoryType,
+            $category->tenant->tenant_type,
+            $payload['color_preset_key'] ?? $category->color_preset_key,
         );
 
         if ($category->is_system) {
             $category->forceFill([
-                'visual_preset_key' => $visualPresetKey,
+                'icon_key' => $iconKey,
+                'color_preset_key' => $colorPresetKey,
             ])->save();
 
             return $category->fresh();
@@ -58,7 +69,8 @@ class CategoryManagementService
         $category->fill([
             'type' => $categoryType->value,
             'name' => trim((string) $payload['name']),
-            'visual_preset_key' => $visualPresetKey,
+            'icon_key' => $iconKey,
+            'color_preset_key' => $colorPresetKey,
             'keywords' => $this->parseKeywords($payload['keywords'] ?? null),
             'is_active' => $this->toBool($payload['is_active'] ?? false),
         ])->save();
@@ -143,12 +155,21 @@ class CategoryManagementService
         return $candidate;
     }
 
-    private function resolveVisualPresetKey(CategoryType $categoryType, mixed $tenantType, mixed $visualPresetKey): string
+    private function resolveIconKey(CategoryType $categoryType, mixed $tenantType, mixed $iconKey): string
     {
-        if (is_string($visualPresetKey) && CategoryVisualCatalog::hasPresetKey($visualPresetKey)) {
-            return $visualPresetKey;
+        if (is_string($iconKey) && CategoryVisualCatalog::hasIconKey($iconKey)) {
+            return $iconKey;
         }
 
-        return CategoryVisualCatalog::defaultPresetKeyForCustomCategory($tenantType, $categoryType);
+        return CategoryVisualCatalog::defaultIconKeyForCustomCategory($tenantType, $categoryType);
+    }
+
+    private function resolveColorPresetKey(CategoryType $categoryType, mixed $tenantType, mixed $colorPresetKey): string
+    {
+        if (is_string($colorPresetKey) && CategoryVisualCatalog::hasColorPresetKey($colorPresetKey)) {
+            return $colorPresetKey;
+        }
+
+        return CategoryVisualCatalog::defaultColorPresetKeyForCustomCategory($tenantType, $categoryType);
     }
 }

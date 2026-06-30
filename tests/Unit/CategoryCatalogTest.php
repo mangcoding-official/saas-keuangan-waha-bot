@@ -6,7 +6,7 @@ use App\Enums\CategoryType;
 use App\Enums\TenantType;
 use App\Support\CategoryCatalog;
 use App\Support\CategoryVisualCatalog;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class CategoryCatalogTest extends TestCase
 {
@@ -36,14 +36,16 @@ class CategoryCatalogTest extends TestCase
             'type' => CategoryType::INCOME->value,
             'label' => 'Pendapatan Lainnya',
             'is_system' => true,
-            'preset_key' => 'umkm_pendapatan_lainnya',
+            'icon_key' => 'umkm_pendapatan_lainnya',
+            'color_preset_key' => 'umkm_pendapatan_lainnya',
         ], $templates);
         $this->assertContains([
             'key' => 'other_expense',
             'type' => CategoryType::EXPENSE->value,
             'label' => 'Pengeluaran Lainnya',
             'is_system' => true,
-            'preset_key' => 'umkm_pengeluaran_lainnya',
+            'icon_key' => 'umkm_pengeluaran_lainnya',
+            'color_preset_key' => 'umkm_pengeluaran_lainnya',
         ], $templates);
     }
 
@@ -51,26 +53,26 @@ class CategoryCatalogTest extends TestCase
     {
         $this->assertSame(
             'pf_pemasukan_lainnya',
-            CategoryVisualCatalog::defaultPresetKeyForCustomCategory(TenantType::PERSONAL, CategoryType::INCOME),
+            CategoryVisualCatalog::defaultIconKeyForCustomCategory(TenantType::PERSONAL, CategoryType::INCOME),
         );
         $this->assertSame(
             'pf_pengeluaran_lainnya',
-            CategoryVisualCatalog::defaultPresetKeyForCustomCategory(TenantType::FAMILY, CategoryType::EXPENSE),
+            CategoryVisualCatalog::defaultColorPresetKeyForCustomCategory(TenantType::FAMILY, CategoryType::EXPENSE),
         );
         $this->assertSame(
             'umkm_pengeluaran_lainnya',
-            CategoryVisualCatalog::defaultPresetKeyForCustomCategory(TenantType::UMKM, CategoryType::EXPENSE),
+            CategoryVisualCatalog::defaultIconKeyForCustomCategory(TenantType::UMKM, CategoryType::EXPENSE),
         );
         $this->assertSame(
             'tc_operasional_kantor_lainnya',
-            CategoryVisualCatalog::defaultPresetKeyForCustomCategory(TenantType::COMPANY, CategoryType::EXPENSE),
+            CategoryVisualCatalog::defaultColorPresetKeyForCustomCategory(TenantType::COMPANY, CategoryType::EXPENSE),
         );
     }
 
-    public function test_tenant_only_sees_its_own_visual_preset_group(): void
+    public function test_tenant_only_sees_its_own_icon_group(): void
     {
-        $personalPresetKeys = CategoryVisualCatalog::allowedPresetKeysForTenantType(TenantType::PERSONAL);
-        $companyPresetKeys = CategoryVisualCatalog::allowedPresetKeysForTenantType(TenantType::COMPANY);
+        $personalPresetKeys = CategoryVisualCatalog::allowedIconKeysForTenantType(TenantType::PERSONAL);
+        $companyPresetKeys = CategoryVisualCatalog::allowedIconKeysForTenantType(TenantType::COMPANY);
 
         $this->assertContains('pf_gaji', $personalPresetKeys);
         $this->assertNotContains('umkm_gaji', $personalPresetKeys);
@@ -78,5 +80,15 @@ class CategoryCatalogTest extends TestCase
 
         $this->assertContains('tc_konsumsi', $companyPresetKeys);
         $this->assertNotContains('pf_gaji', $companyPresetKeys);
+    }
+
+    public function test_color_presets_are_available_globally(): void
+    {
+        $colorPresetKeys = CategoryVisualCatalog::colorPresetKeys();
+
+        $this->assertNotEmpty($colorPresetKeys);
+        $this->assertContains('pf_gaji', $colorPresetKeys);
+        $this->assertContains('umkm_gaji', $colorPresetKeys);
+        $this->assertContains('tc_konsumsi', $colorPresetKeys);
     }
 }
