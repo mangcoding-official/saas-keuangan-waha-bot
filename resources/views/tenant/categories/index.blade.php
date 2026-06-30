@@ -266,10 +266,7 @@
 
                     <section class="categories-preset-picker">
                         <div class="categories-preset-head">
-                            <div>
-                                <span>Preview Kategori</span>
-                                <p>Icon dan warna dipilih terpisah. User cukup memilih dari opsi sistem yang sudah tersedia.</p>
-                            </div>
+                            <span>Personalisasi Kategori</span>
                             <div class="categories-preset-preview">
                                 <span
                                     class="category-visual-badge category-visual-badge--preview"
@@ -284,51 +281,35 @@
 
                         <div class="categories-preset-groups">
                             <section class="categories-preset-group">
-                                <div class="categories-preset-group-head">
-                                    <strong>Pilih Icon</strong>
-                                    <span>Hanya icon tenant {{ $iconGroups[0]['group_label'] ?? '' }} yang ditampilkan.</span>
-                                </div>
-
                                 @foreach ($iconGroups as $group)
-                                    <div class="categories-icon-group">
-                                        <div class="categories-preset-group-head">
-                                            <strong>{{ $group['group_label'] }}</strong>
-                                            <span>{{ $group['is_recommended'] ? 'Rekomendasi tenant ini' : 'Pilihan lain' }}</span>
-                                        </div>
-                                        <div class="categories-preset-grid">
-                                            @foreach ($group['icons'] as $icon)
-                                                <label class="categories-preset-option categories-icon-option">
-                                                    <input
-                                                        type="radio"
-                                                        name="icon_key"
-                                                        value="{{ $icon['key'] }}"
-                                                        @checked($selectedIconKey === $icon['key'])
-                                                        data-icon-option
-                                                        data-icon-mask="{{ asset($icon['asset_path']) }}"
-                                                        data-icon-label="{{ $icon['label'] }}"
+                                    <div class="categories-preset-grid">
+                                        @foreach ($group['icons'] as $icon)
+                                            <label class="categories-preset-option categories-icon-option">
+                                                <input
+                                                    type="radio"
+                                                    name="icon_key"
+                                                    value="{{ $icon['key'] }}"
+                                                    @checked($selectedIconKey === $icon['key'])
+                                                    data-icon-option
+                                                    data-icon-mask="{{ asset($icon['asset_path']) }}"
+                                                    data-icon-label="{{ $icon['label'] }}"
+                                                >
+                                                <span class="categories-preset-card categories-icon-card">
+                                                    <span
+                                                        class="category-visual-badge category-visual-badge--sm"
+                                                        style="--category-bg: #eef2ff; --category-icon: #1e40af; --category-mask: url('{{ asset($icon['asset_path']) }}');"
+                                                        aria-hidden="true"
                                                     >
-                                                    <span class="categories-preset-card categories-icon-card">
-                                                        <span
-                                                            class="category-visual-badge category-visual-badge--sm"
-                                                            style="--category-bg: #eef2ff; --category-icon: #1e40af; --category-mask: url('{{ asset($icon['asset_path']) }}');"
-                                                            aria-hidden="true"
-                                                        >
-                                                            <span class="category-visual-badge__glyph"></span>
-                                                        </span>
-                                                        <small>{{ $icon['label'] }}</small>
+                                                        <span class="category-visual-badge__glyph"></span>
                                                     </span>
-                                                </label>
-                                            @endforeach
-                                        </div>
+                                                </span>
+                                            </label>
+                                        @endforeach
                                     </div>
                                 @endforeach
                             </section>
 
                             <section class="categories-preset-group">
-                                <div class="categories-preset-group-head">
-                                    <strong>Pilih Warna</strong>
-                                    <span>Warna berlaku global. Background soft dan warna icon akan mengikuti preset yang dipilih.</span>
-                                </div>
                                 <div class="categories-color-grid">
                                     @foreach ($colorPresets as $colorPreset)
                                         <label class="categories-preset-option categories-color-option">
@@ -344,7 +325,6 @@
                                             >
                                             <span class="categories-color-card">
                                                 <span class="categories-color-swatch" style="--category-bg: {{ $colorPreset['bg_color'] }}; --category-icon: {{ $colorPreset['icon_color'] }};"></span>
-                                                <small>{{ $colorPreset['label'] }}</small>
                                             </span>
                                         </label>
                                     @endforeach
