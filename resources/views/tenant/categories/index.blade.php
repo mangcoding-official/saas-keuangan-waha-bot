@@ -200,7 +200,13 @@
                         <h3>{{ $editingCategory ? 'Edit Kategori' : 'Tambah Kategori' }}</h3>
                         <p>{{ $editingCategory ? 'Perbarui kategori transaksi yang sudah ada.' : 'Buat kategori baru agar pencatatan lebih rapi.' }}</p>
                     </div>
-                    <a href="{{ route('tenant.categories.index', request()->except(['create', 'edit'])) }}">x</a>
+                    <a
+                        href="{{ route('tenant.categories.index', request()->except(['create', 'edit'])) }}"
+                        class="categories-modal-close"
+                        aria-label="Tutup modal"
+                    >
+                        <span aria-hidden="true">&times;</span>
+                    </a>
                 </header>
 
                 @if (($editingCategory['is_system'] ?? false) === true)
