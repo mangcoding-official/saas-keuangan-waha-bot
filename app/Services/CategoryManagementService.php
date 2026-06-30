@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Category;
 use App\Models\TenantUser;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class CategoryManagementService
@@ -16,6 +17,7 @@ class CategoryManagementService
         return Category::query()->create([
             'tenant_id' => $owner->tenant_id,
             'type' => (string) $payload['type'],
+            'key' => $this->generateUniqueKey($owner->tenant_id, (string) $payload['type'], trim((string) $payload['name'])),
             'name' => trim((string) $payload['name']),
             'keywords' => $this->parseKeywords($payload['keywords'] ?? null),
             'is_system' => false,
@@ -30,7 +32,7 @@ class CategoryManagementService
     {
         if ($category->is_system) {
             throw ValidationException::withMessages([
-                'category' => 'Kategori sistem tidak bisa diubah dari dashboard owner.',
+                'category' => 'Kategori fallback wajib tidak bisa diubah dari dashboard owner.',
             ]);
         }
 
@@ -55,7 +57,7 @@ class CategoryManagementService
     {
         if ($category->is_system) {
             throw ValidationException::withMessages([
-                'category' => 'Kategori sistem wajib tetap aktif.',
+                'category' => 'Kategori fallback wajib tetap aktif dan tidak bisa diarsipkan.',
             ]);
         }
 
@@ -92,5 +94,32 @@ class CategoryManagementService
     private function toBool(mixed $value): bool
     {
         return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    private function generateUniqueKey(int $tenantId, string $type, string $label): string
+    {
+        $baseKey = Str::of($label)
+            ->lower()
+            ->slug('_')
+            ->value();
+
+        if ($baseKey === '') {
+            $baseKey = 'category';
+        }
+
+        $candidate = $baseKey;
+        $suffix = 2;
+
+        while (Category::query()
+            ->where('tenant_id', $tenantId)
+            ->where('type', $type)
+            ->where('key', $candidate)
+            ->exists()
+        ) {
+            $candidate = $baseKey.'_'.$suffix;
+            $suffix++;
+        }
+
+        return $candidate;
     }
 }

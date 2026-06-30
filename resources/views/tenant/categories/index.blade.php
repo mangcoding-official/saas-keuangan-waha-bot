@@ -105,7 +105,7 @@
                             </span>
                             <div>
                                 <strong>{{ $category['name'] }}</strong>
-                                <span>ID: {{ $category['code'] }}</span>
+                                <span>ID: {{ $category['code'] }} @if($category['key']) · Key: {{ $category['key'] }} @endif</span>
                             </div>
                         </td>
                         <td>
@@ -127,12 +127,12 @@
                         <td>
                             <span class="accounts-status-inline {{ $category['is_active'] ? 'is-active' : 'is-inactive' }}">
                                 <span></span>
-                                {{ $category['is_active'] ? 'Aktif' : 'Nonaktif' }}
+                                {{ $category['is_active'] ? 'Aktif' : 'Archived' }}
                             </span>
                         </td>
                         <td class="accounts-action-menu-cell">
                             @if ($category['is_system'])
-                                <span class="categories-locked-action">Sistem</span>
+                                <span class="categories-locked-action">Wajib</span>
                             @else
                                 <details class="accounts-action-menu" data-category-action-menu>
                                     <summary aria-label="Aksi kategori">
@@ -143,12 +143,12 @@
                                         @if ($category['is_active'])
                                             <form action="{{ route('tenant.categories.deactivate', $category['id']) }}" method="post">
                                                 @csrf
-                                                <button type="submit">Nonaktifkan</button>
+                                                <button type="submit">Arsipkan</button>
                                             </form>
                                         @else
                                             <form action="{{ route('tenant.categories.activate', $category['id']) }}" method="post">
                                                 @csrf
-                                                <button type="submit">Aktifkan</button>
+                                                <button type="submit">Pulihkan</button>
                                             </form>
                                         @endif
                                     </div>
@@ -205,7 +205,7 @@
 
                 @if (($editingCategory['is_system'] ?? false) === true)
                     <div class="categories-modal-alert">
-                        Kategori sistem dikunci agar parser transaksi tetap konsisten.
+                        Kategori fallback wajib dikunci agar parser transaksi tetap konsisten.
                     </div>
                 @endif
 
@@ -264,8 +264,8 @@
                             @checked(old('is_active', $editingCategory['is_active'] ?? true))
                             @disabled(($editingCategory['is_system'] ?? false) === true)
                         >
-                        <span>Aktifkan kategori ini</span>
-                    </label>
+                            <span>Aktifkan kategori ini</span>
+                        </label>
 
                     @if (($editingCategory['is_system'] ?? false) === true)
                         <input type="hidden" name="is_active" value="{{ ($editingCategory['is_active'] ?? true) ? 1 : 0 }}">

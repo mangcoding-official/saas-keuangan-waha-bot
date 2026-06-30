@@ -161,7 +161,7 @@ class TransactionManagementService
 
         if (! $account) {
             throw ValidationException::withMessages([
-                $field => 'Akun tidak ditemukan atau sudah inactive.',
+                $field => 'Akun tidak ditemukan atau sudah nonaktif.',
             ]);
         }
 
@@ -184,7 +184,7 @@ class TransactionManagementService
 
         if (! $category) {
             throw ValidationException::withMessages([
-                'category_id' => 'Kategori tidak ditemukan atau sudah inactive.',
+                'category_id' => 'Kategori tidak ditemukan atau sudah diarsipkan.',
             ]);
         }
 

@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Enums\AccountType;
 use App\Enums\AiAddonStatus;
-use App\Enums\CategoryType;
 use App\Enums\ServicePlan;
 use App\Enums\ServiceStatus;
 use App\Enums\TenantStatus;
@@ -24,6 +23,7 @@ class TenantOwnerRegistrationService
     public function __construct(
         private readonly ActivationCodeService $activationCodeService,
         private readonly ActivationCodeDeliveryService $activationCodeDeliveryService,
+        private readonly CategoryTemplateService $categoryTemplateService,
         private readonly PhoneNumberNormalizer $phoneNumberNormalizer,
     ) {
     }
@@ -63,7 +63,7 @@ class TenantOwnerRegistrationService
             $activationExpiresAt = now()->addMinutes((int) config('platform.timeouts.activation_code_minutes'))->toIso8601String();
 
             $this->createDefaultAccountFor($tenant->id);
-            $this->createCategoryTemplatesFor($tenant->id, TenantType::from((string) $payload['tenant_type']));
+            $this->categoryTemplateService->createDefaultsForTenant($tenant->id, TenantType::from((string) $payload['tenant_type']));
 
             return [
                 'tenant' => $tenant,
@@ -121,58 +121,5 @@ class TenantOwnerRegistrationService
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-    }
-
-    private function createCategoryTemplatesFor(int $tenantId, TenantType $tenantType): void
-    {
-        $templates = match ($tenantType) {
-            TenantType::PERSONAL => [
-                [CategoryType::INCOME, 'Gaji'],
-                [CategoryType::INCOME, 'Bonus'],
-                [CategoryType::EXPENSE, 'Makan'],
-                [CategoryType::EXPENSE, 'Transport'],
-            ],
-            TenantType::FAMILY => [
-                [CategoryType::INCOME, 'Pemasukan Keluarga'],
-                [CategoryType::EXPENSE, 'Belanja Rumah'],
-                [CategoryType::EXPENSE, 'Pendidikan'],
-                [CategoryType::EXPENSE, 'Tagihan'],
-            ],
-            TenantType::UMKM => [
-                [CategoryType::INCOME, 'Penjualan'],
-                [CategoryType::INCOME, 'Piutang Masuk'],
-                [CategoryType::EXPENSE, 'Belanja Stok'],
-                [CategoryType::EXPENSE, 'Operasional'],
-            ],
-            TenantType::TEAM => [
-                [CategoryType::INCOME, 'Iuran Tim'],
-                [CategoryType::INCOME, 'Sponsor'],
-                [CategoryType::EXPENSE, 'Operasional Tim'],
-                [CategoryType::EXPENSE, 'Event'],
-            ],
-            TenantType::COMPANY => [
-                [CategoryType::INCOME, 'Pendapatan Penjualan'],
-                [CategoryType::INCOME, 'Pendapatan Lain'],
-                [CategoryType::EXPENSE, 'Biaya Operasional'],
-                [CategoryType::EXPENSE, 'Gaji'],
-            ],
-        };
-
-        $templates[] = [CategoryType::EXPENSE, 'Biaya Admin', true];
-
-        $rows = array_map(function (array $item) use ($tenantId): array {
-            return [
-                'tenant_id' => $tenantId,
-                'type' => $item[0]->value,
-                'name' => $item[1],
-                'keywords' => null,
-                'is_system' => $item[2] ?? false,
-                'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
-        }, $templates);
-
-        DB::table('categories')->insert($rows);
     }
 }

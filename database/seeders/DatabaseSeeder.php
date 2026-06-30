@@ -15,6 +15,7 @@ use App\Enums\WahaQrStatus;
 use App\Models\PlatformAdminUser;
 use App\Models\Tenant;
 use App\Models\TenantUser;
+use App\Services\CategoryTemplateService;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -112,5 +113,7 @@ class DatabaseSeeder extends Seeder
                 'updated_at' => now(),
             ]);
         }
+
+        app(CategoryTemplateService::class)->ensureDefaultsForTenant($tenant->id, $tenant->tenant_type);
     }
 }

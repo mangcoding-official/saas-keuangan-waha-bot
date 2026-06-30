@@ -10,6 +10,7 @@ use App\Models\Attachment;
 use App\Models\Category;
 use App\Models\ConversationSession;
 use App\Models\TenantUser;
+use App\Support\CategoryCatalog;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -406,9 +407,10 @@ class ConversationSessionService
                     ? CategoryType::INCOME
                     : CategoryType::EXPENSE;
                 $category = $this->resolveCategory($tenantUser, $messageText, $categoryType);
+                $category ??= $this->resolveFallbackCategory($tenantUser, $categoryType);
 
                 if ($category === null) {
-                    return $this->repeatGuidedPrompt($session, $messageTimestamp, 'Kategori belum dikenali. Coba pakai nama kategori tenant yang aktif.');
+                    return $this->repeatGuidedPrompt($session, $messageTimestamp, 'Kategori fallback untuk tenant ini belum tersedia. Owner perlu menyiapkan kategori aktif.');
                 }
 
                 data_set($draft, 'items.0.category_id', $category->id);
@@ -718,6 +720,18 @@ class ConversationSessionService
         return $bestMatch;
     }
 
+    private function resolveFallbackCategory(TenantUser $tenantUser, CategoryType $type): ?Category
+    {
+        $fallbackKey = CategoryCatalog::fallbackKeyFor($tenantUser->tenant->tenant_type, $type);
+
+        return Category::query()
+            ->where('tenant_id', $tenantUser->tenant_id)
+            ->where('type', $type)
+            ->where('key', $fallbackKey)
+            ->where('is_active', true)
+            ->first();
+    }
+
     private function resolveAccountForGuided(TenantUser $tenantUser, string $text, bool $allowDefaultKeyword): ?Account
     {
         $normalized = $this->normalizeForMatch($text);
@@ -807,13 +821,7 @@ class ConversationSessionService
             return $items;
         }
 
-        $adminCategory = Category::query()
-            ->where('tenant_id', $tenantUser->tenant_id)
-            ->where('type', CategoryType::EXPENSE)
-            ->where('is_system', true)
-            ->where('is_active', true)
-            ->orderBy('id')
-            ->first();
+        $adminCategory = $this->resolveFallbackCategory($tenantUser, CategoryType::EXPENSE);
 
         if (! $adminCategory) {
             return $items;

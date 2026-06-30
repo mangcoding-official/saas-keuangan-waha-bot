@@ -38,6 +38,7 @@ class CategoryController extends Controller
                 'id' => $category->id,
                 'type' => strtoupper($category->type->value),
                 'type_value' => $category->type->value,
+                'key' => $category->key,
                 'name' => $category->name,
                 'keywords' => $category->keywords ?? [],
                 'is_system' => $category->is_system,
@@ -76,6 +77,7 @@ class CategoryController extends Controller
                 'id' => $category->id,
                 'type' => strtoupper($category->type->value),
                 'type_value' => $category->type->value,
+                'key' => $category->key,
                 'name' => $category->name,
                 'keywords' => $category->keywords ?? [],
                 'is_system' => $category->is_system,
@@ -153,8 +155,8 @@ class CategoryController extends Controller
 
         return to_route('tenant.categories.index')->with(config('platform.flash_session_key'), [
             'tone' => 'success',
-            'title' => 'Kategori diaktifkan',
-            'message' => $updated->name.' kembali tersedia untuk parser transaksi.',
+            'title' => 'Kategori dipulihkan',
+            'message' => $updated->name.' kembali aktif untuk transaksi dan parser.',
         ]);
     }
 
@@ -167,8 +169,8 @@ class CategoryController extends Controller
 
         return to_route('tenant.categories.index')->with(config('platform.flash_session_key'), [
             'tone' => 'warning',
-            'title' => 'Kategori dinonaktifkan',
-            'message' => $updated->name.' tidak akan dipakai parser sampai diaktifkan kembali.',
+            'title' => 'Kategori diarsipkan',
+            'message' => $updated->name.' disimpan untuk histori dan tidak dipakai transaksi baru.',
         ]);
     }
 
@@ -185,6 +187,7 @@ class CategoryController extends Controller
         return [
             'id' => $category->id,
             'type' => $category->type->value,
+            'key' => $category->key,
             'name' => $category->name,
             'keywords' => implode(', ', $category->keywords ?? []),
             'is_system' => $category->is_system,

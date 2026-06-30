@@ -7,6 +7,7 @@ use App\Enums\TransactionType;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\TenantUser;
+use App\Support\CategoryCatalog;
 use Illuminate\Support\Carbon;
 
 class StructuredQuickTransactionParser
@@ -171,15 +172,11 @@ class StructuredQuickTransactionParser
         }
 
         $categoryMatch = $this->resolveCategoryMatch($body, $categories->all());
-        $category = $categoryMatch['category'];
+        $category = $categoryMatch['category'] ?? $this->resolveFallbackCategory($tenantUser, $categoryType);
 
         if ($category === null) {
-            $example = $type === TransactionType::INCOME->value
-                ? 'masuk 1jt gaji'
-                : 'keluar 20rb makan';
-
             return $this->clarification(
-                'Kategori belum dikenali. Pakai kategori/keyword tenant, misalnya `'.$example.'`.',
+                'Kategori default untuk tipe transaksi ini belum tersedia. Owner perlu menyiapkan kategori tenant lebih dulu.',
                 'clarify_category',
                 $type,
             );
@@ -404,6 +401,18 @@ class StructuredQuickTransactionParser
             'category' => $bestMatch,
             'matched_phrase' => $bestPhrase,
         ];
+    }
+
+    private function resolveFallbackCategory(TenantUser $tenantUser, CategoryType $type): ?Category
+    {
+        $fallbackKey = CategoryCatalog::fallbackKeyFor($tenantUser->tenant->tenant_type, $type);
+
+        return Category::query()
+            ->where('tenant_id', $tenantUser->tenant_id)
+            ->where('type', $type)
+            ->where('key', $fallbackKey)
+            ->where('is_active', true)
+            ->first();
     }
 
     private function extractIncomeExpenseDescription(
