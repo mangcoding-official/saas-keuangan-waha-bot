@@ -13,6 +13,7 @@ class Category extends Model
         'type',
         'key',
         'name',
+        'visual_preset_key',
         'keywords',
         'is_system',
         'is_active',

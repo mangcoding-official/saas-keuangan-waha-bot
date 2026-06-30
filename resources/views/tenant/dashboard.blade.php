@@ -66,7 +66,12 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <span class="tenant-pill is-{{ $row['type_key'] }}">{{ $row['category'] }}</span>
+                                        <span class="tenant-category-pill">
+                                            @if ($row['category_visual_asset'])
+                                                <img src="{{ $row['category_visual_asset'] }}" alt="">
+                                            @endif
+                                            <span class="tenant-pill is-{{ $row['type_key'] }}">{{ $row['category'] }}</span>
+                                        </span>
                                     </td>
                                     <td class="tenant-table-date">{{ $row['date'] }}</td>
                                     <td class="tenant-table-amount is-{{ $row['type_key'] }}">{{ $row['amount'] }}</td>

@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateCategoryRequest;
 use App\Models\Category;
 use App\Models\TenantUser;
 use App\Services\CategoryManagementService;
+use App\Support\CategoryVisualCatalog;
 use App\Support\Navigation\TenantNavigation;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -25,6 +26,7 @@ class CategoryController extends Controller
     {
         /** @var TenantUser $owner */
         $owner = auth('web')->user();
+        $tenantType = $owner->tenant->tenant_type;
         $baseQuery = Category::query()
             ->where('tenant_id', $owner->tenant_id)
             ->orderByDesc('is_system')
@@ -34,18 +36,7 @@ class CategoryController extends Controller
 
         $allCategories = (clone $baseQuery)
             ->get()
-            ->map(fn (Category $category): array => [
-                'id' => $category->id,
-                'type' => strtoupper($category->type->value),
-                'type_value' => $category->type->value,
-                'key' => $category->key,
-                'name' => $category->name,
-                'keywords' => $category->keywords ?? [],
-                'is_system' => $category->is_system,
-                'is_active' => $category->is_active,
-                'code' => 'CAT-'.str_pad((string) $category->id, 3, '0', STR_PAD_LEFT),
-                'updated_at' => Carbon::parse($category->updated_at)->timezone($owner->tenant->timezone)->format('d M Y H:i'),
-            ])
+            ->map(fn (Category $category): array => $this->mapCategory($category, $owner))
             ->all();
 
         $activeCount = count(array_filter($allCategories, fn (array $category): bool => $category['is_active']));
@@ -73,21 +64,21 @@ class CategoryController extends Controller
             ->withQueryString();
 
         $categories = $categoryPaginator->getCollection()
-            ->map(fn (Category $category): array => [
-                'id' => $category->id,
-                'type' => strtoupper($category->type->value),
-                'type_value' => $category->type->value,
-                'key' => $category->key,
-                'name' => $category->name,
-                'keywords' => $category->keywords ?? [],
-                'is_system' => $category->is_system,
-                'is_active' => $category->is_active,
-                'code' => 'CAT-'.str_pad((string) $category->id, 3, '0', STR_PAD_LEFT),
-                'updated_at' => Carbon::parse($category->updated_at)->timezone($owner->tenant->timezone)->format('d M Y H:i'),
-            ])
+            ->map(fn (Category $category): array => $this->mapCategory($category, $owner))
             ->all();
 
         $editingCategory = $this->resolveCategoryForEdit($owner);
+        $selectedType = old('type', $editingCategory['type'] ?? 'expense');
+        $defaultCreatePresetKey = CategoryVisualCatalog::defaultPresetKeyForCustomCategory(
+            $tenantType,
+            \App\Enums\CategoryType::from($selectedType),
+        );
+        $allowedPresetKeys = CategoryVisualCatalog::allowedPresetKeysForTenantType($tenantType);
+        $selectedPresetKey = old('visual_preset_key', $editingCategory['visual_preset_key'] ?? $defaultCreatePresetKey);
+
+        if (! in_array($selectedPresetKey, $allowedPresetKeys, true)) {
+            $selectedPresetKey = $defaultCreatePresetKey;
+        }
 
         return view('tenant.categories.index', [
             'page' => [
@@ -105,6 +96,8 @@ class CategoryController extends Controller
             'authUser' => $owner,
             'editingCategory' => $editingCategory,
             'isCreateModal' => $request->boolean('create'),
+            'defaultCreatePresetKey' => $selectedPresetKey,
+            'presetGroups' => CategoryVisualCatalog::groupedPresetsForTenantType($tenantType),
             'summary' => [
                 'total' => count($allCategories),
                 'active' => $activeCount,
@@ -189,6 +182,7 @@ class CategoryController extends Controller
             'type' => $category->type->value,
             'key' => $category->key,
             'name' => $category->name,
+            'visual_preset_key' => $category->visual_preset_key,
             'keywords' => implode(', ', $category->keywords ?? []),
             'is_system' => $category->is_system,
             'is_active' => $category->is_active,
@@ -200,5 +194,31 @@ class CategoryController extends Controller
         return Category::query()
             ->where('tenant_id', $owner->tenant_id)
             ->findOrFail($categoryId);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function mapCategory(Category $category, TenantUser $owner): array
+    {
+        $presetKey = $category->visual_preset_key
+            ?: CategoryVisualCatalog::defaultPresetKeyForCustomCategory($owner->tenant->tenant_type, $category->type);
+        $preset = CategoryVisualCatalog::findPreset($presetKey);
+
+        return [
+            'id' => $category->id,
+            'type' => strtoupper($category->type->value),
+            'type_value' => $category->type->value,
+            'key' => $category->key,
+            'name' => $category->name,
+            'visual_preset_key' => $presetKey,
+            'visual_asset' => $preset ? asset($preset['asset_path']) : null,
+            'visual_label' => $preset['label'] ?? $category->name,
+            'keywords' => $category->keywords ?? [],
+            'is_system' => $category->is_system,
+            'is_active' => $category->is_active,
+            'code' => 'CAT-'.str_pad((string) $category->id, 3, '0', STR_PAD_LEFT),
+            'updated_at' => Carbon::parse($category->updated_at)->timezone($owner->tenant->timezone)->format('d M Y H:i'),
+        ];
     }
 }

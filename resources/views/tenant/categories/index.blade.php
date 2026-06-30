@@ -7,6 +7,7 @@
     $isModalOpen = $editingCategory !== null || $isCreateModal;
     $selectedType = old('type', $editingCategory['type'] ?? 'expense');
     $selectedKeywords = old('keywords', $editingCategory['keywords'] ?? '');
+    $selectedPresetKey = old('visual_preset_key', $editingCategory['visual_preset_key'] ?? $defaultCreatePresetKey);
 @endphp
 
 @section('content')
@@ -100,8 +101,10 @@
                 @forelse ($categories as $category)
                     <tr class="{{ $category['is_active'] ? '' : 'is-inactive-row' }}">
                         <td class="accounts-name-cell categories-name-cell">
-                            <span class="accounts-name-icon categories-name-icon {{ $category['type_value'] === 'income' ? 'is-income' : 'is-expense' }}">
-                                <span class="categories-name-glyph {{ $category['type_value'] === 'income' ? 'is-income' : 'is-expense' }}"></span>
+                            <span class="accounts-name-icon categories-name-icon">
+                                @if ($category['visual_asset'])
+                                    <img src="{{ $category['visual_asset'] }}" alt="" class="categories-name-icon-image">
+                                @endif
                             </span>
                             <div>
                                 <strong>{{ $category['name'] }}</strong>
@@ -211,7 +214,7 @@
 
                 @if (($editingCategory['is_system'] ?? false) === true)
                     <div class="categories-modal-alert">
-                        Kategori fallback wajib dikunci agar parser transaksi tetap konsisten.
+                        Kategori fallback wajib tetap dikunci untuk nama, tipe, status, dan kata kunci. Preset icon tetap bisa Anda ganti.
                     </div>
                 @endif
 
@@ -252,6 +255,55 @@
                         >
                     </label>
 
+                    @if (($editingCategory['is_system'] ?? false) === true)
+                        <input type="hidden" name="name" value="{{ old('name', $editingCategory['name'] ?? '') }}">
+                    @endif
+
+                    <section class="categories-preset-picker">
+                        <div class="categories-preset-head">
+                            <div>
+                                <span>Pilih Icon & Warna</span>
+                                <p>Pilih preset visual tenant ini. User tidak perlu atur icon dan warna secara terpisah.</p>
+                            </div>
+                            <div class="categories-preset-preview">
+                                @foreach ($presetGroups as $group)
+                                    @foreach ($group['presets'] as $preset)
+                                        @if ($preset['key'] === $selectedPresetKey)
+                                            <img src="{{ asset($preset['asset_path']) }}" alt="{{ $preset['label'] }}" data-active-preset-preview>
+                                        @endif
+                                    @endforeach
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <div class="categories-preset-groups">
+                            @foreach ($presetGroups as $group)
+                                <section class="categories-preset-group">
+                                    <div class="categories-preset-group-head">
+                                        <strong>{{ $group['group_label'] }}</strong>
+                                        <span>{{ $group['is_recommended'] ? 'Rekomendasi tenant ini' : 'Preset tambahan' }}</span>
+                                    </div>
+                                    <div class="categories-preset-grid">
+                                        @foreach ($group['presets'] as $preset)
+                                            <label class="categories-preset-option">
+                                                <input
+                                                    type="radio"
+                                                    name="visual_preset_key"
+                                                    value="{{ $preset['key'] }}"
+                                                    @checked($selectedPresetKey === $preset['key'])
+                                                    data-preset-option
+                                                >
+                                                <span class="categories-preset-card">
+                                                    <img src="{{ asset($preset['asset_path']) }}" alt="{{ $preset['label'] }}" data-preset-image>
+                                                </span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                </section>
+                            @endforeach
+                        </div>
+                    </section>
+
                     <label>
                         <span>Kata Kunci</span>
                         <textarea
@@ -260,6 +312,10 @@
                             @disabled(($editingCategory['is_system'] ?? false) === true)
                         >{{ $selectedKeywords }}</textarea>
                     </label>
+
+                    @if (($editingCategory['is_system'] ?? false) === true)
+                        <input type="hidden" name="keywords" value="{{ $selectedKeywords }}">
+                    @endif
 
                     <label class="categories-toggle-row">
                         <input type="hidden" name="is_active" value="0">
@@ -279,11 +335,9 @@
 
                     <footer class="categories-modal-actions">
                         <a href="{{ route('tenant.categories.index', request()->except(['create', 'edit'])) }}" class="categories-modal-button secondary">Batal</a>
-                        @if (($editingCategory['is_system'] ?? false) !== true)
-                            <button type="submit" class="categories-modal-button primary">
-                                {{ $editingCategory ? 'Simpan Perubahan' : 'Tambah Kategori' }}
-                            </button>
-                        @endif
+                        <button type="submit" class="categories-modal-button primary">
+                            {{ $editingCategory ? 'Simpan Perubahan' : 'Tambah Kategori' }}
+                        </button>
                     </footer>
                 </form>
             </div>
@@ -293,28 +347,42 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const actionMenus = Array.from(document.querySelectorAll('[data-category-action-menu]'));
+            const presetInputs = Array.from(document.querySelectorAll('[data-preset-option]'));
+            const activePresetPreview = document.querySelector('[data-active-preset-preview]');
 
-            if (actionMenus.length === 0) {
-                return;
+            if (presetInputs.length > 0 && activePresetPreview) {
+                presetInputs.forEach(function (input) {
+                    input.addEventListener('change', function () {
+                        const image = this.closest('.categories-preset-option')?.querySelector('[data-preset-image]');
+                        if (!image) {
+                            return;
+                        }
+
+                        activePresetPreview.src = image.getAttribute('src');
+                        activePresetPreview.alt = image.getAttribute('alt') || '';
+                    });
+                });
             }
 
-            document.addEventListener('click', function (event) {
-                actionMenus.forEach(function (menu) {
-                    if (menu.open && !menu.contains(event.target)) {
-                        menu.open = false;
+            if (actionMenus.length > 0) {
+                document.addEventListener('click', function (event) {
+                    actionMenus.forEach(function (menu) {
+                        if (menu.open && !menu.contains(event.target)) {
+                            menu.open = false;
+                        }
+                    });
+                });
+
+                document.addEventListener('keydown', function (event) {
+                    if (event.key !== 'Escape') {
+                        return;
                     }
-                });
-            });
 
-            document.addEventListener('keydown', function (event) {
-                if (event.key !== 'Escape') {
-                    return;
-                }
-
-                actionMenus.forEach(function (menu) {
-                    menu.open = false;
+                    actionMenus.forEach(function (menu) {
+                        menu.open = false;
+                    });
                 });
-            });
+            }
         });
     </script>
 @endsection

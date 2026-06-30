@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Enums\CategoryType;
 use App\Enums\TenantType;
 use App\Support\CategoryCatalog;
+use App\Support\CategoryVisualCatalog;
 use PHPUnit\Framework\TestCase;
 
 class CategoryCatalogTest extends TestCase
@@ -35,12 +36,47 @@ class CategoryCatalogTest extends TestCase
             'type' => CategoryType::INCOME->value,
             'label' => 'Pendapatan Lainnya',
             'is_system' => true,
+            'preset_key' => 'umkm_pendapatan_lainnya',
         ], $templates);
         $this->assertContains([
             'key' => 'other_expense',
             'type' => CategoryType::EXPENSE->value,
             'label' => 'Pengeluaran Lainnya',
             'is_system' => true,
+            'preset_key' => 'umkm_pengeluaran_lainnya',
         ], $templates);
+    }
+
+    public function test_custom_category_defaults_follow_tenant_group_fallback_visuals(): void
+    {
+        $this->assertSame(
+            'pf_pemasukan_lainnya',
+            CategoryVisualCatalog::defaultPresetKeyForCustomCategory(TenantType::PERSONAL, CategoryType::INCOME),
+        );
+        $this->assertSame(
+            'pf_pengeluaran_lainnya',
+            CategoryVisualCatalog::defaultPresetKeyForCustomCategory(TenantType::FAMILY, CategoryType::EXPENSE),
+        );
+        $this->assertSame(
+            'umkm_pengeluaran_lainnya',
+            CategoryVisualCatalog::defaultPresetKeyForCustomCategory(TenantType::UMKM, CategoryType::EXPENSE),
+        );
+        $this->assertSame(
+            'tc_operasional_kantor_lainnya',
+            CategoryVisualCatalog::defaultPresetKeyForCustomCategory(TenantType::COMPANY, CategoryType::EXPENSE),
+        );
+    }
+
+    public function test_tenant_only_sees_its_own_visual_preset_group(): void
+    {
+        $personalPresetKeys = CategoryVisualCatalog::allowedPresetKeysForTenantType(TenantType::PERSONAL);
+        $companyPresetKeys = CategoryVisualCatalog::allowedPresetKeysForTenantType(TenantType::COMPANY);
+
+        $this->assertContains('pf_gaji', $personalPresetKeys);
+        $this->assertNotContains('umkm_gaji', $personalPresetKeys);
+        $this->assertNotContains('tc_konsumsi', $personalPresetKeys);
+
+        $this->assertContains('tc_konsumsi', $companyPresetKeys);
+        $this->assertNotContains('pf_gaji', $companyPresetKeys);
     }
 }

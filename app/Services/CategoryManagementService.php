@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\CategoryType;
 use App\Models\Category;
 use App\Models\TenantUser;
+use App\Support\CategoryVisualCatalog;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -14,11 +16,19 @@ class CategoryManagementService
      */
     public function create(TenantUser $owner, array $payload): Category
     {
+        $tenantType = $owner->tenant->tenant_type;
+        $categoryType = CategoryType::from((string) $payload['type']);
+
         return Category::query()->create([
             'tenant_id' => $owner->tenant_id,
-            'type' => (string) $payload['type'],
-            'key' => $this->generateUniqueKey($owner->tenant_id, (string) $payload['type'], trim((string) $payload['name'])),
+            'type' => $categoryType->value,
+            'key' => $this->generateUniqueKey($owner->tenant_id, $categoryType->value, trim((string) $payload['name'])),
             'name' => trim((string) $payload['name']),
+            'visual_preset_key' => $this->resolveVisualPresetKey(
+                $categoryType,
+                $tenantType,
+                $payload['visual_preset_key'] ?? null,
+            ),
             'keywords' => $this->parseKeywords($payload['keywords'] ?? null),
             'is_system' => false,
             'is_active' => $this->toBool($payload['is_active'] ?? true),
@@ -30,15 +40,25 @@ class CategoryManagementService
      */
     public function update(Category $category, array $payload): Category
     {
+        $categoryType = CategoryType::from((string) $payload['type']);
+        $visualPresetKey = $this->resolveVisualPresetKey(
+            $categoryType,
+            $category->tenant->tenant_type,
+            $payload['visual_preset_key'] ?? $category->visual_preset_key,
+        );
+
         if ($category->is_system) {
-            throw ValidationException::withMessages([
-                'category' => 'Kategori fallback wajib tidak bisa diubah dari dashboard owner.',
-            ]);
+            $category->forceFill([
+                'visual_preset_key' => $visualPresetKey,
+            ])->save();
+
+            return $category->fresh();
         }
 
         $category->fill([
-            'type' => (string) $payload['type'],
+            'type' => $categoryType->value,
             'name' => trim((string) $payload['name']),
+            'visual_preset_key' => $visualPresetKey,
             'keywords' => $this->parseKeywords($payload['keywords'] ?? null),
             'is_active' => $this->toBool($payload['is_active'] ?? false),
         ])->save();
@@ -121,5 +141,14 @@ class CategoryManagementService
         }
 
         return $candidate;
+    }
+
+    private function resolveVisualPresetKey(CategoryType $categoryType, mixed $tenantType, mixed $visualPresetKey): string
+    {
+        if (is_string($visualPresetKey) && CategoryVisualCatalog::hasPresetKey($visualPresetKey)) {
+            return $visualPresetKey;
+        }
+
+        return CategoryVisualCatalog::defaultPresetKeyForCustomCategory($tenantType, $categoryType);
     }
 }

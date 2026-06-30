@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\CategoryType;
+use App\Support\CategoryVisualCatalog;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,6 +20,7 @@ class StoreCategoryRequest extends FormRequest
     public function rules(): array
     {
         $tenantId = $this->user('web')?->tenant_id;
+        $tenantType = $this->user('web')?->tenant?->tenant_type;
         $type = $this->input('type');
 
         return [
@@ -31,6 +33,9 @@ class StoreCategoryRequest extends FormRequest
                     ->where('tenant_id', $tenantId)
                     ->where('type', $type)),
             ],
+            'visual_preset_key' => ['required', 'string', Rule::in(
+                $tenantType ? CategoryVisualCatalog::allowedPresetKeysForTenantType($tenantType) : CategoryVisualCatalog::presetKeys()
+            )],
             'keywords' => ['nullable', 'string', 'max:1000'],
             'is_active' => ['nullable', 'boolean'],
         ];

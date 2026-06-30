@@ -8,6 +8,7 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\TenantUser;
 use App\Services\AccountBalanceService;
+use App\Support\CategoryVisualCatalog;
 use App\Support\Navigation\TenantNavigation;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
@@ -90,6 +91,7 @@ class DashboardController extends Controller
                 'transactions.type',
                 'transactions.amount',
                 'categories.name as category_name',
+                'categories.visual_preset_key as category_visual_preset_key',
             ])
             ->map(fn (object $transaction): array => [
                 'id' => (int) $transaction->id,
@@ -99,6 +101,7 @@ class DashboardController extends Controller
                 'type_key' => $transaction->type,
                 'icon_label' => self::transactionIconLabel((string) $transaction->type),
                 'category' => $transaction->category_name ?: 'Tanpa kategori',
+                'category_visual_asset' => self::categoryVisualAsset($transaction->category_visual_preset_key ?? null),
                 'amount' => self::formatSignedCurrency((string) $transaction->type, (float) $transaction->amount),
             ])
             ->all();
@@ -423,5 +426,12 @@ class DashboardController extends Controller
             'cash' => 'cash-icon.svg',
             default => 'bank-icon-muted.svg',
         };
+    }
+
+    private static function categoryVisualAsset(?string $presetKey): ?string
+    {
+        $preset = CategoryVisualCatalog::findPreset($presetKey);
+
+        return $preset ? asset($preset['asset_path']) : null;
     }
 }

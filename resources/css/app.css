@@ -579,6 +579,20 @@ span.tenant-sidebar-link-icon.is-members{
     color: #2247b8;
 }
 
+.tenant-category-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tenant-category-pill img {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    display: block;
+    flex: 0 0 auto;
+}
+
 .tenant-table-date {
     white-space: nowrap;
 }
@@ -1770,26 +1784,15 @@ span.tenant-sidebar-link-icon.is-members{
     width: 40px;
     height: 40px;
     border-radius: 999px;
+    overflow: hidden;
+    background: #f7f7fb;
 }
 
-.categories-name-icon.is-income {
-    background: #daf9e6;
-    color: #16794f;
-}
-
-.categories-name-icon.is-expense {
-    background: #ece4ff;
-    color: #5c42a6;
-}
-
-.categories-name-glyph {
-    position: relative;
-    display: inline-block;
-}
-
-.categories-name-glyph.is-income {
-    width: 18px;
-    height: 16px;
+.categories-name-icon-image {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
 }
 
 .categories-type-pill {
@@ -1996,6 +1999,134 @@ span.tenant-sidebar-link-icon.is-members{
     height: 18px;
 }
 
+.categories-preset-picker {
+    display: grid;
+    gap: 14px;
+}
+
+.categories-preset-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.categories-preset-head > div:first-child {
+    display: grid;
+    gap: 4px;
+}
+
+.categories-preset-head p {
+    margin: 0;
+    color: #616784;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.categories-preset-preview {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: #f8f9ff;
+    border: 1px solid #d9dbe8;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    flex: 0 0 auto;
+}
+
+.categories-preset-preview img {
+    width: 48px;
+    height: 48px;
+    display: block;
+    object-fit: cover;
+}
+
+.categories-preset-groups {
+    display: grid;
+    gap: 14px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.categories-preset-group {
+    border: 1px solid #e3e5f1;
+    border-radius: 14px;
+    background: #fbfcff;
+    padding: 14px;
+    display: grid;
+    gap: 12px;
+}
+
+.categories-preset-group-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.categories-preset-group-head strong {
+    color: #1a1b22;
+    font-size: 0.92rem;
+}
+
+.categories-preset-group-head span {
+    color: #616784;
+    font-size: 0.75rem;
+    line-height: 1.4;
+}
+
+.categories-preset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(56px, 56px));
+    gap: 10px;
+}
+
+.categories-preset-option {
+    position: relative;
+    cursor: pointer;
+}
+
+.categories-preset-option input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.categories-preset-card {
+    width: 56px;
+    height: 56px;
+    border: 1px solid #d9dbe8;
+    border-radius: 16px;
+    background: #ffffff;
+    padding: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.categories-preset-card img {
+    width: 48px;
+    height: 48px;
+    display: block;
+    object-fit: cover;
+}
+
+.categories-preset-option input:checked + .categories-preset-card {
+    border-color: #1e40af;
+    background: #eef3ff;
+    box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.12);
+}
+
+.categories-preset-option input:focus-visible + .categories-preset-card {
+    outline: 2px solid #00288e;
+    outline-offset: 2px;
+}
+
 .categories-modal-actions {
     display: flex;
     justify-content: flex-end;
@@ -2032,6 +2163,18 @@ span.tenant-sidebar-link-icon.is-members{
 .categories-modal-button.secondary {
     background: #fbf8ff;
     color: #1a1b22;
+}
+
+@media (max-width: 720px) {
+    .categories-preset-head,
+    .categories-preset-group-head {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .categories-preset-grid {
+        grid-template-columns: repeat(auto-fill, minmax(56px, 56px));
+    }
 }
 
 .transactions-overview-shell {
@@ -2351,6 +2494,21 @@ span.tenant-sidebar-link-icon.is-members{
     color: #1e40af;
 }
 
+.transactions-category-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #1a1b22;
+}
+
+.transactions-category-pill-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    display: block;
+    flex: 0 0 auto;
+}
+
 .transactions-status-pill.is-success {
     background: #dcfce7;
     color: #15803d;
@@ -2448,6 +2606,20 @@ span.tenant-sidebar-link-icon.is-members{
 .transactions-empty-cell {
     text-align: center;
     color: #727b9a;
+}
+
+.transactions-detail-category {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.transactions-detail-category img {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    display: block;
+    flex: 0 0 auto;
 }
 
 .transactions-pagination {

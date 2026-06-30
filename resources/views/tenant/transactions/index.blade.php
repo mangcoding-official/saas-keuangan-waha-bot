@@ -88,7 +88,14 @@
                                         {{ $transaction['type_value'] === 'income' ? 'Pemasukan' : ($transaction['type_value'] === 'expense' ? 'Pengeluaran' : 'Transfer') }}
                                     </span>
                                 </td>
-                                <td>{{ $transaction['category'] }}</td>
+                                <td>
+                                    <span class="transactions-category-pill">
+                                        @if ($transaction['category_visual_asset'])
+                                            <img src="{{ $transaction['category_visual_asset'] }}" alt="" class="transactions-category-pill-icon">
+                                        @endif
+                                        <span>{{ $transaction['category'] }}</span>
+                                    </span>
+                                </td>
                                 <td class="transactions-account-cell">
                                     @if ($transaction['type_value'] === 'transfer')
                                         <span>{{ $transaction['source_account'] }}</span>
@@ -211,7 +218,12 @@
 
                     <section class="transactions-detail-block">
                         <small>Kategori</small>
-                        <strong>{{ $selectedTransaction['category'] }}</strong>
+                        <strong class="transactions-detail-category">
+                            @if ($selectedTransaction['category_visual_asset'])
+                                <img src="{{ $selectedTransaction['category_visual_asset'] }}" alt="">
+                            @endif
+                            <span>{{ $selectedTransaction['category'] }}</span>
+                        </strong>
                     </section>
 
                     <section class="transactions-detail-block">

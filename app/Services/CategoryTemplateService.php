@@ -41,7 +41,7 @@ class CategoryTemplateService
     }
 
     /**
-     * @param  array{key: string, type: string, label: string, is_system: bool}  $template
+     * @param  array{key: string, type: string, label: string, is_system: bool, preset_key: string}  $template
      * @return array<string, mixed>
      */
     private function rowForTemplate(int $tenantId, array $template): array
@@ -51,6 +51,7 @@ class CategoryTemplateService
             'type' => $template['type'],
             'key' => $template['key'],
             'name' => $template['label'],
+            'visual_preset_key' => $template['preset_key'],
             'keywords' => null,
             'is_system' => $template['is_system'],
             'is_active' => true,

@@ -14,6 +14,7 @@ use App\Models\Category;
 use App\Models\TenantUser;
 use App\Models\Transaction;
 use App\Services\TransactionManagementService;
+use App\Support\CategoryVisualCatalog;
 use App\Support\Navigation\TenantNavigation;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -270,6 +271,7 @@ class TransactionController extends Controller
             'recorder_initials' => $recorderInitials !== '' ? $recorderInitials : 'SY',
             'category' => $transaction->category?->name ?: '-',
             'category_id' => $transaction->category_id,
+            'category_visual_asset' => $this->resolveCategoryVisualAsset($transaction),
             'source_account' => $transaction->sourceAccount?->name ?: '-',
             'source_account_id' => $transaction->source_account_id,
             'destination_account' => $transaction->destinationAccount?->name ?: '-',
@@ -382,5 +384,16 @@ class TransactionController extends Controller
         $prefix = $change > 0 ? '+' : '';
 
         return $prefix.number_format($change, 1, ',', '').'%';
+    }
+
+    private function resolveCategoryVisualAsset(Transaction $transaction): ?string
+    {
+        if (! $transaction->category) {
+            return null;
+        }
+
+        $preset = CategoryVisualCatalog::findPreset($transaction->category->visual_preset_key);
+
+        return $preset ? asset($preset['asset_path']) : null;
     }
 }
