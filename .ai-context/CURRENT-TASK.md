@@ -2,7 +2,7 @@
 
 ## Scope
 
-- Goal: Samakan UI tabel tenant transactions dengan pola accounts, tambahkan modal filter untuk range tanggal, tipe, kategori, dan akun, sambil mempertahankan default tabel semua transaksi terbaru, overview month-over-month, serta flow void/export yang sudah dikerjakan.
+- Goal: Samakan UI tabel tenant transactions dengan pola accounts, tambahkan modal filter untuk range tanggal, tipe, kategori, dan akun, lalu rapikan trigger buka/tutup filter agar tidak reload halaman, sambil mempertahankan default tabel semua transaksi terbaru, overview month-over-month, serta flow void/export yang sudah dikerjakan.
 - Type: implement
 - Mode: balanced
 - Allowed modules: `app/Http/Controllers/Tenant/TransactionController.php`, `resources/views/tenant/transactions/index.blade.php`, test feature transaksi yang paling dekat, `.ai-context/CURRENT-TASK.md`
@@ -19,8 +19,9 @@
 - Confirmed facts: setelah reread file penuh, handler close action menu untuk state normal sudah ada, sehingga bagian itu tidak perlu diubah.
 - Confirmed facts: `formatTrend()` saat ini bisa menghasilkan angka negatif seperti `-100,0%`, dan itu terasa buruk di UI overview.
 - Confirmed facts: query transaksi saat ini belum menerima `date_from` / `date_to` eksplisit, jadi UI filter range tanggal belum bisa disambungkan langsung.
-- Root cause or hypothesis: pekerjaan sekarang terpusat di controller transaksi, blade transaksi, CSS transaksi, dan test feature transaksi untuk menyatukan UI table head + filter modal dengan query filter yang eksplisit.
-- Next verification: review diff, jalankan test feature transaksi terfokus, validasi sintaks PHP, lalu cek route tenant transactions.
+- Confirmed facts: trigger filter saat ini masih memakai query `filter=1`, jadi buka/tutup modal selalu memicu request baru meski user hanya ingin menampilkan shell modal.
+- Root cause or hypothesis: filter modal seharusnya menjadi state lokal di blade agar toggle open/close tidak bergantung pada query string, sementara submit filter tetap request normal untuk refresh tabel.
+- Next verification: review diff, jalankan test feature transaksi terfokus, validasi sintaks PHP, lalu cek render transaksi tanpa query `filter`.
 
 ## Read ledger
 

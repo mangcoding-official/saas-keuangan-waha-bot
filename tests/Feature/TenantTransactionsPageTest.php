@@ -122,19 +122,20 @@ class TenantTransactionsPageTest extends TestCase
         $response->assertDontSee('-100,0%');
     }
 
-    public function test_filter_modal_can_be_opened_from_transactions_page(): void
+    public function test_transactions_page_renders_filter_form_shell_without_filter_query(): void
     {
         $owner = $this->createTenantUser();
 
         $response = $this
             ->actingAs($owner, 'web')
-            ->get(route('tenant.transactions.index', ['filter' => 1]));
+            ->get(route('tenant.transactions.index'));
 
         $response->assertOk();
         $response->assertSee('Filter Transaksi');
         $response->assertSee('Terapkan Filter');
         $response->assertSee('Tanggal Mulai');
         $response->assertSee('Tanggal Selesai');
+        $response->assertSee('<div class="transactions-modal-backdrop" data-filter-modal hidden>', false);
     }
 
     public function test_transactions_filter_supports_date_range_type_category_and_account(): void

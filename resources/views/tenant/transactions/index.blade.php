@@ -9,7 +9,7 @@
         ->sort()
         ->values()
         ->all();
-    $isModalOpen = $editingTransaction !== null || $voidingTransaction !== null || $isCreateModal || $isFilterModal;
+    $isModalOpen = $editingTransaction !== null || $voidingTransaction !== null || $isCreateModal;
     $modalType = old('transaction_type', $editingTransaction['type_value'] ?? 'expense');
 @endphp
 
@@ -66,16 +66,19 @@
                     @endif
                 </div>
                 <div class="transactions-table-tools">
-                    <a
-                        href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['filter' => 1])) }}"
+                    <button
+                        type="button"
                         class="transactions-table-tool {{ $activeFilterCount > 0 ? 'is-active' : '' }}"
                         aria-label="Filter transaksi"
+                        aria-haspopup="dialog"
+                        aria-expanded="false"
+                        data-filter-modal-trigger
                     >
                         <img src="{{ asset('images/figma/accounts/table-list.svg') }}" alt="">
                         @if ($activeFilterCount > 0)
                             <span>{{ $activeFilterCount }}</span>
                         @endif
-                    </a>
+                    </button>
                 </div>
             </div>
 
@@ -302,23 +305,97 @@
         </div>
     @endif
 
+    <div class="transactions-modal-backdrop" data-filter-modal hidden>
+        <div class="transactions-modal-card" role="dialog" aria-modal="true" aria-labelledby="transactions-filter-title">
+            <div class="transactions-modal-head">
+                <div>
+                    <h3 id="transactions-filter-title">Filter Transaksi</h3>
+                    <p>Saring data transaksi berdasarkan periode, tipe, kategori, dan akun.</p>
+                </div>
+                <button type="button" data-filter-modal-close aria-label="Tutup filter">&times;</button>
+            </div>
+            <form action="{{ route('tenant.transactions.index') }}" method="get" class="transactions-modal-form">
+                @if ($activeFilters['search'] !== '')
+                    <input type="hidden" name="search" value="{{ $activeFilters['search'] }}">
+                @endif
+                <div class="transactions-modal-note">
+                    Filter diterapkan ke tabel transaksi dan juga ke hasil export, sementara card overview tetap membandingkan bulan ini dengan bulan sebelumnya.
+                </div>
+                <div class="transactions-modal-grid-2">
+                    <label>
+                        <span>Tanggal Mulai</span>
+                        <input type="date" name="date_from" value="{{ $activeFilters['date_from'] }}">
+                    </label>
+                    <label>
+                        <span>Tanggal Selesai</span>
+                        <input type="date" name="date_to" value="{{ $activeFilters['date_to'] }}">
+                    </label>
+                </div>
+                <div class="transactions-modal-grid-2">
+                    <label>
+                        <span>Tipe Transaksi</span>
+                        <select name="type">
+                            @foreach ($transactionTypes as $typeOption)
+                                <option value="{{ $typeOption['value'] }}" @selected($activeFilters['type'] === $typeOption['value'])>{{ $typeOption['label'] }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                    <label>
+                        <span>Akun</span>
+                        <select name="account_id">
+                            <option value="">Semua Akun</option>
+                            @foreach ($activeAccounts as $account)
+                                <option value="{{ $account['id'] }}" @selected($activeFilters['account_id'] === (string) $account['id'])>{{ $account['name'] }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                </div>
+                <label>
+                    <span>Kategori</span>
+                    <select name="category_id">
+                        <option value="">Semua Kategori</option>
+                        @if (count($incomeCategories) > 0)
+                            <optgroup label="Pemasukan">
+                                @foreach ($incomeCategories as $category)
+                                    <option value="{{ $category['id'] }}" @selected($activeFilters['category_id'] === (string) $category['id'])>{{ $category['name'] }}</option>
+                                @endforeach
+                            </optgroup>
+                        @endif
+                        @if (count($expenseCategories) > 0)
+                            <optgroup label="Pengeluaran">
+                                @foreach ($expenseCategories as $category)
+                                    <option value="{{ $category['id'] }}" @selected($activeFilters['category_id'] === (string) $category['id'])>{{ $category['name'] }}</option>
+                                @endforeach
+                            </optgroup>
+                        @endif
+                    </select>
+                </label>
+                <div class="transactions-modal-actions is-between">
+                    <a href="{{ route('tenant.transactions.index', collect(request()->only(['search']))->filter(fn ($value) => filled($value))->all()) }}" class="transactions-button secondary">Reset Filter</a>
+                    <div class="transactions-modal-actions-group">
+                        <button type="button" class="transactions-button secondary" data-filter-modal-close>Batal</button>
+                        <button type="submit" class="transactions-button primary">Terapkan Filter</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
     @if ($isModalOpen)
         <div class="transactions-modal-backdrop">
             <div class="transactions-modal-card">
                 <div class="transactions-modal-head">
                     <div>
-                        <h3>{{ $editingTransaction ? 'Edit Transaksi' : ($voidingTransaction ? 'Void Transaksi' : ($isFilterModal ? 'Filter Transaksi' : 'Tambah Transaksi')) }}</h3>
+                        <h3>{{ $editingTransaction ? 'Edit Transaksi' : ($voidingTransaction ? 'Void Transaksi' : 'Tambah Transaksi') }}</h3>
                         <p>
                             {{ $editingTransaction
                                 ? 'ID: TRN-'.$editingTransaction['id']
                                 : ($voidingTransaction
                                     ? 'ID: TRN-'.$voidingTransaction['id']
-                                    : ($isFilterModal
-                                        ? 'Saring data transaksi berdasarkan periode, tipe, kategori, dan akun.'
-                                        : 'Input transaksi baru menggunakan format yang konsisten.')) }}
+                                    : 'Input transaksi baru menggunakan format yang konsisten.') }}
                         </p>
                     </div>
-                    <a href="{{ route('tenant.transactions.index', request()->except(['edit', 'void', 'create', 'filter'])) }}">&times;</a>
+                    <a href="{{ route('tenant.transactions.index', request()->except(['edit', 'void', 'create'])) }}">&times;</a>
                 </div>
 
                 @if ($editingTransaction)
@@ -386,71 +463,6 @@
                             <button type="submit" class="transactions-button primary">Void transaksi</button>
                         </div>
                     </form>
-                @elseif ($isFilterModal)
-                    <form action="{{ route('tenant.transactions.index') }}" method="get" class="transactions-modal-form">
-                        @if ($activeFilters['search'] !== '')
-                            <input type="hidden" name="search" value="{{ $activeFilters['search'] }}">
-                        @endif
-                        <div class="transactions-modal-note">
-                            Filter diterapkan ke tabel transaksi dan juga ke hasil export, sementara card overview tetap membandingkan bulan ini dengan bulan sebelumnya.
-                        </div>
-                        <div class="transactions-modal-grid-2">
-                            <label>
-                                <span>Tanggal Mulai</span>
-                                <input type="date" name="date_from" value="{{ $activeFilters['date_from'] }}">
-                            </label>
-                            <label>
-                                <span>Tanggal Selesai</span>
-                                <input type="date" name="date_to" value="{{ $activeFilters['date_to'] }}">
-                            </label>
-                        </div>
-                        <div class="transactions-modal-grid-2">
-                            <label>
-                                <span>Tipe Transaksi</span>
-                                <select name="type">
-                                    @foreach ($transactionTypes as $typeOption)
-                                        <option value="{{ $typeOption['value'] }}" @selected($activeFilters['type'] === $typeOption['value'])>{{ $typeOption['label'] }}</option>
-                                    @endforeach
-                                </select>
-                            </label>
-                            <label>
-                                <span>Akun</span>
-                                <select name="account_id">
-                                    <option value="">Semua Akun</option>
-                                    @foreach ($activeAccounts as $account)
-                                        <option value="{{ $account['id'] }}" @selected($activeFilters['account_id'] === (string) $account['id'])>{{ $account['name'] }}</option>
-                                    @endforeach
-                                </select>
-                            </label>
-                        </div>
-                        <label>
-                            <span>Kategori</span>
-                            <select name="category_id">
-                                <option value="">Semua Kategori</option>
-                                @if (count($incomeCategories) > 0)
-                                    <optgroup label="Pemasukan">
-                                        @foreach ($incomeCategories as $category)
-                                            <option value="{{ $category['id'] }}" @selected($activeFilters['category_id'] === (string) $category['id'])>{{ $category['name'] }}</option>
-                                        @endforeach
-                                    </optgroup>
-                                @endif
-                                @if (count($expenseCategories) > 0)
-                                    <optgroup label="Pengeluaran">
-                                        @foreach ($expenseCategories as $category)
-                                            <option value="{{ $category['id'] }}" @selected($activeFilters['category_id'] === (string) $category['id'])>{{ $category['name'] }}</option>
-                                        @endforeach
-                                    </optgroup>
-                                @endif
-                            </select>
-                        </label>
-                        <div class="transactions-modal-actions is-between">
-                            <a href="{{ route('tenant.transactions.index', collect(request()->only(['search']))->filter(fn ($value) => filled($value))->all()) }}" class="transactions-button secondary">Reset Filter</a>
-                            <div class="transactions-modal-actions-group">
-                                <a href="{{ route('tenant.transactions.index', request()->except(['filter'])) }}" class="transactions-button secondary">Batal</a>
-                                <button type="submit" class="transactions-button primary">Terapkan Filter</button>
-                            </div>
-                        </div>
-                    </form>
                 @else
                     <div class="transactions-modal-form">
                         <div class="transactions-modal-note">Untuk saat ini, pembuatan transaksi baru dilakukan melalui WhatsApp command agar sinkron dengan bot WAHA.</div>
@@ -472,67 +484,84 @@
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 const actionMenus = Array.from(document.querySelectorAll('[data-transaction-action-menu]'));
+                const filterModalTrigger = document.querySelector('[data-filter-modal-trigger]');
+                const filterModal = document.querySelector('[data-filter-modal]');
+                const filterModalCloseButtons = Array.from(document.querySelectorAll('[data-filter-modal-close]'));
                 const typeInput = document.querySelector('[data-transaction-type-input]');
                 const typeButtons = Array.from(document.querySelectorAll('[data-type-option]'));
                 const sourceSelect = document.querySelector('[data-source-account-select]');
                 const destinationSelect = document.querySelector('[data-destination-account-select]');
                 const categorySelect = document.querySelector('[data-category-select]');
 
-                if (!typeInput || typeButtons.length === 0 || !sourceSelect || !destinationSelect || !categorySelect) {
-                    return;
-                }
-
-                const syncTypeState = (selectedType) => {
-                    typeButtons.forEach((button) => {
-                        button.classList.toggle('active', button.dataset.typeOption === selectedType);
-                    });
-
-                    sourceSelect.disabled = selectedType === 'income';
-                    destinationSelect.disabled = selectedType === 'expense';
-                    categorySelect.disabled = selectedType === 'transfer';
-
-                    Array.from(categorySelect.options).forEach((option) => {
-                        const optionType = option.dataset.categoryType;
-                        if (!optionType) {
-                            option.hidden = false;
-                            return;
-                        }
-
-                        option.hidden = optionType !== selectedType;
-                    });
-
-                    const selectedOption = categorySelect.selectedOptions[0];
-                    if (selectedOption && selectedOption.dataset.categoryType && selectedOption.dataset.categoryType !== selectedType) {
-                        categorySelect.value = '';
+                const closeFilterModal = () => {
+                    if (!filterModal || !filterModalTrigger) {
+                        return;
                     }
+
+                    filterModal.hidden = true;
+                    filterModalTrigger.setAttribute('aria-expanded', 'false');
+                    document.body.classList.remove('has-modal-open');
                 };
 
-                typeButtons.forEach((button) => {
-                    button.addEventListener('click', function () {
-                        const nextType = this.dataset.typeOption;
-                        typeInput.value = nextType;
-                        syncTypeState(nextType);
-                    });
-                });
+                const openFilterModal = () => {
+                    if (!filterModal || !filterModalTrigger) {
+                        return;
+                    }
 
-                syncTypeState(typeInput.value);
+                    filterModal.hidden = false;
+                    filterModalTrigger.setAttribute('aria-expanded', 'true');
+                    document.body.classList.add('has-modal-open');
+                };
 
-                document.addEventListener('click', function (event) {
-                    actionMenus.forEach(function (menu) {
-                        if (menu.open && !menu.contains(event.target)) {
-                            menu.open = false;
+                if (filterModalTrigger && filterModal) {
+                    filterModalTrigger.addEventListener('click', openFilterModal);
+
+                    filterModal.addEventListener('click', function (event) {
+                        if (event.target === filterModal) {
+                            closeFilterModal();
                         }
                     });
-                });
-            });
-        </script>
-    @else
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                const actionMenus = Array.from(document.querySelectorAll('[data-transaction-action-menu]'));
 
-                if (actionMenus.length === 0) {
-                    return;
+                    filterModalCloseButtons.forEach(function (button) {
+                        button.addEventListener('click', closeFilterModal);
+                    });
+                }
+
+                if (typeInput && typeButtons.length > 0 && sourceSelect && destinationSelect && categorySelect) {
+                    const syncTypeState = (selectedType) => {
+                        typeButtons.forEach((button) => {
+                            button.classList.toggle('active', button.dataset.typeOption === selectedType);
+                        });
+
+                        sourceSelect.disabled = selectedType === 'income';
+                        destinationSelect.disabled = selectedType === 'expense';
+                        categorySelect.disabled = selectedType === 'transfer';
+
+                        Array.from(categorySelect.options).forEach((option) => {
+                            const optionType = option.dataset.categoryType;
+                            if (!optionType) {
+                                option.hidden = false;
+                                return;
+                            }
+
+                            option.hidden = optionType !== selectedType;
+                        });
+
+                        const selectedOption = categorySelect.selectedOptions[0];
+                        if (selectedOption && selectedOption.dataset.categoryType && selectedOption.dataset.categoryType !== selectedType) {
+                            categorySelect.value = '';
+                        }
+                    };
+
+                    typeButtons.forEach((button) => {
+                        button.addEventListener('click', function () {
+                            const nextType = this.dataset.typeOption;
+                            typeInput.value = nextType;
+                            syncTypeState(nextType);
+                        });
+                    });
+
+                    syncTypeState(typeInput.value);
                 }
 
                 document.addEventListener('click', function (event) {
@@ -547,6 +576,72 @@
                     if (event.key !== 'Escape') {
                         return;
                     }
+
+                    closeFilterModal();
+
+                    actionMenus.forEach(function (menu) {
+                        menu.open = false;
+                    });
+                });
+            });
+        </script>
+    @else
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const actionMenus = Array.from(document.querySelectorAll('[data-transaction-action-menu]'));
+                const filterModalTrigger = document.querySelector('[data-filter-modal-trigger]');
+                const filterModal = document.querySelector('[data-filter-modal]');
+                const filterModalCloseButtons = Array.from(document.querySelectorAll('[data-filter-modal-close]'));
+
+                const closeFilterModal = () => {
+                    if (!filterModal || !filterModalTrigger) {
+                        return;
+                    }
+
+                    filterModal.hidden = true;
+                    filterModalTrigger.setAttribute('aria-expanded', 'false');
+                    document.body.classList.remove('has-modal-open');
+                };
+
+                const openFilterModal = () => {
+                    if (!filterModal || !filterModalTrigger) {
+                        return;
+                    }
+
+                    filterModal.hidden = false;
+                    filterModalTrigger.setAttribute('aria-expanded', 'true');
+                    document.body.classList.add('has-modal-open');
+                };
+
+                if (filterModalTrigger && filterModal) {
+                    filterModalTrigger.addEventListener('click', openFilterModal);
+
+                    filterModal.addEventListener('click', function (event) {
+                        if (event.target === filterModal) {
+                            closeFilterModal();
+                            return;
+                        }
+                    });
+
+                    filterModalCloseButtons.forEach(function (button) {
+                        button.addEventListener('click', closeFilterModal);
+                    });
+                }
+
+                document.addEventListener('click', function (event) {
+                    actionMenus.forEach(function (menu) {
+                        if (menu.open && !menu.contains(event.target)) {
+                            menu.open = false;
+                        }
+                    });
+                });
+
+                document.addEventListener('keydown', function (event) {
+                    if (event.key !== 'Escape') {
+                        return;
+                    }
+
+                    closeFilterModal();
 
                     actionMenus.forEach(function (menu) {
                         menu.open = false;

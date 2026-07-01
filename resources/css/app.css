@@ -3041,6 +3041,10 @@ span.tenant-sidebar-link-icon.is-members{
     padding: 16px;
 }
 
+.transactions-modal-backdrop[hidden] {
+    display: none !important;
+}
+
 .transactions-modal-card {
     width: min(100%, 672px);
     border: 1px solid #c4c5d5;
@@ -3069,9 +3073,14 @@ span.tenant-sidebar-link-icon.is-members{
     color: #444653;
 }
 
-.transactions-modal-head a {
+.transactions-modal-head a,
+.transactions-modal-head button {
     font-size: 1.25rem;
     color: #444653;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
 }
 
 .transactions-modal-form {

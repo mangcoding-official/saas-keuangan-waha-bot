@@ -137,7 +137,6 @@ class TransactionController extends Controller
         $selectedTransaction = $this->resolveSelectedTransaction($request, $user, $baseQuery);
         $editingTransaction = $this->resolveEditingTransaction($request, $user, $baseQuery);
         $voidingTransaction = $this->resolveVoidingTransaction($request, $user, $baseQuery);
-        $isFilterModal = $request->boolean('filter');
         $activeAccounts = Account::query()
             ->where('tenant_id', $tenantId)
             ->where('is_active', true)
@@ -198,7 +197,6 @@ class TransactionController extends Controller
             'selectedTransaction' => $selectedTransaction,
             'editingTransaction' => $editingTransaction,
             'voidingTransaction' => $voidingTransaction,
-            'isFilterModal' => $isFilterModal,
             'isCreateModal' => $request->boolean('create') && $user->role === UserRole::OWNER,
             'activeAccounts' => $activeAccounts,
             'incomeCategories' => $incomeCategories,
