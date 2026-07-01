@@ -123,21 +123,6 @@
                         </div>
                     </dl>
                 </section>
-
-                <section class="profile-panel-card is-highlight">
-                    <div class="profile-panel-head">
-                        <div>
-                            <p class="profile-panel-eyebrow">STATUS ALPHA</p>
-                            <h2>Akun Anda sudah masuk ke flow nyata</h2>
-                        </div>
-                    </div>
-
-                    <ul class="profile-note-list">
-                        <li>Halaman ini sudah membaca data login tenant yang aktif, bukan copy placeholder.</li>
-                        <li>Status akun dan verifikasi mengikuti data workspace saat ini.</li>
-                        <li>Ringkasan tenant di samping bisa dipakai untuk cross-check saat onboarding member.</li>
-                    </ul>
-                </section>
             </aside>
         </div>
     </div>
