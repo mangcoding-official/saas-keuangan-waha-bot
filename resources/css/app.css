@@ -251,6 +251,22 @@ span.tenant-sidebar-link-icon.is-members{
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.tenant-topbar-account {
+    position: relative;
+}
+
+.tenant-topbar-profile:focus-visible,
+.tenant-topbar-account-close:focus-visible,
+.tenant-topbar-account-primary:focus-visible,
+.tenant-topbar-account-action:focus-visible {
+    outline: 3px solid rgba(34, 71, 184, 0.15);
+    outline-offset: 2px;
 }
 
 .tenant-topbar-profile-copy {
@@ -282,6 +298,170 @@ span.tenant-sidebar-link-icon.is-members{
     align-items: center;
     justify-content: center;
     font-weight: 700;
+}
+
+.tenant-topbar-account-popover {
+    position: absolute;
+    top: calc(100% + 16px);
+    right: 0;
+    width: min(360px, calc(100vw - 32px));
+    border: 1px solid #c4c5d5;
+    border-radius: 24px;
+    background: #eef2fb;
+    box-shadow: 0 18px 36px rgba(26, 27, 34, 0.16);
+    padding: 20px;
+    display: grid;
+    gap: 18px;
+    z-index: 40;
+}
+
+.tenant-topbar-account-popover[hidden] {
+    display: none;
+}
+
+.tenant-topbar-account-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.tenant-topbar-account-head p,
+.tenant-topbar-account-summary strong,
+.tenant-topbar-account-summary span,
+.tenant-topbar-account-primary,
+.tenant-topbar-account-action,
+.tenant-topbar-account-footer {
+    font-family: 'Geist', var(--font-sans);
+}
+
+.tenant-topbar-account-head p {
+    margin: 0;
+    color: #1f2030;
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+.tenant-topbar-account-close {
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: #4b5563;
+    font-size: 1.8rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.tenant-topbar-account-summary {
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    text-align: center;
+}
+
+.tenant-topbar-account-avatar {
+    width: 84px;
+    height: 84px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #9a786a, #7e665e);
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.tenant-topbar-account-summary strong {
+    color: #1a1b22;
+    font-size: 1.1rem;
+    line-height: 1.25;
+}
+
+.tenant-topbar-account-summary span {
+    color: #5f6379;
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+
+.tenant-topbar-account-primary {
+    min-height: 40px;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 40, 142, 0.35);
+    background: #ffffff;
+    color: #0f4ecc;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 18px;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.tenant-topbar-account-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2px;
+    padding: 2px;
+    border-radius: 999px;
+    background: #ffffff;
+}
+
+.tenant-topbar-account-action-form {
+    display: block;
+}
+
+.tenant-topbar-account-action {
+    width: 100%;
+    min-height: 54px;
+    border: 0;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #1f2030;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 0 16px;
+    font-size: 0.96rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.tenant-topbar-account-action:hover,
+.tenant-topbar-account-primary:hover {
+    background: #f8fbff;
+}
+
+.tenant-topbar-account-action-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: #dbe5ff;
+    color: #0f4ecc;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    font-weight: 700;
+    flex: 0 0 auto;
+}
+
+.tenant-topbar-account-action.is-logout .tenant-topbar-account-action-icon {
+    background: #eef2f7;
+    color: #334155;
+}
+
+.tenant-topbar-account-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: #5f6379;
+    font-size: 0.82rem;
+    line-height: 1.45;
 }
 
 .tenant-dashboard-frame {
@@ -988,8 +1168,28 @@ span.tenant-sidebar-link-icon.is-members{
         align-items: stretch;
     }
 
+    .tenant-topbar-actions {
+        justify-content: space-between;
+        flex-wrap: wrap;
+    }
+
     .tenant-topbar-search-input {
         width: 100%;
+    }
+
+    .tenant-topbar-profile-copy {
+        justify-items: start;
+    }
+
+    .tenant-topbar-account-popover {
+        position: static;
+        width: 100%;
+        margin-top: 12px;
+    }
+
+    .tenant-topbar-account-actions {
+        grid-template-columns: 1fr;
+        border-radius: 18px;
     }
 
     .tenant-dashboard-frame {
@@ -1227,7 +1427,7 @@ span.tenant-sidebar-link-icon.is-members{
     justify-content: space-between;
     align-items: center;
     gap: 16px;
-    margin: 24px 24px 0;
+    margin: 0px 24px 0;
 }
 
 .accounts-page-title {
@@ -2199,7 +2399,7 @@ span.tenant-sidebar-link-icon.is-members{
 }
 
 .transactions-overview-shell {
-    padding: 32px;
+    padding: 0px 24px;
     display: grid;
     gap: 24px;
 }
@@ -3859,14 +4059,14 @@ img {
 .members-page-title {
     margin: 0;
     color: #1a1b22;
-    font-size: 2rem;
+    font-size: 1.5rem;
     line-height: 1.25;
     font-weight: 700;
 }
 
 .members-page-copy {
     margin: 4px 0 0;
-    color: #444653;
+    color: #757684;
     font-size: 1rem;
     line-height: 1.5;
 }
@@ -6839,7 +7039,7 @@ h3.register-kicker {
     }
 
     .members-page-title {
-        font-size: 2rem;
+        font-size: 1.5rem;
     }
 
     .profile-hero-card,

@@ -6,6 +6,7 @@ import { initInviteCopy } from './modules/invite-copy';
 import { initLoginForm } from './modules/login-form';
 import { initModals } from './modules/modal';
 import { initSidebar } from './modules/sidebar';
+import { initTopbarAccount } from './modules/topbar-account';
 
 document.addEventListener('DOMContentLoaded', () => {
     initAccountForm();
@@ -15,4 +16,5 @@ document.addEventListener('DOMContentLoaded', () => {
     initLoginForm();
     initModals();
     initSidebar();
+    initTopbarAccount();
 });
