@@ -41,11 +41,6 @@ class ResourcePageController extends Controller
             'description' => 'Tenant settings akan menampung konfigurasi layanan dan profil tenant.',
             'state_title' => 'Settings shell siap dipakai',
         ],
-        'profile' => [
-            'title' => 'Profile',
-            'description' => 'Member profile akan menjadi titik awal akses dashboard personal.',
-            'state_title' => 'Profile data akan diisi dari tenant user',
-        ],
     ];
 
     public function show(Request $request, string $page): View
