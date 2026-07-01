@@ -2,32 +2,34 @@
 
 ## Scope
 
-- Goal: Perbaiki bug agar invite owner tetap bisa dipakai ulang saat email atau nomor WhatsApp sudah terdaftar pada owner yang masih pending verification.
-- Type: debug
-- Mode: low
-- Allowed modules: request registrasi owner, service registrasi owner, test gate invite
-- Explicit exclusions: tidak mengubah halaman admin invite, tidak redesign UI, tidak menambah migrasi atau modul baru
+- Goal: Pastikan register public benar-benar invite-gated setelah modul super admin invite management tersedia, termasuk pembatasan email/WhatsApp target dan akses form hanya saat invite valid.
+- Type: implement
+- Mode: balanced
+- Allowed modules: controller register public, view register public, service invite registrasi owner, service registrasi owner, test gate invite
+- Explicit exclusions: tidak mengubah flow super admin invite management, tidak redesign besar halaman register, tidak menambah migrasi atau modul baru
 
 ## Evidence and checkpoint
 
-- Confirmed facts: `RegisterTenantOwnerRequest` masih memaksa `owner_email` unique pada `tenant_users`.
-- Confirmed facts: `TenantOwnerRegistrationService` masih menolak `owner_whatsapp` yang sudah ada di `tenant_users`, tanpa membedakan user verified vs pending.
-- Confirmed facts: skema `tenant_users` memang unique untuk email dan nomor WA, jadi resend registrasi hanya aman bila mereuse owner pending yang sama, bukan membuat baris baru.
-- Root cause or hypothesis: invite baru untuk calon owner yang pernah registrasi tetapi belum verifikasi gagal di tahap validasi uniqueness, padahal seharusnya akun pending lama direuse dan activation code digenerate ulang.
-- Next verification: lint dua file PHP yang diubah dan jalankan test gate invite khusus untuk kasus reuse owner pending.
+- Confirmed facts: modul `internal.invites.*` sudah ada untuk create, resend WhatsApp, revoke, dan copy share link register.
+- Confirmed facts: halaman `/register` masih menampilkan form penuh walau belum ada invite valid; gate baru benar-benar terjadi saat submit lewat field `invite_code`.
+- Confirmed facts: `OwnerRegistrationInviteService::consumeForOwnerRegistration()` baru membatasi email target, belum membatasi `invited_whatsapp_number`.
+- Confirmed facts: route `/register` tetap harus public sesuai kontrak alpha, jadi pembatasan perlu hidup di policy gate, bukan dengan menutup route.
+- Root cause or hypothesis: flow sekarang belum cukup ketat untuk alpha tertutup karena siapa pun masih bisa masuk ke form penuh dan invite bertarget WhatsApp belum benar-benar membatasi owner yang boleh daftar.
+- Next verification: lint file PHP yang diubah, lalu jalankan test invite management + invite gate register.
 
 ## Read ledger
 
 | Path | Purpose / symbols | Changed since read? |
 |---|---|---|
 | `app/Http/Requests/RegisterTenantOwnerRequest.php` | validasi email owner | no |
+| `app/Http/Controllers/Web/Auth/TenantRegistrationController.php` | gate halaman register public | no |
+| `app/Services/OwnerRegistrationInviteService.php` | validasi invite target email/whatsapp | no |
 | `app/Services/TenantOwnerRegistrationService.php` | create/reuse owner registration | no |
-| `app/Services/CategoryTemplateService.php` | cek idempotensi default category | no |
-| `app/Services/ActivationCodeService.php` | regenerate activation code lama | no |
 | `tests/Feature/TenantRegistrationInviteGateTest.php` | regression coverage invite register | no |
+| `resources/views/web/auth/register.blade.php` | state form saat invite valid/tidak valid | no |
 
 ## Change plan
 
-- Files allowed to change: `.ai-context/CURRENT-TASK.md`, `RegisterTenantOwnerRequest`, `TenantOwnerRegistrationService`, `TenantRegistrationInviteGateTest`
-- Contracts to preserve: route registrasi owner, format invite code, uniqueness final untuk user verified, tanpa duplikasi tenant/user
-- Verification plan: `php -l` file yang berubah dan `php artisan test --filter=TenantRegistrationInviteGateTest`
+- Files allowed to change: `.ai-context/CURRENT-TASK.md`, `TenantRegistrationController`, `OwnerRegistrationInviteService`, `TenantOwnerRegistrationService`, `register.blade.php`, `TenantRegistrationInviteGateTest`
+- Contracts to preserve: route `/register` tetap public, format invite code, status invite existing, reuse owner pending yang sudah berjalan, tanpa duplikasi tenant/user
+- Verification plan: `php -l` file PHP yang berubah dan `php artisan test --filter=\"TenantRegistrationInviteGateTest|InternalOwnerRegistrationInviteTest\"`

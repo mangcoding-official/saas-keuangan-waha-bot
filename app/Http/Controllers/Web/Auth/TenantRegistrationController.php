@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web\Auth;
 use App\Enums\TenantType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\RegisterTenantOwnerRequest;
+use App\Services\OwnerRegistrationInviteService;
 use App\Services\ActiveBotTargetService;
 use App\Services\TenantOwnerRegistrationService;
 use App\Services\TenantVerificationCodeService;
@@ -19,12 +20,15 @@ class TenantRegistrationController extends Controller
 
     public function __construct(
         private readonly ActiveBotTargetService $activeBotTargetService,
+        private readonly OwnerRegistrationInviteService $ownerRegistrationInviteService,
         private readonly TenantOwnerRegistrationService $tenantOwnerRegistrationService,
         private readonly TenantVerificationCodeService $tenantVerificationCodeService,
     ) {}
 
     public function create(Request $request): View
     {
+        $prefilledInviteCode = trim((string) ($request->query('invite') ?? $request->old('invite_code', '')));
+        $activeInvite = $this->ownerRegistrationInviteService->resolveAccessibleInviteForRegistration($prefilledInviteCode);
         $timezones = collect(config('platform.supported_timezones'))
             ->map(fn(string $timezone): array => [
                 'value' => $timezone,
@@ -37,7 +41,13 @@ class TenantRegistrationController extends Controller
                 'title' => 'Buat akun di MACAU Bot',
                 'description' => 'Langkah awal menuju pengelolaan keuangan yang lebih transparan dan terukur.',
             ],
-            'prefilledInviteCode' => trim((string) $request->query('invite', '')),
+            'prefilledInviteCode' => $prefilledInviteCode,
+            'inviteGate' => [
+                'is_access_granted' => $activeInvite !== null,
+                'message' => $this->buildInviteGateMessage($prefilledInviteCode, $activeInvite !== null),
+                'locked_email' => $activeInvite?->invited_email,
+                'locked_whatsapp' => $activeInvite?->invited_whatsapp_number,
+            ],
             'tenantTypes' => TenantType::cases(),
             'timezones' => $timezones,
         ]);
@@ -51,6 +61,19 @@ class TenantRegistrationController extends Controller
             'Asia/Jayapura' => '(GMT+09:00) Jayapura (WIT)',
             default => $timezone,
         };
+    }
+
+    private function buildInviteGateMessage(string $prefilledInviteCode, bool $isAccessGranted): string
+    {
+        if ($isAccessGranted) {
+            return 'Invite valid terdeteksi. Lengkapi data workspace dan akun owner untuk lanjut registrasi.';
+        }
+
+        if ($prefilledInviteCode !== '') {
+            return 'Kode invite tidak aktif atau sudah tidak bisa dipakai. Gunakan link invite terbaru dari super admin.';
+        }
+
+        return 'Masukkan kode invite aktif untuk membuka form registrasi alpha.';
     }
 
     public function store(RegisterTenantOwnerRequest $request): RedirectResponse

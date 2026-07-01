@@ -99,6 +99,7 @@ class TenantOwnerRegistrationService
             $this->ownerRegistrationInviteService->consumeForOwnerRegistration(
                 rawCode: (string) $payload['invite_code'],
                 ownerEmail: $normalizedEmail,
+                ownerWhatsappNormalized: $normalizedNumber,
                 tenant: $tenant,
                 owner: $owner,
             );

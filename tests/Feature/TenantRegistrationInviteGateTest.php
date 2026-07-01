@@ -17,6 +17,41 @@ class TenantRegistrationInviteGateTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_register_page_keeps_form_locked_without_valid_invite(): void
+    {
+        $response = $this->get(route('tenant.register.create'));
+
+        $response->assertOk();
+        $response->assertSee('Masukkan kode invite aktif untuk membuka form registrasi alpha.');
+        $response->assertSee('fieldset disabled', false);
+    }
+
+    public function test_register_page_unlocks_form_for_valid_invite_link(): void
+    {
+        $admin = PlatformAdminUser::query()->create([
+            'name' => 'Super Admin',
+            'email' => 'admin@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'super_admin',
+            'user_status' => 'active',
+        ]);
+
+        $invite = OwnerRegistrationInvite::query()->create([
+            'code' => 'ALPHA-LINK-TEST',
+            'code_normalized' => 'ALPHALINKTEST',
+            'status' => InviteStatus::PENDING,
+            'invited_email' => 'owner@example.com',
+            'created_by_platform_admin_user_id' => $admin->id,
+        ]);
+
+        $response = $this->get(route('tenant.register.create', ['invite' => $invite->code]));
+
+        $response->assertOk();
+        $response->assertSee('Invite valid terdeteksi. Lengkapi data workspace dan akun owner untuk lanjut registrasi.');
+        $response->assertDontSee('fieldset disabled', false);
+        $response->assertSee('value="owner@example.com"', false);
+    }
+
     public function test_register_requires_invite_code(): void
     {
         $response = $this->from(route('tenant.register.create'))->post(route('tenant.register.store'), $this->registrationPayload([
@@ -143,6 +178,41 @@ class TenantRegistrationInviteGateTest extends TestCase
         $this->assertSame(InviteStatus::USED, $invite->status);
         $this->assertSame($tenant->id, $invite->used_by_tenant_id);
         $this->assertSame($owner->id, $invite->used_by_tenant_user_id);
+    }
+
+    public function test_register_rejects_invite_when_target_whatsapp_does_not_match(): void
+    {
+        $admin = PlatformAdminUser::query()->create([
+            'name' => 'Super Admin',
+            'email' => 'admin@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'super_admin',
+            'user_status' => 'active',
+        ]);
+
+        $invite = OwnerRegistrationInvite::query()->create([
+            'code' => 'ALPHA-WHAT-SAPP',
+            'code_normalized' => 'ALPHAWHATSAPP',
+            'status' => InviteStatus::PENDING,
+            'invited_email' => 'owner@example.com',
+            'invited_whatsapp_number' => '081298765432',
+            'invited_whatsapp_number_normalized' => '6281298765432',
+            'created_by_platform_admin_user_id' => $admin->id,
+        ]);
+
+        $response = $this->from(route('tenant.register.create', ['invite' => $invite->code]))->post(route('tenant.register.store'), $this->registrationPayload([
+            'invite_code' => $invite->code,
+            'owner_email' => 'owner@example.com',
+            'owner_whatsapp' => '081234567890',
+        ]));
+
+        $response->assertRedirect(route('tenant.register.create', ['invite' => $invite->code]));
+        $response->assertSessionHasErrors('owner_whatsapp');
+        $this->assertDatabaseCount('tenants', 0);
+        $this->assertDatabaseCount('tenant_users', 0);
+
+        $invite->refresh();
+        $this->assertSame(InviteStatus::PENDING, $invite->status);
     }
 
     /**

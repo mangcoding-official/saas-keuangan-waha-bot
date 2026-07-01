@@ -101,9 +101,37 @@ class OwnerRegistrationInviteService
         });
     }
 
-    public function consumeForOwnerRegistration(string $rawCode, string $ownerEmail, Tenant $tenant, TenantUser $owner): OwnerRegistrationInvite
+    public function resolveAccessibleInviteForRegistration(?string $rawCode): ?OwnerRegistrationInvite
     {
-        return DB::transaction(function () use ($rawCode, $ownerEmail, $tenant, $owner): OwnerRegistrationInvite {
+        $normalizedCode = $this->normalizeCode((string) $rawCode);
+
+        if ($normalizedCode === '') {
+            return null;
+        }
+
+        /** @var OwnerRegistrationInvite|null $invite */
+        $invite = OwnerRegistrationInvite::query()
+            ->where('code_normalized', $normalizedCode)
+            ->first();
+
+        if ($invite === null) {
+            return null;
+        }
+
+        $this->expireIfNeeded($invite);
+
+        return $invite->status === InviteStatus::PENDING ? $invite : null;
+    }
+
+    public function consumeForOwnerRegistration(
+        string $rawCode,
+        string $ownerEmail,
+        string $ownerWhatsappNormalized,
+        Tenant $tenant,
+        TenantUser $owner,
+    ): OwnerRegistrationInvite
+    {
+        return DB::transaction(function () use ($rawCode, $ownerEmail, $ownerWhatsappNormalized, $tenant, $owner): OwnerRegistrationInvite {
             /** @var OwnerRegistrationInvite|null $invite */
             $invite = OwnerRegistrationInvite::query()
                 ->where('code_normalized', $this->normalizeCode($rawCode))
@@ -127,6 +155,15 @@ class OwnerRegistrationInviteService
             if ($invite->invited_email !== null && $invite->invited_email !== mb_strtolower(trim($ownerEmail))) {
                 throw ValidationException::withMessages([
                     'invite_code' => 'Kode invite ini hanya berlaku untuk email yang ditentukan tim internal.',
+                ]);
+            }
+
+            if (
+                $invite->invited_whatsapp_number_normalized !== null
+                && $invite->invited_whatsapp_number_normalized !== $ownerWhatsappNormalized
+            ) {
+                throw ValidationException::withMessages([
+                    'owner_whatsapp' => 'Nomor WhatsApp ini tidak sesuai dengan target invite.',
                 ]);
             }
 
