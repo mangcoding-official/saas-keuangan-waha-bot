@@ -119,6 +119,7 @@
                         type="datetime-local"
                         label="Berlaku sampai (opsional)"
                         help="Kosongkan bila invite tidak perlu batas waktu."
+                        full
                     />
 
                     <x-ui.input
@@ -126,6 +127,7 @@
                         label="Catatan (opsional)"
                         placeholder="mis. onboarding batch Juli"
                         help="Catatan lainnya."
+                        full
                     />
 
                     <div class="members-form-actions invite-form-actions field field-full">
@@ -133,130 +135,131 @@
                     </div>
                 </form>
             </article>
-        </section>
-
-        <section class="members-table-card">
-            <div class="members-table-head">
-                <h2>Daftar User</h2>
-            </div>
-
-            <table class="members-table invite-table">
-                <thead>
-                    <tr>
-                        <th>TARGET USER</th>
-                        <th>STATUS</th>
-                        <th>INVITE</th>
-                        <th>PROGRESS</th>
-                        <th>AKSI</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($rows as $row)
-                        <tr>
-                            <td class="members-name-cell">
-                                <span class="members-avatar">{{ strtoupper(substr($row['code'], 0, 2)) }}</span>
-                                <div>
-                                    <strong>{{ $row['invited_email'] ?: 'Tanpa email target' }}</strong>
-                                    <span>{{ $row['invited_whatsapp_number'] ?: 'Tanpa nomor WhatsApp target' }}</span>
-                                </div>
-                            </td>
-                            <td>
-                                <x-ui.badge tone="{{ $row['status_key'] === 'pending' ? 'success' : ($row['status_key'] === 'used' ? 'neutral' : 'warning') }}">
-                                    {{ $row['status_label'] }}
-                                </x-ui.badge>
-                            </td>
-                            <td>
-                                <strong>{{ $row['code'] }}</strong>
-                                <span>{{ $row['expires_at'] ? 'Berlaku sampai '.$row['expires_at'] : 'Tanpa batas waktu' }}</span>
-                            </td>
-                            <td>
-                                @if ($row['used_tenant_name'])
-                                    <strong>{{ $row['used_tenant_name'] }}</strong>
-                                    <span>Dipakai {{ $row['used_at'] }}</span>
-                                @elseif ($row['revoked_at'])
-                                    <strong>Invite dimatikan</strong>
-                                    <span>Revoked {{ $row['revoked_at'] }}</span>
-                                @else
-                                    <strong>Belum dipakai</strong>
-                                    <span>Dibuat {{ $row['created_at'] }} oleh {{ $row['creator_name'] }}</span>
-                                @endif
-                            </td>
-                            <td class="accounts-action-menu-cell">
-                                <details class="accounts-action-menu" data-account-action-menu>
-                                    <summary aria-label="Aksi invite">
-                                        <img src="{{ asset('images/figma/accounts/kebab.svg') }}" alt="">
-                                    </summary>
-                                    <div class="accounts-action-popover">
-                                        <a href="{{ route('internal.invites.index', array_merge(request()->query(), ['show' => $row['id']])) }}">Detail</a>
-                                        <button
-                                            type="button"
-                                            data-copy-text="{{ $row['code'] }}"
-                                            data-copy-label="Copy Code"
-                                            data-copy-success-label="Copied"
-                                        >
-                                            Copy Code
-                                        </button>
-                                        <button
-                                            type="button"
-                                            data-copy-text="{{ $row['share_url'] }}"
-                                            data-copy-label="Copy Link"
-                                            data-copy-success-label="Copied"
-                                        >
-                                            Copy Link
-                                        </button>
-                                        @if ($row['can_send_whatsapp'])
-                                            <form action="{{ route('internal.invites.send-whatsapp', $row['id']) }}" method="post">
-                                                @csrf
-                                                <button type="submit">Send via WA</button>
-                                            </form>
-                                        @endif
-                                        @if ($row['can_revoke'])
-                                            <form action="{{ route('internal.invites.revoke', $row['id']) }}" method="post">
-                                                @csrf
-                                                <input type="hidden" name="reason" value="">
-                                                <button type="submit">Revoke Invite</button>
-                                            </form>
-                                        @elseif (!$row['can_send_whatsapp'])
-                                            <button type="button" disabled>Tidak ada aksi lanjutan</button>
-                                        @endif
-                                    </div>
-                                </details>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="members-empty-cell">Belum ada user yang tercatat.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-
-            <div class="accounts-pagination members-pagination">
-                <p>Menampilkan {{ $rows->firstItem() ?? 0 }}-{{ $rows->lastItem() ?? 0 }} dari {{ $rows->total() }} invite</p>
-                <div>
-                    @if ($rows->onFirstPage())
-                        <span class="accounts-page is-prev disabled" aria-hidden="true">
-                            <img src="{{ asset('images/page-prev.svg') }}" alt="">
-                        </span>
-                    @else
-                        <a href="{{ $rows->previousPageUrl() }}" class="accounts-page is-prev" aria-label="Halaman sebelumnya">
-                            <img src="{{ asset('images/page-prev.svg') }}" alt="">
-                        </a>
-                    @endif
-                    @foreach ($visiblePages as $visiblePage)
-                        <a href="{{ $rows->url($visiblePage) }}" class="accounts-page {{ $visiblePage === $currentPage ? 'active' : '' }}">{{ $visiblePage }}</a>
-                    @endforeach
-                    @if ($rows->hasMorePages())
-                        <a href="{{ $rows->nextPageUrl() }}" class="accounts-page is-next" aria-label="Halaman berikutnya">
-                            <img src="{{ asset('images/page-next.svg') }}" alt="">
-                        </a>
-                    @else
-                        <span class="accounts-page is-next disabled" aria-hidden="true">
-                            <img src="{{ asset('images/page-next.svg') }}" alt="">
-                        </span>
-                    @endif
+            <article class="members-table-card invite-table-card">
+                <div class="members-table-head">
+                    <h2>Daftar User</h2>
                 </div>
-            </div>
+
+                <div class="invite-table-wrap">
+                    <table class="members-table invite-table">
+                        <thead>
+                            <tr>
+                                <th>TARGET USER</th>
+                                <th>STATUS</th>
+                                <th>INVITE</th>
+                                <th>PROGRESS</th>
+                                <th>AKSI</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($rows as $row)
+                                <tr>
+                                    <td class="members-name-cell">
+                                        <span class="members-avatar">{{ strtoupper(substr($row['code'], 0, 2)) }}</span>
+                                        <div>
+                                            <strong>{{ $row['invited_email'] ?: 'Tanpa email target' }}</strong>
+                                            <span>{{ $row['invited_whatsapp_number'] ?: 'Tanpa nomor WhatsApp target' }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <x-ui.badge tone="{{ $row['status_key'] === 'pending' ? 'success' : ($row['status_key'] === 'used' ? 'neutral' : 'warning') }}">
+                                            {{ $row['status_label'] }}
+                                        </x-ui.badge>
+                                    </td>
+                                    <td>
+                                        <strong>{{ $row['code'] }}</strong>
+                                        <span>{{ $row['expires_at'] ? 'Berlaku sampai '.$row['expires_at'] : 'Tanpa batas waktu' }}</span>
+                                    </td>
+                                    <td>
+                                        @if ($row['used_tenant_name'])
+                                            <strong>{{ $row['used_tenant_name'] }}</strong>
+                                            <span>Dipakai {{ $row['used_at'] }}</span>
+                                        @elseif ($row['revoked_at'])
+                                            <strong>Invite dimatikan</strong>
+                                            <span>Revoked {{ $row['revoked_at'] }}</span>
+                                        @else
+                                            <strong>Belum dipakai</strong>
+                                            <span>Dibuat {{ $row['created_at'] }} oleh {{ $row['creator_name'] }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="accounts-action-menu-cell">
+                                        <details class="accounts-action-menu" data-account-action-menu>
+                                            <summary aria-label="Aksi invite">
+                                                <img src="{{ asset('images/figma/accounts/kebab.svg') }}" alt="">
+                                            </summary>
+                                            <div class="accounts-action-popover">
+                                                <a href="{{ route('internal.invites.index', array_merge(request()->query(), ['show' => $row['id']])) }}">Detail</a>
+                                                <button
+                                                    type="button"
+                                                    data-copy-text="{{ $row['code'] }}"
+                                                    data-copy-label="Copy Code"
+                                                    data-copy-success-label="Copied"
+                                                >
+                                                    Copy Code
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    data-copy-text="{{ $row['share_url'] }}"
+                                                    data-copy-label="Copy Link"
+                                                    data-copy-success-label="Copied"
+                                                >
+                                                    Copy Link
+                                                </button>
+                                                @if ($row['can_send_whatsapp'])
+                                                    <form action="{{ route('internal.invites.send-whatsapp', $row['id']) }}" method="post">
+                                                        @csrf
+                                                        <button type="submit">Send via WA</button>
+                                                    </form>
+                                                @endif
+                                                @if ($row['can_revoke'])
+                                                    <form action="{{ route('internal.invites.revoke', $row['id']) }}" method="post">
+                                                        @csrf
+                                                        <input type="hidden" name="reason" value="">
+                                                        <button type="submit">Revoke Invite</button>
+                                                    </form>
+                                                @elseif (!$row['can_send_whatsapp'])
+                                                    <button type="button" disabled>Tidak ada aksi lanjutan</button>
+                                                @endif
+                                            </div>
+                                        </details>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="members-empty-cell">Belum ada user yang tercatat.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="accounts-pagination members-pagination">
+                    <p>Menampilkan {{ $rows->firstItem() ?? 0 }}-{{ $rows->lastItem() ?? 0 }} dari {{ $rows->total() }} invite</p>
+                    <div>
+                        @if ($rows->onFirstPage())
+                            <span class="accounts-page is-prev disabled" aria-hidden="true">
+                                <img src="{{ asset('images/page-prev.svg') }}" alt="">
+                            </span>
+                        @else
+                            <a href="{{ $rows->previousPageUrl() }}" class="accounts-page is-prev" aria-label="Halaman sebelumnya">
+                                <img src="{{ asset('images/page-prev.svg') }}" alt="">
+                            </a>
+                        @endif
+                        @foreach ($visiblePages as $visiblePage)
+                            <a href="{{ $rows->url($visiblePage) }}" class="accounts-page {{ $visiblePage === $currentPage ? 'active' : '' }}">{{ $visiblePage }}</a>
+                        @endforeach
+                        @if ($rows->hasMorePages())
+                            <a href="{{ $rows->nextPageUrl() }}" class="accounts-page is-next" aria-label="Halaman berikutnya">
+                                <img src="{{ asset('images/page-next.svg') }}" alt="">
+                            </a>
+                        @else
+                            <span class="accounts-page is-next disabled" aria-hidden="true">
+                                <img src="{{ asset('images/page-next.svg') }}" alt="">
+                            </span>
+                        @endif
+                    </div>
+                </div>
+            </article>
         </section>
     </div>
 
