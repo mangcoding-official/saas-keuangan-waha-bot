@@ -142,6 +142,13 @@
 
                 <div class="invite-table-wrap">
                     <table class="members-table invite-table">
+                        <colgroup>
+                            <col class="invite-col-target">
+                            <col class="invite-col-status">
+                            <col class="invite-col-code">
+                            <col class="invite-col-progress">
+                            <col class="invite-col-actions">
+                        </colgroup>
                         <thead>
                             <tr>
                                 <th>TARGET USER</th>
@@ -157,7 +164,7 @@
                                     <td class="members-name-cell">
                                         <span class="members-avatar">{{ strtoupper(substr($row['code'], 0, 2)) }}</span>
                                         <div>
-                                            <strong>{{ $row['invited_email'] ?: 'Tanpa email target' }}</strong>
+                                            <strong>{{ $row['invited_email'] ?: '-' }}</strong>
                                             <span>{{ $row['invited_whatsapp_number'] ?: 'Tanpa nomor WhatsApp target' }}</span>
                                         </div>
                                     </td>

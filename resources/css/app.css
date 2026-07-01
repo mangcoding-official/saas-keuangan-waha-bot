@@ -1989,6 +1989,7 @@ span.tenant-sidebar-link-icon.is-members{
     gap: 12px;
     border-top: 1px solid #c4c5d5;
     background: #f4f2fc;
+    border-radius: 0px 0px 16px 16px;
 }
 
 .accounts-pagination p {
@@ -5063,16 +5064,19 @@ img {
 }
 
 .invite-table-wrap {
-    overflow-x: auto;
+    overflow: visible;
     overflow-y: visible;
 }
 
 .invite-table-card .members-table {
-    min-width: 760px;
+    min-width: 0;
+    table-layout: fixed;
 }
 
 .invite-table-card .accounts-action-menu-cell {
     overflow: visible;
+    width: 72px;
+    text-align: center;
 }
 
 .invite-table-card .accounts-action-menu {
@@ -5082,7 +5086,54 @@ img {
 
 .invite-table-card .accounts-action-popover {
     right: 8px;
+    top: calc(100% + 8px);
     z-index: 20;
+}
+
+.invite-table .invite-col-target {
+    width: 28%;
+}
+
+.invite-table .invite-col-status {
+    width: 14%;
+}
+
+.invite-table .invite-col-code {
+    width: 24%;
+}
+
+.invite-table .invite-col-progress {
+    width: 26%;
+}
+
+.invite-table .invite-col-actions {
+    width: 8%;
+}
+
+.invite-table th,
+.invite-table td {
+    padding-left: 16px;
+    padding-right: 16px;
+}
+
+.invite-table td {
+    vertical-align: top;
+}
+
+.invite-table td strong,
+.invite-table td span,
+.invite-table .members-name-cell > div {
+    min-width: 0;
+}
+
+.invite-table .members-name-cell {
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.invite-table td span {
+    display: flex;
+    word-break: break-word;
 }
 
 .invite-share-stack,
@@ -5095,10 +5146,10 @@ img {
     display: block;
     color: #1a1b22;
     font-weight: 600;
+    word-break: break-word;
 }
 
 .invite-table td span {
-    display: flex;
     margin-top: 4px;
     color: #757684;
     font-size: 0.875rem;
