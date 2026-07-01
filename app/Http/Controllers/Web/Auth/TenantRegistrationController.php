@@ -5,12 +5,12 @@ namespace App\Http\Controllers\Web\Auth;
 use App\Enums\TenantType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\RegisterTenantOwnerRequest;
+use App\Services\ActiveBotTargetService;
 use App\Services\TenantOwnerRegistrationService;
 use App\Services\TenantVerificationCodeService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\DB;
 use App\Models\TenantUser;
 
 class TenantRegistrationController extends Controller
@@ -18,6 +18,7 @@ class TenantRegistrationController extends Controller
     private const REGISTRATION_SUCCESS_SESSION_KEY = 'registration_success';
 
     public function __construct(
+        private readonly ActiveBotTargetService $activeBotTargetService,
         private readonly TenantOwnerRegistrationService $tenantOwnerRegistrationService,
         private readonly TenantVerificationCodeService $tenantVerificationCodeService,
     ) {}
@@ -167,19 +168,6 @@ class TenantRegistrationController extends Controller
      */
     private function resolveBotTarget(): array
     {
-        $bot = DB::table('bot_instances')
-            ->where('is_active', true)
-            ->orderByDesc('is_default')
-            ->orderBy('id')
-            ->first(['bot_whatsapp_number', 'bot_whatsapp_number_normalized']);
-
-        if (! $bot) {
-            return [];
-        }
-
-        return [
-            'display_number' => $bot->bot_whatsapp_number ?: $bot->bot_whatsapp_number_normalized,
-            'wa_number' => $bot->bot_whatsapp_number_normalized ?: null,
-        ];
+        return $this->activeBotTargetService->resolve();
     }
 }

@@ -8,7 +8,9 @@ use App\Http\Requests\RevokeOwnerRegistrationInviteRequest;
 use App\Http\Requests\StoreOwnerRegistrationInviteRequest;
 use App\Models\OwnerRegistrationInvite;
 use App\Models\PlatformAdminUser;
+use App\Services\ActiveBotTargetService;
 use App\Services\OwnerRegistrationInviteService;
+use App\Services\OwnerRegistrationInviteWhatsappService;
 use App\Support\Navigation\PlatformAdminNavigation;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -16,12 +18,15 @@ use Illuminate\Http\RedirectResponse;
 class OwnerRegistrationInviteController extends Controller
 {
     public function __construct(
+        private readonly ActiveBotTargetService $activeBotTargetService,
         private readonly OwnerRegistrationInviteService $ownerRegistrationInviteService,
+        private readonly OwnerRegistrationInviteWhatsappService $ownerRegistrationInviteWhatsappService,
     ) {
     }
 
     public function index(): View
     {
+        $activeBotTarget = $this->activeBotTargetService->resolve();
         $rows = OwnerRegistrationInvite::query()
             ->leftJoin('platform_admin_users as creators', 'creators.id', '=', 'owner_registration_invites.created_by_platform_admin_user_id')
             ->leftJoin('tenants', 'tenants.id', '=', 'owner_registration_invites.used_by_tenant_id')
@@ -31,6 +36,8 @@ class OwnerRegistrationInviteController extends Controller
                 'owner_registration_invites.code',
                 'owner_registration_invites.status',
                 'owner_registration_invites.invited_email',
+                'owner_registration_invites.invited_whatsapp_number',
+                'owner_registration_invites.invited_whatsapp_number_normalized',
                 'owner_registration_invites.note',
                 'owner_registration_invites.expires_at',
                 'owner_registration_invites.used_at',
@@ -49,6 +56,8 @@ class OwnerRegistrationInviteController extends Controller
                     'code' => $invite->code,
                     'status' => $invite->status->value,
                     'invited_email' => $invite->invited_email,
+                    'invited_whatsapp_number' => $invite->invited_whatsapp_number,
+                    'invited_whatsapp_number_normalized' => $invite->invited_whatsapp_number_normalized,
                     'note' => $invite->note,
                     'expires_at' => $invite->expires_at?->format('d M Y H:i'),
                     'used_at' => $invite->used_at?->format('d M Y H:i'),
@@ -85,6 +94,7 @@ class OwnerRegistrationInviteController extends Controller
                 'used' => count(array_filter($rows, fn (array $row): bool => $row['status'] === InviteStatus::USED->value)),
                 'blocked' => count(array_filter($rows, fn (array $row): bool => in_array($row['status'], [InviteStatus::EXPIRED->value, InviteStatus::REVOKED->value], true))),
             ],
+            'activeBotDisplayNumber' => $activeBotTarget['display_number'] ?? null,
             'rows' => $rows,
         ]);
     }
@@ -94,11 +104,47 @@ class OwnerRegistrationInviteController extends Controller
         /** @var PlatformAdminUser $admin */
         $admin = auth('platform_admin')->user();
         $invite = $this->ownerRegistrationInviteService->createForPlatformAdmin($admin, $request->validated());
+        $whatsappSent = $invite->invited_whatsapp_number_normalized !== null
+            ? $this->ownerRegistrationInviteWhatsappService->send($invite)
+            : false;
 
         return to_route('internal.invites.index')->with(config('platform.flash_session_key'), [
             'tone' => 'success',
             'title' => 'Invite berhasil dibuat',
-            'message' => 'Kode '.$invite->code.' siap dipakai untuk onboarding alpha.',
+            'message' => $whatsappSent
+                ? 'Kode '.$invite->code.' berhasil dibuat dan langsung dikirim ke WhatsApp target.'
+                : 'Kode '.$invite->code.' siap dipakai untuk onboarding alpha.',
+        ]);
+    }
+
+    public function sendWhatsapp(int $inviteId): RedirectResponse
+    {
+        $invite = OwnerRegistrationInvite::query()->findOrFail($inviteId);
+
+        if ($invite->status !== InviteStatus::PENDING) {
+            return to_route('internal.invites.index')->with(config('platform.flash_session_key'), [
+                'tone' => 'warning',
+                'title' => 'Invite tidak bisa dikirim',
+                'message' => 'Hanya invite pending yang bisa dikirim lewat WhatsApp.',
+            ]);
+        }
+
+        if ($invite->invited_whatsapp_number_normalized === null) {
+            return to_route('internal.invites.index')->with(config('platform.flash_session_key'), [
+                'tone' => 'warning',
+                'title' => 'Nomor WhatsApp belum tersedia',
+                'message' => 'Lengkapi nomor WhatsApp target saat membuat invite baru.',
+            ]);
+        }
+
+        $sent = $this->ownerRegistrationInviteWhatsappService->send($invite);
+
+        return to_route('internal.invites.index')->with(config('platform.flash_session_key'), [
+            'tone' => $sent ? 'success' : 'warning',
+            'title' => $sent ? 'Invite berhasil dikirim' : 'Invite belum terkirim',
+            'message' => $sent
+                ? 'Invite '.$invite->code.' sudah dikirim ke WhatsApp target.'
+                : 'Pengiriman invite ke WhatsApp target gagal. Cek bot aktif dan koneksi WAHA.',
         ]);
     }
 

@@ -46,6 +46,12 @@
                     <p class="field-help">Kosongkan bila invite boleh dipakai oleh siapa saja yang memegang kode.</p>
                 </label>
 
+                <label class="field field-full" for="invited_whatsapp_number">
+                    <span class="field-label">Nomor WhatsApp Target</span>
+                    <input id="invited_whatsapp_number" name="invited_whatsapp_number" type="text" class="input" value="{{ old('invited_whatsapp_number') }}" placeholder="Opsional, mis. 0812xxxx">
+                    <p class="field-help">Jika diisi, invite akan langsung dikirim via WhatsApp memakai bot aktif.</p>
+                </label>
+
                 <label class="field" for="expires_at">
                     <span class="field-label">Berlaku Sampai</span>
                     <input id="expires_at" name="expires_at" type="datetime-local" class="input" value="{{ old('expires_at') }}">
@@ -65,8 +71,13 @@
         <article class="dashboard-card invite-tip-card">
             <h2 class="dashboard-section-title">Cara Pakai</h2>
             <div class="dashboard-alert-list">
+                <p>
+                    Bot aktif pengirim:
+                    <strong>{{ $activeBotDisplayNumber ?: 'belum tersedia' }}</strong>
+                </p>
                 <p>Buat invite untuk calon owner alpha.</p>
                 <p>Bagikan kode invite atau link register yang sudah berisi kode otomatis.</p>
+                <p>Isi nomor WhatsApp target bila invite perlu langsung dikirim lewat bot aktif.</p>
                 <p>Revoke invite bila onboarding dibatalkan atau kode terlanjur tersebar.</p>
             </div>
         </article>
@@ -108,6 +119,9 @@
                         </td>
                         <td>
                             <div>{{ $row['invited_email'] ?: 'Semua email' }}</div>
+                            @if ($row['invited_whatsapp_number'])
+                                <div class="members-cell-meta">{{ $row['invited_whatsapp_number'] }}</div>
+                            @endif
                             @if ($row['revoked_at'])
                                 <div class="members-cell-meta">Revoked {{ $row['revoked_at'] }}</div>
                             @endif
@@ -145,6 +159,12 @@
                         <td>
                             <div class="members-action-stack">
                                 @if ($row['status'] === 'pending')
+                                    @if ($row['invited_whatsapp_number_normalized'])
+                                        <form action="{{ route('internal.invites.send-whatsapp', $row['id']) }}" method="post" class="invite-revoke-form">
+                                            @csrf
+                                            <button class="button button-secondary button-compact" type="submit">Send via WA</button>
+                                        </form>
+                                    @endif
                                     <form action="{{ route('internal.invites.revoke', $row['id']) }}" method="post" class="invite-revoke-form">
                                         @csrf
                                         <input type="text" name="reason" class="input input-compact" placeholder="Opsional: alasan revoke">

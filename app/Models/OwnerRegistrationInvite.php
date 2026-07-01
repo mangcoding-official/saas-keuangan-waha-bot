@@ -16,6 +16,8 @@ class OwnerRegistrationInvite extends Model
         'code_normalized',
         'status',
         'invited_email',
+        'invited_whatsapp_number',
+        'invited_whatsapp_number_normalized',
         'note',
         'expires_at',
         'used_at',

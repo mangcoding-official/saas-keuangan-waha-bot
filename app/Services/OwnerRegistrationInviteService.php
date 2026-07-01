@@ -7,6 +7,7 @@ use App\Models\OwnerRegistrationInvite;
 use App\Models\PlatformAdminUser;
 use App\Models\Tenant;
 use App\Models\TenantUser;
+use App\Support\PhoneNumberNormalizer;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -14,9 +15,15 @@ use Illuminate\Validation\ValidationException;
 
 class OwnerRegistrationInviteService
 {
+    public function __construct(
+        private readonly PhoneNumberNormalizer $phoneNumberNormalizer,
+    ) {
+    }
+
     public function createForPlatformAdmin(PlatformAdminUser $admin, array $payload): OwnerRegistrationInvite
     {
         $code = $this->generateUniqueCode();
+        $targetWhatsapp = $this->normalizeTargetWhatsapp((string) ($payload['invited_whatsapp_number'] ?? ''));
 
         $invite = OwnerRegistrationInvite::query()->create([
             'code' => $code,
@@ -25,6 +32,10 @@ class OwnerRegistrationInviteService
             'invited_email' => isset($payload['invited_email']) && trim((string) $payload['invited_email']) !== ''
                 ? mb_strtolower(trim((string) $payload['invited_email']))
                 : null,
+            'invited_whatsapp_number' => trim((string) ($payload['invited_whatsapp_number'] ?? '')) !== ''
+                ? trim((string) $payload['invited_whatsapp_number'])
+                : null,
+            'invited_whatsapp_number_normalized' => $targetWhatsapp,
             'note' => isset($payload['note']) && trim((string) $payload['note']) !== ''
                 ? trim((string) $payload['note'])
                 : null,
@@ -131,7 +142,7 @@ class OwnerRegistrationInviteService
     }
 
     /**
-     * @return array{code:string,status:string,invited_email:?string,expires_at:?string,used_at:?string,revoked_at:?string,used_by_tenant_id:?int,used_by_tenant_user_id:?int,note:?string}
+     * @return array{code:string,status:string,invited_email:?string,invited_whatsapp_number:?string,expires_at:?string,used_at:?string,revoked_at:?string,used_by_tenant_id:?int,used_by_tenant_user_id:?int,note:?string}
      */
     public function snapshot(OwnerRegistrationInvite $invite): array
     {
@@ -139,6 +150,7 @@ class OwnerRegistrationInviteService
             'code' => $invite->code,
             'status' => $invite->status->value,
             'invited_email' => $invite->invited_email,
+            'invited_whatsapp_number' => $invite->invited_whatsapp_number,
             'expires_at' => $invite->expires_at?->toIso8601String(),
             'used_at' => $invite->used_at?->toIso8601String(),
             'revoked_at' => $invite->revoked_at?->toIso8601String(),
@@ -151,6 +163,21 @@ class OwnerRegistrationInviteService
     public function normalizeCode(string $code): string
     {
         return preg_replace('/[^A-Z0-9]/', '', Str::upper(trim($code))) ?: '';
+    }
+
+    private function normalizeTargetWhatsapp(string $rawNumber): ?string
+    {
+        if (trim($rawNumber) === '') {
+            return null;
+        }
+
+        try {
+            return $this->phoneNumberNormalizer->normalize($rawNumber);
+        } catch (\InvalidArgumentException $exception) {
+            throw ValidationException::withMessages([
+                'invited_whatsapp_number' => $exception->getMessage(),
+            ]);
+        }
     }
 
     private function generateUniqueCode(): string

@@ -18,6 +18,7 @@ class StoreOwnerRegistrationInviteRequest extends FormRequest
     {
         return [
             'invited_email' => ['nullable', 'email', 'max:190'],
+            'invited_whatsapp_number' => ['nullable', 'string', 'min:8', 'max:32'],
             'expires_at' => ['nullable', 'date', 'after:now'],
             'note' => ['nullable', 'string', 'max:255'],
         ];
@@ -30,6 +31,7 @@ class StoreOwnerRegistrationInviteRequest extends FormRequest
     {
         return [
             'invited_email' => 'email target',
+            'invited_whatsapp_number' => 'nomor WhatsApp target',
             'expires_at' => 'masa berlaku invite',
             'note' => 'catatan invite',
         ];

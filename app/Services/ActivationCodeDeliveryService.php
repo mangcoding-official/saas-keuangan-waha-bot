@@ -4,13 +4,13 @@ namespace App\Services;
 
 use App\Models\TenantUser;
 use App\Services\Waha\WahaClient;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class ActivationCodeDeliveryService
 {
     public function __construct(
+        private readonly ActiveBotTargetService $activeBotTargetService,
         private readonly WahaClient $wahaClient,
     ) {
     }
@@ -49,13 +49,8 @@ class ActivationCodeDeliveryService
 
     private function resolveSessionKey(): ?string
     {
-        $activeBot = DB::table('bot_instances')
-            ->where('is_active', true)
-            ->orderByDesc('is_default')
-            ->orderBy('id')
-            ->value('waha_instance_key');
-
-        $sessionKey = trim((string) ($activeBot ?: config('services.waha.default_session')));
+        $botTarget = $this->activeBotTargetService->resolve();
+        $sessionKey = trim((string) (($botTarget['session_key'] ?? null) ?: config('services.waha.default_session')));
 
         return $sessionKey !== '' ? $sessionKey : null;
     }

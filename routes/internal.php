@@ -23,6 +23,7 @@ Route::prefix(config('platform.route_prefixes.internal'))
             Route::get('/attachments/{attachmentId}/preview', [AttachmentPreviewController::class, 'show'])->name('attachments.preview');
             Route::get('/invites', [OwnerRegistrationInviteController::class, 'index'])->name('invites.index');
             Route::post('/invites', [OwnerRegistrationInviteController::class, 'store'])->name('invites.store');
+            Route::post('/invites/{inviteId}/send-whatsapp', [OwnerRegistrationInviteController::class, 'sendWhatsapp'])->name('invites.send-whatsapp');
             Route::post('/invites/{inviteId}/revoke', [OwnerRegistrationInviteController::class, 'revoke'])->name('invites.revoke');
             Route::get('/verification', [VerificationController::class, 'index'])->name('verification.index');
             Route::post('/verification/{tenantUserId}/resend', [VerificationController::class, 'resend'])->name('verification.resend');
