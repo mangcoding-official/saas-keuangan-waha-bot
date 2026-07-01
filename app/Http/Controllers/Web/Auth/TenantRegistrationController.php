@@ -22,7 +22,7 @@ class TenantRegistrationController extends Controller
         private readonly TenantVerificationCodeService $tenantVerificationCodeService,
     ) {}
 
-    public function create(): View
+    public function create(Request $request): View
     {
         $timezones = collect(config('platform.supported_timezones'))
             ->map(fn(string $timezone): array => [
@@ -36,6 +36,7 @@ class TenantRegistrationController extends Controller
                 'title' => 'Buat akun di MACAU Bot',
                 'description' => 'Langkah awal menuju pengelolaan keuangan yang lebih transparan dan terukur.',
             ],
+            'prefilledInviteCode' => trim((string) $request->query('invite', '')),
             'tenantTypes' => TenantType::cases(),
             'timezones' => $timezones,
         ]);

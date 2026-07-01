@@ -19,6 +19,27 @@
 
                 <section class="register-section-card">
                     <header class="register-section-head">
+                        <img src="{{ asset('images/register/info-note.svg') }}" alt="" aria-hidden="true">
+                        <h2>Invite Alpha</h2>
+                    </header>
+
+                    <div class="register-grid register-grid-owner">
+                        <label class="register-field register-field-full" for="invite_code">
+                            <span class="register-label">Kode Invite</span>
+                            <input id="invite_code" name="invite_code" type="text" class="register-input" value="{{ old('invite_code', $prefilledInviteCode ?? '') }}" placeholder="Contoh: ALPHA-ABCD-EFGH" required>
+                            <span class="register-note">
+                                <img src="{{ asset('images/register/info-note.svg') }}" alt="" aria-hidden="true">
+                                Alpha release hanya menerima registrasi dengan kode invite yang masih aktif.
+                            </span>
+                            @error('invite_code')
+                            <p class="field-error">{{ $message }}</p>
+                            @enderror
+                        </label>
+                    </div>
+                </section>
+
+                <section class="register-section-card">
+                    <header class="register-section-head">
                         <img src="{{ asset('images/register/section-workspace.svg') }}" alt="" aria-hidden="true">
                         <h2>Workspace</h2>
                     </header>

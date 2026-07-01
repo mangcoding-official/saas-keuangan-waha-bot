@@ -3,6 +3,7 @@
 use App\Http\Controllers\Internal\Auth\PlatformAdminSessionController;
 use App\Http\Controllers\Internal\AttachmentPreviewController;
 use App\Http\Controllers\Internal\DashboardController;
+use App\Http\Controllers\Internal\OwnerRegistrationInviteController;
 use App\Http\Controllers\Internal\ResourcePageController;
 use App\Http\Controllers\Internal\VerificationController;
 use App\Http\Controllers\Internal\WahaActionController;
@@ -20,6 +21,9 @@ Route::prefix(config('platform.route_prefixes.internal'))
             Route::post('/logout', [PlatformAdminSessionController::class, 'destroy'])->name('logout');
             Route::get('/', DashboardController::class)->name('dashboard');
             Route::get('/attachments/{attachmentId}/preview', [AttachmentPreviewController::class, 'show'])->name('attachments.preview');
+            Route::get('/invites', [OwnerRegistrationInviteController::class, 'index'])->name('invites.index');
+            Route::post('/invites', [OwnerRegistrationInviteController::class, 'store'])->name('invites.store');
+            Route::post('/invites/{inviteId}/revoke', [OwnerRegistrationInviteController::class, 'revoke'])->name('invites.revoke');
             Route::get('/verification', [VerificationController::class, 'index'])->name('verification.index');
             Route::post('/verification/{tenantUserId}/resend', [VerificationController::class, 'resend'])->name('verification.resend');
             Route::post('/verification/{tenantUserId}/regenerate', [VerificationController::class, 'regenerate'])->name('verification.regenerate');

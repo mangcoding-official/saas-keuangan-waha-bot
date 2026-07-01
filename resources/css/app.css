@@ -4264,6 +4264,37 @@ img {
     gap: 12px;
 }
 
+.invite-layout-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.invite-form-card,
+.invite-tip-card {
+    display: grid;
+    align-content: start;
+    gap: 16px;
+}
+
+.invite-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 16px;
+}
+
+.invite-share-stack,
+.invite-revoke-form {
+    display: grid;
+    gap: 10px;
+}
+
+.input.input-compact {
+    min-height: 38px;
+    padding: 0 12px;
+}
+
 .accounts-action-popover button[disabled] {
     color: #9aa0b5;
     cursor: default;
@@ -6430,6 +6461,14 @@ h3.register-kicker {
 
 @media (max-width: 1080px) {
 
+    .invite-layout-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .invite-form-grid {
+        grid-template-columns: 1fr;
+    }
+
     .auth-shell,
     .shell-grid,
     .dashboard-content-grid,
@@ -6524,6 +6563,8 @@ h3.register-kicker {
         padding: 16px;
     }
 
+    .invite-share-stack,
+    .invite-revoke-form,
     .field-grid,
     .dashboard-kpi-grid,
     .members-summary-grid {

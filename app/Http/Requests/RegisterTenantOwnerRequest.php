@@ -19,6 +19,7 @@ class RegisterTenantOwnerRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'invite_code' => ['required', 'string', 'max:32'],
             'tenant_name' => ['required', 'string', 'max:150'],
             'tenant_type' => ['required', Rule::enum(TenantType::class)],
             'timezone' => ['required', 'string', Rule::in(config('platform.supported_timezones'))],
@@ -35,6 +36,7 @@ class RegisterTenantOwnerRequest extends FormRequest
     public function attributes(): array
     {
         return [
+            'invite_code' => 'kode invite',
             'tenant_name' => 'nama tenant',
             'tenant_type' => 'jenis tenant',
             'timezone' => 'timezone tenant',

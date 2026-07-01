@@ -24,6 +24,7 @@ class TenantOwnerRegistrationService
         private readonly ActivationCodeService $activationCodeService,
         private readonly ActivationCodeDeliveryService $activationCodeDeliveryService,
         private readonly CategoryTemplateService $categoryTemplateService,
+        private readonly OwnerRegistrationInviteService $ownerRegistrationInviteService,
         private readonly PhoneNumberNormalizer $phoneNumberNormalizer,
     ) {
     }
@@ -35,8 +36,9 @@ class TenantOwnerRegistrationService
     public function register(array $payload): array
     {
         $normalizedNumber = $this->normalizeOwnerNumber((string) $payload['owner_whatsapp']);
+        $normalizedEmail = mb_strtolower(trim((string) $payload['owner_email']));
 
-        return DB::transaction(function () use ($payload, $normalizedNumber): array {
+        return DB::transaction(function () use ($payload, $normalizedEmail, $normalizedNumber): array {
             $tenant = Tenant::query()->create([
                 'name' => trim((string) $payload['tenant_name']),
                 'tenant_type' => TenantType::from((string) $payload['tenant_type']),
@@ -50,7 +52,7 @@ class TenantOwnerRegistrationService
             $owner = TenantUser::query()->create([
                 'tenant_id' => $tenant->id,
                 'name' => trim((string) $payload['owner_name']),
-                'email' => mb_strtolower(trim((string) $payload['owner_email'])),
+                'email' => $normalizedEmail,
                 'password' => Hash::make((string) $payload['owner_password']),
                 'role' => UserRole::OWNER,
                 'user_status' => UserStatus::ACTIVE,
@@ -64,6 +66,12 @@ class TenantOwnerRegistrationService
 
             $this->createDefaultAccountFor($tenant->id);
             $this->categoryTemplateService->createDefaultsForTenant($tenant->id, TenantType::from((string) $payload['tenant_type']));
+            $this->ownerRegistrationInviteService->consumeForOwnerRegistration(
+                rawCode: (string) $payload['invite_code'],
+                ownerEmail: $normalizedEmail,
+                tenant: $tenant,
+                owner: $owner,
+            );
 
             return [
                 'tenant' => $tenant,

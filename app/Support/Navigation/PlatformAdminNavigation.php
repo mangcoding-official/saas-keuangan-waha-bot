@@ -13,6 +13,7 @@ class PlatformAdminNavigation
             ['label' => 'Overview', 'route' => 'internal.dashboard', 'pattern' => 'internal.dashboard'],
             ['label' => 'Tenants', 'route' => 'internal.tenants.index', 'pattern' => 'internal.tenants.*'],
             ['label' => 'Users', 'route' => 'internal.users.index', 'pattern' => 'internal.users.*'],
+            ['label' => 'Invites', 'route' => 'internal.invites.index', 'pattern' => 'internal.invites.*'],
             ['label' => 'Verification', 'route' => 'internal.verification.index', 'pattern' => 'internal.verification.*'],
             ['label' => 'Sessions', 'route' => 'internal.sessions.index', 'pattern' => 'internal.sessions.*'],
             ['label' => 'Transactions', 'route' => 'internal.transactions.index', 'pattern' => 'internal.transactions.*'],
