@@ -35,37 +35,67 @@ class TenantOwnerRegistrationService
      */
     public function register(array $payload): array
     {
-        $normalizedNumber = $this->normalizeOwnerNumber((string) $payload['owner_whatsapp']);
         $normalizedEmail = mb_strtolower(trim((string) $payload['owner_email']));
+        $normalizedNumber = $this->normalizePhoneNumber((string) $payload['owner_whatsapp']);
+        $existingOwner = $this->resolveReusableOwner($normalizedEmail, $normalizedNumber);
+        $this->assertNumberAllowed($normalizedNumber, $existingOwner?->id);
 
-        return DB::transaction(function () use ($payload, $normalizedEmail, $normalizedNumber): array {
-            $tenant = Tenant::query()->create([
-                'name' => trim((string) $payload['tenant_name']),
-                'tenant_type' => TenantType::from((string) $payload['tenant_type']),
-                'timezone' => (string) $payload['timezone'],
-                'tenant_status' => TenantStatus::ACTIVE,
-                'service_plan' => ServicePlan::ALPHA,
-                'service_status' => ServiceStatus::ACTIVE,
-                'ai_addon_status' => AiAddonStatus::INACTIVE,
-            ]);
+        return DB::transaction(function () use ($payload, $normalizedEmail, $normalizedNumber, $existingOwner): array {
+            if ($existingOwner !== null) {
+                $tenant = Tenant::query()->findOrFail($existingOwner->tenant_id);
+                $tenantType = TenantType::from((string) $payload['tenant_type']);
 
-            $owner = TenantUser::query()->create([
-                'tenant_id' => $tenant->id,
-                'name' => trim((string) $payload['owner_name']),
-                'email' => $normalizedEmail,
-                'password' => Hash::make((string) $payload['owner_password']),
-                'role' => UserRole::OWNER,
-                'user_status' => UserStatus::ACTIVE,
-                'whatsapp_number' => trim((string) $payload['owner_whatsapp']),
-                'whatsapp_number_normalized' => $normalizedNumber,
-                'verification_status' => VerificationStatus::PENDING_VERIFICATION,
-            ]);
+                $tenant->forceFill([
+                    'name' => trim((string) $payload['tenant_name']),
+                    'tenant_type' => $tenantType,
+                    'timezone' => (string) $payload['timezone'],
+                ])->save();
 
-            $activationCode = $this->activationCodeService->issue($owner->id, 'owner_created');
+                $owner = $existingOwner->forceFill([
+                    'name' => trim((string) $payload['owner_name']),
+                    'email' => $normalizedEmail,
+                    'password' => Hash::make((string) $payload['owner_password']),
+                    'role' => UserRole::OWNER,
+                    'user_status' => UserStatus::ACTIVE,
+                    'whatsapp_number' => trim((string) $payload['owner_whatsapp']),
+                    'whatsapp_number_normalized' => $normalizedNumber,
+                    'verification_status' => VerificationStatus::PENDING_VERIFICATION,
+                    'verified_at' => null,
+                ]);
+                $owner->save();
+
+                $this->ensureDefaultAccountFor($tenant->id);
+                $this->categoryTemplateService->ensureDefaultsForTenant($tenant->id, $tenantType);
+            } else {
+                $tenant = Tenant::query()->create([
+                    'name' => trim((string) $payload['tenant_name']),
+                    'tenant_type' => TenantType::from((string) $payload['tenant_type']),
+                    'timezone' => (string) $payload['timezone'],
+                    'tenant_status' => TenantStatus::ACTIVE,
+                    'service_plan' => ServicePlan::ALPHA,
+                    'service_status' => ServiceStatus::ACTIVE,
+                    'ai_addon_status' => AiAddonStatus::INACTIVE,
+                ]);
+
+                $owner = TenantUser::query()->create([
+                    'tenant_id' => $tenant->id,
+                    'name' => trim((string) $payload['owner_name']),
+                    'email' => $normalizedEmail,
+                    'password' => Hash::make((string) $payload['owner_password']),
+                    'role' => UserRole::OWNER,
+                    'user_status' => UserStatus::ACTIVE,
+                    'whatsapp_number' => trim((string) $payload['owner_whatsapp']),
+                    'whatsapp_number_normalized' => $normalizedNumber,
+                    'verification_status' => VerificationStatus::PENDING_VERIFICATION,
+                ]);
+
+                $this->createDefaultAccountFor($tenant->id);
+                $this->categoryTemplateService->createDefaultsForTenant($tenant->id, TenantType::from((string) $payload['tenant_type']));
+            }
+
+            $activationCode = $this->activationCodeService->issue($owner->id, $existingOwner !== null ? 'owner_reinvited' : 'owner_created');
             $activationExpiresAt = now()->addMinutes((int) config('platform.timeouts.activation_code_minutes'))->toIso8601String();
 
-            $this->createDefaultAccountFor($tenant->id);
-            $this->categoryTemplateService->createDefaultsForTenant($tenant->id, TenantType::from((string) $payload['tenant_type']));
             $this->ownerRegistrationInviteService->consumeForOwnerRegistration(
                 rawCode: (string) $payload['invite_code'],
                 ownerEmail: $normalizedEmail,
@@ -83,18 +113,22 @@ class TenantOwnerRegistrationService
         });
     }
 
-    private function normalizeOwnerNumber(string $rawNumber): string
+    private function normalizePhoneNumber(string $rawNumber): string
     {
         try {
-            $normalized = $this->phoneNumberNormalizer->normalize($rawNumber);
+            return $this->phoneNumberNormalizer->normalize($rawNumber);
         } catch (\InvalidArgumentException $exception) {
             throw ValidationException::withMessages([
                 'owner_whatsapp' => $exception->getMessage(),
             ]);
         }
+    }
 
+    private function assertNumberAllowed(string $normalized, ?int $ignoreTenantUserId = null): void
+    {
         $userExists = DB::table('tenant_users')
             ->where('whatsapp_number_normalized', $normalized)
+            ->when($ignoreTenantUserId !== null, fn ($query) => $query->where('id', '!=', $ignoreTenantUserId))
             ->exists();
 
         if ($userExists) {
@@ -113,8 +147,6 @@ class TenantOwnerRegistrationService
                 'owner_whatsapp' => 'Nomor WhatsApp owner tidak boleh sama dengan nomor bot aktif.',
             ]);
         }
-
-        return $normalized;
     }
 
     private function createDefaultAccountFor(int $tenantId): void
@@ -129,5 +161,59 @@ class TenantOwnerRegistrationService
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+    }
+
+    private function ensureDefaultAccountFor(int $tenantId): void
+    {
+        $exists = DB::table('accounts')
+            ->where('tenant_id', $tenantId)
+            ->where('is_default', true)
+            ->exists();
+
+        if (! $exists) {
+            $this->createDefaultAccountFor($tenantId);
+        }
+    }
+
+    private function resolveReusableOwner(string $normalizedEmail, string $normalizedNumber): ?TenantUser
+    {
+        /** @var TenantUser|null $matchedByEmail */
+        $matchedByEmail = TenantUser::query()
+            ->where('email', $normalizedEmail)
+            ->first();
+
+        /** @var TenantUser|null $matchedByNumber */
+        $matchedByNumber = TenantUser::query()
+            ->where('whatsapp_number_normalized', $normalizedNumber)
+            ->first();
+
+        if ($matchedByEmail !== null && $matchedByNumber !== null && $matchedByEmail->id !== $matchedByNumber->id) {
+            throw ValidationException::withMessages([
+                'owner_email' => 'Email dan nomor WhatsApp sudah terhubung ke akun owner yang berbeda.',
+                'owner_whatsapp' => 'Email dan nomor WhatsApp sudah terhubung ke akun owner yang berbeda.',
+            ]);
+        }
+
+        $owner = $matchedByEmail ?? $matchedByNumber;
+
+        if ($owner === null) {
+            return null;
+        }
+
+        if ($owner->role !== UserRole::OWNER) {
+            throw ValidationException::withMessages([
+                'owner_email' => 'Email owner ini sudah dipakai user lain.',
+                'owner_whatsapp' => 'Nomor WhatsApp ini sudah dipakai user lain.',
+            ]);
+        }
+
+        if ($owner->verification_status !== VerificationStatus::PENDING_VERIFICATION) {
+            throw ValidationException::withMessages([
+                'owner_email' => 'Email owner ini sudah terdaftar dan aktif.',
+                'owner_whatsapp' => 'Nomor WhatsApp ini sudah terdaftar dan aktif.',
+            ]);
+        }
+
+        return $owner;
     }
 }

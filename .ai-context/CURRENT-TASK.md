@@ -2,34 +2,32 @@
 
 ## Scope
 
-- Goal: Tambahkan pengiriman owner registration invite lewat WhatsApp memakai nomor WA bot yang sedang aktif.
-- Type: implement
-- Mode: balanced
-- Allowed modules: internal invite controller/view/request/service/test, resolver bot aktif, migrasi tabel invite bila perlu
-- Explicit exclusions: tidak mengubah alur registrasi tenant, tidak redesign halaman lain, tidak menambah provider pesan selain WAHA
+- Goal: Perbaiki bug agar invite owner tetap bisa dipakai ulang saat email atau nomor WhatsApp sudah terdaftar pada owner yang masih pending verification.
+- Type: debug
+- Mode: low
+- Allowed modules: request registrasi owner, service registrasi owner, test gate invite
+- Explicit exclusions: tidak mengubah halaman admin invite, tidak redesign UI, tidak menambah migrasi atau modul baru
 
 ## Evidence and checkpoint
 
-- Confirmed facts: halaman invite saat ini hanya menyimpan email target, copy code, dan copy link; belum ada nomor WA target maupun aksi kirim lewat WA.
-- Confirmed facts: sumber bot aktif sudah dipakai di `ActivationCodeDeliveryService` dan halaman sukses registrasi memakai tabel `bot_instances` (`is_active`, `is_default`, `bot_whatsapp_number_normalized`, `waha_instance_key`).
-- Confirmed facts: `WahaClient::sendText()` sudah menjadi jalur kirim pesan WAHA yang aktif di aplikasi.
-- Implementation hypothesis: invite butuh nomor WA penerima sendiri, lalu saat create/resend sistem menggunakan session `waha_instance_key` dari bot aktif untuk mengirim template pesan berisi kode invite dan link registrasi.
-- Next verification: lint file PHP yang berubah, jalankan migrasi baru, lalu jalankan test feature invite yang relevan atau cek bootstrap route jika environment test masih terbatas.
+- Confirmed facts: `RegisterTenantOwnerRequest` masih memaksa `owner_email` unique pada `tenant_users`.
+- Confirmed facts: `TenantOwnerRegistrationService` masih menolak `owner_whatsapp` yang sudah ada di `tenant_users`, tanpa membedakan user verified vs pending.
+- Confirmed facts: skema `tenant_users` memang unique untuk email dan nomor WA, jadi resend registrasi hanya aman bila mereuse owner pending yang sama, bukan membuat baris baru.
+- Root cause or hypothesis: invite baru untuk calon owner yang pernah registrasi tetapi belum verifikasi gagal di tahap validasi uniqueness, padahal seharusnya akun pending lama direuse dan activation code digenerate ulang.
+- Next verification: lint dua file PHP yang diubah dan jalankan test gate invite khusus untuk kasus reuse owner pending.
 
 ## Read ledger
 
 | Path | Purpose / symbols | Changed since read? |
 |---|---|---|
-| `app/Http/Controllers/Internal/OwnerRegistrationInviteController.php` | alur halaman invite | no |
-| `resources/views/internal/invites/index.blade.php` | UI form/table invite | no |
-| `app/Services/OwnerRegistrationInviteService.php` | create/revoke/consume invite | no |
-| `app/Services/ActivationCodeDeliveryService.php` | pola resolve bot aktif + kirim WA | no |
-| `app/Http/Controllers/Web/Auth/TenantRegistrationController.php` | pola nomor WA bot aktif di UI | no |
-| `app/Support/PhoneNumberNormalizer.php` | normalisasi nomor target | no |
-| `tests/Feature/InternalOwnerRegistrationInviteTest.php` | regression coverage invite | no |
+| `app/Http/Requests/RegisterTenantOwnerRequest.php` | validasi email owner | no |
+| `app/Services/TenantOwnerRegistrationService.php` | create/reuse owner registration | no |
+| `app/Services/CategoryTemplateService.php` | cek idempotensi default category | no |
+| `app/Services/ActivationCodeService.php` | regenerate activation code lama | no |
+| `tests/Feature/TenantRegistrationInviteGateTest.php` | regression coverage invite register | no |
 
 ## Change plan
 
-- Files allowed to change: `.ai-context/CURRENT-TASK.md`, request/model/service/controller/view invite, route internal, bot-active resolver/service baru, migration baru, test invite
-- Contracts to preserve: format kode invite, route register tenant yang sudah ada, pola bot aktif dari `bot_instances`
-- Verification plan: syntax check PHP, migrate database, dan test feature invite yang menyentuh create/send/revoke
+- Files allowed to change: `.ai-context/CURRENT-TASK.md`, `RegisterTenantOwnerRequest`, `TenantOwnerRegistrationService`, `TenantRegistrationInviteGateTest`
+- Contracts to preserve: route registrasi owner, format invite code, uniqueness final untuk user verified, tanpa duplikasi tenant/user
+- Verification plan: `php -l` file yang berubah dan `php artisan test --filter=TenantRegistrationInviteGateTest`

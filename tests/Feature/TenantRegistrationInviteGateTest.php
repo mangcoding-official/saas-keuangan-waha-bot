@@ -3,8 +3,12 @@
 namespace Tests\Feature;
 
 use App\Enums\InviteStatus;
+use App\Enums\TenantType;
+use App\Enums\VerificationStatus;
 use App\Models\OwnerRegistrationInvite;
 use App\Models\PlatformAdminUser;
+use App\Models\Tenant;
+use App\Models\TenantUser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -69,6 +73,76 @@ class TenantRegistrationInviteGateTest extends TestCase
         ]);
         $this->assertNotNull($invite->used_by_tenant_id);
         $this->assertNotNull($invite->used_by_tenant_user_id);
+    }
+
+    public function test_register_reuses_existing_pending_owner_when_email_and_whatsapp_are_already_registered(): void
+    {
+        $admin = PlatformAdminUser::query()->create([
+            'name' => 'Super Admin',
+            'email' => 'admin@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'super_admin',
+            'user_status' => 'active',
+        ]);
+
+        $tenant = Tenant::query()->create([
+            'name' => 'Tenant Lama',
+            'tenant_type' => TenantType::PERSONAL,
+            'timezone' => 'Asia/Jakarta',
+            'tenant_status' => 'active',
+            'service_plan' => 'alpha',
+            'service_status' => 'active',
+            'ai_addon_status' => 'inactive',
+        ]);
+
+        $owner = TenantUser::query()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Owner Lama',
+            'email' => 'owner@example.com',
+            'password' => Hash::make('password-lama'),
+            'role' => 'owner',
+            'user_status' => 'active',
+            'whatsapp_number' => '081234567890',
+            'whatsapp_number_normalized' => '6281234567890',
+            'verification_status' => VerificationStatus::PENDING_VERIFICATION,
+        ]);
+
+        $invite = OwnerRegistrationInvite::query()->create([
+            'code' => 'ALPHA-ZXCV-BNMK',
+            'code_normalized' => 'ALPHAZXCVBNMK',
+            'status' => InviteStatus::PENDING,
+            'invited_email' => 'owner@example.com',
+            'created_by_platform_admin_user_id' => $admin->id,
+        ]);
+
+        $response = $this->post(route('tenant.register.store'), $this->registrationPayload([
+            'invite_code' => $invite->code,
+            'owner_email' => 'owner@example.com',
+            'owner_whatsapp' => '081234567890',
+            'owner_name' => 'Owner Reinvite',
+            'tenant_name' => 'Tenant Reinvite',
+        ]));
+
+        $response->assertRedirect(route('tenant.register.success'));
+
+        $this->assertDatabaseCount('tenants', 1);
+        $this->assertDatabaseCount('tenant_users', 1);
+        $this->assertDatabaseHas('tenant_users', [
+            'id' => $owner->id,
+            'name' => 'Owner Reinvite',
+            'email' => 'owner@example.com',
+            'whatsapp_number_normalized' => '6281234567890',
+        ]);
+        $this->assertDatabaseHas('tenants', [
+            'id' => $tenant->id,
+            'name' => 'Tenant Reinvite',
+        ]);
+
+        $invite->refresh();
+
+        $this->assertSame(InviteStatus::USED, $invite->status);
+        $this->assertSame($tenant->id, $invite->used_by_tenant_id);
+        $this->assertSame($owner->id, $invite->used_by_tenant_user_id);
     }
 
     /**
