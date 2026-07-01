@@ -37,26 +37,15 @@ class WahaClient
             return null;
         }
 
-        $response = $this->request()
-            ->get('/api/'.rawurlencode($session).'/contacts/'.rawurlencode($contact));
+        if (str_ends_with(strtolower($contact), '@lid')) {
+            $number = $this->lookupPhoneNumberByLid($session, $contact);
 
-        if ($response->failed()) {
-            return null;
+            if ($number !== null) {
+                return $number;
+            }
         }
 
-        $number = trim((string) $response->json('number', ''));
-
-        if ($number !== '') {
-            return $number;
-        }
-
-        $resolvedId = trim((string) $response->json('id', ''));
-
-        if ($resolvedId === '') {
-            return null;
-        }
-
-        return Str::before($resolvedId, '@');
+        return $this->lookupContactNumberViaContactsApi($session, $contact);
     }
 
     public function downloadMedia(string $mediaUrl): string
@@ -168,6 +157,51 @@ class WahaClient
         }
 
         return $request;
+    }
+
+    private function lookupPhoneNumberByLid(string $sessionKey, string $contactId): ?string
+    {
+        $response = $this->request()
+            ->get('/api/'.rawurlencode($sessionKey).'/lids/'.rawurlencode($contactId));
+
+        if ($response->failed()) {
+            return null;
+        }
+
+        $pn = trim((string) $response->json('pn', ''));
+
+        if ($pn === '') {
+            return null;
+        }
+
+        return Str::before($pn, '@');
+    }
+
+    private function lookupContactNumberViaContactsApi(string $sessionKey, string $contactId): ?string
+    {
+        $response = $this->request()
+            ->get('/api/contacts', [
+                'contactId' => $contactId,
+                'session' => $sessionKey,
+            ]);
+
+        if ($response->failed()) {
+            return null;
+        }
+
+        $number = trim((string) $response->json('number', ''));
+
+        if ($number !== '') {
+            return $number;
+        }
+
+        $resolvedId = trim((string) $response->json('id', ''));
+
+        if ($resolvedId === '') {
+            return null;
+        }
+
+        return Str::before($resolvedId, '@');
     }
 
     /**
