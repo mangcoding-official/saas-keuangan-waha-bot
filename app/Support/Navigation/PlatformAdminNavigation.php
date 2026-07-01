@@ -15,6 +15,7 @@ class PlatformAdminNavigation
             ['label' => 'Users', 'route' => 'internal.users.index', 'pattern' => 'internal.users.*'],
             ['label' => 'Invites', 'route' => 'internal.invites.index', 'pattern' => 'internal.invites.*'],
             ['label' => 'Verification', 'route' => 'internal.verification.index', 'pattern' => 'internal.verification.*'],
+            ['label' => 'Support Inbox', 'route' => 'internal.support.index', 'pattern' => 'internal.support.*'],
             ['label' => 'Sessions', 'route' => 'internal.sessions.index', 'pattern' => 'internal.sessions.*'],
             ['label' => 'Transactions', 'route' => 'internal.transactions.index', 'pattern' => 'internal.transactions.*'],
             ['label' => 'Attachments', 'route' => 'internal.attachments.index', 'pattern' => 'internal.attachments.*'],

@@ -3006,6 +3006,43 @@ span.tenant-sidebar-link-icon.is-members{
     color: #1a1b22;
 }
 
+.support-detail-modal {
+    width: min(100%, 720px);
+}
+
+.support-detail-body {
+    gap: 18px;
+}
+
+.support-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.support-detail-item {
+    display: grid;
+    gap: 6px;
+}
+
+.support-detail-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #6a6d81;
+}
+
+.support-detail-message {
+    padding: 14px 16px;
+    border: 1px solid #d8d9e6;
+    border-radius: 14px;
+    background: #f9fafc;
+    color: #1a1b22;
+    line-height: 1.65;
+    white-space: pre-wrap;
+}
+
 .transactions-type-switch {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3403,7 +3440,8 @@ span.tenant-sidebar-link-icon.is-members{
     .transactions-summary-grid,
     .transactions-filter-grid,
     .transactions-modal-grid-2,
-    .transactions-detail-grid {
+    .transactions-detail-grid,
+    .support-detail-grid {
         grid-template-columns: 1fr;
     }
 

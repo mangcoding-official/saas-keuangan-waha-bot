@@ -5,6 +5,7 @@ use App\Http\Controllers\Internal\AttachmentPreviewController;
 use App\Http\Controllers\Internal\DashboardController;
 use App\Http\Controllers\Internal\OwnerRegistrationInviteController;
 use App\Http\Controllers\Internal\ResourcePageController;
+use App\Http\Controllers\Internal\SupportInboxController;
 use App\Http\Controllers\Internal\VerificationController;
 use App\Http\Controllers\Internal\WahaActionController;
 use Illuminate\Support\Facades\Route;
@@ -26,6 +27,7 @@ Route::prefix(config('platform.route_prefixes.internal'))
             Route::post('/invites/{inviteId}/send-whatsapp', [OwnerRegistrationInviteController::class, 'sendWhatsapp'])->name('invites.send-whatsapp');
             Route::post('/invites/{inviteId}/revoke', [OwnerRegistrationInviteController::class, 'revoke'])->name('invites.revoke');
             Route::get('/verification', [VerificationController::class, 'index'])->name('verification.index');
+            Route::get('/support', [SupportInboxController::class, 'index'])->name('support.index');
             Route::post('/verification/{tenantUserId}/resend', [VerificationController::class, 'resend'])->name('verification.resend');
             Route::post('/verification/{tenantUserId}/regenerate', [VerificationController::class, 'regenerate'])->name('verification.regenerate');
             Route::get('/tenants/{tenantId}', [ResourcePageController::class, 'showTenant'])->name('tenants.show');
