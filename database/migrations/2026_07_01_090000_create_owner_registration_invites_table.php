@@ -19,14 +19,30 @@ return new class extends Migration
             $table->timestamp('expires_at')->nullable();
             $table->timestamp('used_at')->nullable();
             $table->timestamp('revoked_at')->nullable();
-            $table->foreignId('created_by_platform_admin_user_id')->constrained('platform_admin_users')->cascadeOnDelete();
-            $table->foreignId('revoked_by_platform_admin_user_id')->nullable()->constrained('platform_admin_users')->nullOnDelete();
-            $table->foreignId('used_by_tenant_id')->nullable()->constrained('tenants')->nullOnDelete();
-            $table->foreignId('used_by_tenant_user_id')->nullable()->constrained('tenant_users')->nullOnDelete();
+            $table->foreignId('created_by_platform_admin_user_id');
+            $table->foreignId('revoked_by_platform_admin_user_id')->nullable();
+            $table->foreignId('used_by_tenant_id')->nullable();
+            $table->foreignId('used_by_tenant_user_id')->nullable();
             $table->timestamps();
 
             $table->index(['status', 'expires_at']);
             $table->index(['invited_email', 'status']);
+            $table->foreign('created_by_platform_admin_user_id', 'ori_created_by_fk')
+                ->references('id')
+                ->on('platform_admin_users')
+                ->cascadeOnDelete();
+            $table->foreign('revoked_by_platform_admin_user_id', 'ori_revoked_by_fk')
+                ->references('id')
+                ->on('platform_admin_users')
+                ->nullOnDelete();
+            $table->foreign('used_by_tenant_id', 'ori_used_tenant_fk')
+                ->references('id')
+                ->on('tenants')
+                ->nullOnDelete();
+            $table->foreign('used_by_tenant_user_id', 'ori_used_user_fk')
+                ->references('id')
+                ->on('tenant_users')
+                ->nullOnDelete();
         });
     }
 
