@@ -28,5 +28,14 @@ return [
         'conversation_session_minutes' => 30,
     ],
 
+    'support' => [
+        'whatsapp_number' => env('SUPPORT_WHATSAPP_NUMBER'),
+        'whatsapp_message_template' => env(
+            'SUPPORT_WHATSAPP_MESSAGE',
+            'Halo tim support, saya {{user_name}} dari tenant {{tenant_name}} butuh bantuan terkait penggunaan aplikasi.'
+        ),
+        'feedback_form_url' => env('SUPPORT_FEEDBACK_FORM_URL'),
+    ],
+
     'flash_session_key' => 'status',
 ];

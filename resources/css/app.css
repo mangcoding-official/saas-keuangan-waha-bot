@@ -1112,6 +1112,48 @@ span.tenant-sidebar-link-icon.is-members{
     z-index: 1;
 }
 
+.support-page-grid {
+    display: grid;
+    grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.1fr);
+    gap: 20px;
+}
+
+.support-page-card {
+    min-height: 100%;
+}
+
+.support-channel-stack {
+    display: grid;
+    gap: 14px;
+}
+
+.support-channel-note {
+    padding: 16px 18px;
+    border: 1px dashed rgba(30, 64, 175, 0.28);
+    border-radius: 16px;
+    background: rgba(30, 64, 175, 0.05);
+}
+
+.support-channel-note strong {
+    display: block;
+    margin-bottom: 6px;
+    color: #12348b;
+}
+
+.support-channel-note p {
+    margin: 0;
+    color: var(--text-soft);
+    line-height: 1.55;
+}
+
+.support-form {
+    align-content: start;
+}
+
+.support-form-actions {
+    grid-column: 1 / -1;
+}
+
 .sr-only {
     position: absolute;
     width: 1px;
@@ -1138,6 +1180,10 @@ span.tenant-sidebar-link-icon.is-members{
     }
 
     .tenant-dashboard-content-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .support-page-grid {
         grid-template-columns: 1fr;
     }
 

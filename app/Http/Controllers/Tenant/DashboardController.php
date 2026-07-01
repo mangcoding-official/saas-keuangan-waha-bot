@@ -13,7 +13,6 @@ use App\Support\Navigation\TenantNavigation;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Route;
 
 class DashboardController extends Controller
 {
@@ -162,9 +161,7 @@ class DashboardController extends Controller
             $spendingChart
         );
 
-        $supportLink = Route::has('tenant.support')
-            ? route('tenant.support')
-            : route('tenant.dashboard');
+        $supportLink = route('tenant.support');
 
         $accountRows = DB::table('accounts')
             ->where('tenant_id', $tenantId)
