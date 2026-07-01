@@ -6,5 +6,5 @@ After=network.target
 Type=oneshot
 User=www-data
 Group=www-data
-WorkingDirectory=/var/www/saas-keuangan-waha-bot/current
+WorkingDirectory=/var/www/macau
 ExecStart=/usr/bin/php artisan schedule:run

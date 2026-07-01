@@ -1,31 +1,36 @@
 # Deploy Alpha ke VPS
 
-Dokumen ini menyiapkan app Laravel di domain `macau.mcdigits.com` untuk closed alpha sesuai kontrak `public app, private onboarding`.
+Dokumen ini adalah panduan deploy yang sudah disesuaikan dengan setup real alpha yang berhasil dijalankan di:
 
-## Asumsi
+- app Laravel di `/var/www/macau`
+- WAHA di `/opt/waha`
+- domain `macau.mcdigits.com`
+- Ubuntu 24.04
 
-- VPS memakai Ubuntu 24.04.
-- Domain `macau.mcdigits.com` sudah mengarah ke IP VPS.
-- App source akan ditempatkan di `/var/www/saas-keuangan-waha-bot/current`.
-- Database memakai MySQL atau MariaDB lokal.
-- PHP-FPM yang dipakai adalah `php8.3-fpm`.
-- WAHA dijalankan sebagai service terpisah dan diakses dari app lewat `http://127.0.0.1:3000`.
+Target deploy ini adalah `closed alpha` dengan model `public app, private onboarding`.
 
-## Komponen minimum
+## Ringkasan arsitektur
 
-- Nginx
-- PHP 8.3 FPM + extension `mysql`, `mbstring`, `xml`, `curl`, `zip`, `bcmath`, `intl`, `gd`, `sqlite3`
-- Composer
-- Node.js 20 LTS
-- MySQL atau MariaDB
-- Git
-- Certbot
+Komponen yang dipakai:
 
-## Struktur target
+- Nginx sebagai web server
+- PHP 8.3 FPM untuk Laravel
+- MariaDB lokal untuk database app
+- WAHA via Docker di server yang sama
+- Certbot untuk SSL
+- queue worker + scheduler via `systemd`
+
+Port yang dipakai:
+
+- `80` untuk HTTP
+- `443` untuk HTTPS
+- `3000` untuk WAHA internal, bind ke `127.0.0.1`
+
+## Struktur final server
 
 ```text
-/var/www/saas-keuangan-waha-bot/
-  current/
+/var/www/macau
+/opt/waha
 ```
 
 ## 1. Install dependency server
@@ -38,126 +43,318 @@ sudo apt install -y mariadb-server
 sudo apt install -y certbot python3-certbot-nginx
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt install -y nodejs
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker $USER
+sudo apt install -y docker-compose-plugin
 cd /tmp
 curl -sS https://getcomposer.org/installer -o composer-setup.php
 sudo php composer-setup.php --install-dir=/usr/local/bin --filename=composer
 ```
 
-## 2. Siapkan database
+Setelah menambahkan user ke grup `docker`, logout lalu login lagi.
+
+## 2. Siapkan database MariaDB
+
+Masuk ke MariaDB:
 
 ```bash
 sudo mysql
 ```
 
+Buat database dan user app. Contoh final yang dipakai:
+
 ```sql
-CREATE DATABASE saas_waha_bot CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'saas_waha_bot'@'127.0.0.1' IDENTIFIED BY 'GANTI_PASSWORD_DB';
-GRANT ALL PRIVILEGES ON saas_waha_bot.* TO 'saas_waha_bot'@'127.0.0.1';
+CREATE DATABASE wamaca CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'FrostyVanguard'@'127.0.0.1' IDENTIFIED BY 'TempPass12345';
+CREATE USER 'FrostyVanguard'@'localhost' IDENTIFIED BY 'TempPass12345';
+GRANT ALL PRIVILEGES ON wamaca.* TO 'FrostyVanguard'@'127.0.0.1';
+GRANT ALL PRIVILEGES ON wamaca.* TO 'FrostyVanguard'@'localhost';
 FLUSH PRIVILEGES;
 EXIT;
 ```
 
-Jika koneksi memakai `localhost` dan bukan `127.0.0.1`, buat user untuk host `localhost` juga.
+Catatan penting:
 
-## 3. Upload code
+- buat user untuk `127.0.0.1` dan `localhost` sekaligus
+- jika password mengandung karakter spesial, `.env` Laravel harus memakai tanda kutip
+- jika sedang debugging koneksi, lebih aman pakai password sementara alfanumerik dulu
+
+## 3. Upload code app
 
 ```bash
-sudo mkdir -p /var/www/saas-keuangan-waha-bot
-sudo chown -R $USER:$USER /var/www/saas-keuangan-waha-bot
-cd /var/www/saas-keuangan-waha-bot
-git clone <URL_REPO_GIT> current
-cd current
+sudo mkdir -p /var/www/macau
+sudo chown -R $USER:$USER /var/www/macau
+cd /var/www
+git clone <URL_REPO_GIT> macau
+cd /var/www/macau
 composer install --no-dev --optimize-autoloader
 npm ci
 npm run build
 cp .env.production.example .env
-php artisan key:generate
 ```
 
-## 4. Isi environment production
+Jika repo kamu tidak di-clone langsung ke `/var/www/macau`, sesuaikan path Nginx dan service `systemd` agar konsisten.
 
-Edit file `.env` lalu isi minimal:
+## 4. Install dan jalankan WAHA di `/opt/waha`
+
+```bash
+sudo mkdir -p /opt/waha
+sudo chown -R $USER:$USER /opt/waha
+cd /opt/waha
+mkdir -p data
+```
+
+Buat file `docker-compose.yml`:
+
+```yaml
+services:
+  waha:
+    image: devlikeapro/waha:latest
+    container_name: waha
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      WAHA_API_KEY: "GANTI_API_KEY_WAHA"
+      WAHA_DASHBOARD_USERNAME: "admin"
+      WAHA_DASHBOARD_PASSWORD: "GANTI_PASSWORD_DASHBOARD_WAHA"
+      WAHA_PRINT_QR: "true"
+      WAHA_SESSION_STORE: "FILE"
+    volumes:
+      - ./data:/app/.sessions
+```
+
+Jalankan WAHA:
+
+```bash
+cd /opt/waha
+docker compose up -d
+docker compose logs -f waha
+```
+
+Verifikasi:
+
+```bash
+curl http://127.0.0.1:3000
+```
+
+Catatan penting:
+
+- kredensial dashboard WAHA bisa digenerate otomatis, tapi `WAHA_API_KEY` harus kamu tentukan sendiri
+- samakan `WAHA_API_KEY` antara container WAHA dan `.env` Laravel
+- port `3000` sengaja bind ke `127.0.0.1` agar tidak terbuka ke publik
+
+## 5. Isi `.env` production
+
+Template dasar sudah ada di [.env.production.example](/D:/Mangcoding%20Project/SaaS%20System%20Keuangan%20By%20WAHA%20BOT/saas-keuangan-waha-bot/.env.production.example:1), tapi untuk server final ini isi minimalnya harus mengikuti pola berikut:
 
 ```dotenv
+APP_NAME="SaaS Keuangan WAHA"
 APP_ENV=production
+APP_KEY=
 APP_DEBUG=false
 APP_URL=https://macau.mcdigits.com
+APP_TIMEZONE=Asia/Jakarta
 
-DB_DATABASE=saas_waha_bot
-DB_USERNAME=saas_waha_bot
-DB_PASSWORD=GANTI_PASSWORD_DB
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=wamaca
+DB_USERNAME=FrostyVanguard
+DB_PASSWORD="TempPass12345"
 
+SESSION_DRIVER=database
 SESSION_DOMAIN=macau.mcdigits.com
 SESSION_SECURE_COOKIE=true
+SESSION_SAME_SITE=lax
 
 QUEUE_CONNECTION=database
 CACHE_STORE=database
 
 WAHA_BASE_URL=http://127.0.0.1:3000
-WAHA_API_KEY=GANTI_API_KEY_WAHA
+WAHA_API_KEY="GANTI_API_KEY_WAHA"
+WAHA_DASHBOARD_USERNAME="admin"
+WAHA_DASHBOARD_PASSWORD="GANTI_PASSWORD_DASHBOARD_WAHA"
 WAHA_DEFAULT_SESSION=default
 
 SUPPORT_WHATSAPP_NUMBER=628xxxxxxxxxx
 SUPPORT_FEEDBACK_FORM_URL=
 ```
 
-Catatan:
+Catatan penting:
 
-- `APP_URL` harus `https://macau.mcdigits.com`.
-- Karena alpha ini punya register, login, dan internal dashboard, cookie secure harus aktif.
-- Bila belum memakai Redis, queue dan cache database tetap valid untuk VPS 2 GB.
+- `APP_URL` harus persis `https://macau.mcdigits.com`
+- `DB_HOST=127.0.0.1` lebih aman untuk setup ini
+- jika password DB atau WAHA ada karakter spesial, bungkus dengan tanda kutip
+- jangan biarkan ada duplikasi `DB_*` atau `WAHA_*` di `.env`
 
-## 5. Permission storage
+Verifikasi cepat:
 
 ```bash
-sudo chown -R www-data:www-data /var/www/saas-keuangan-waha-bot/current
-sudo find /var/www/saas-keuangan-waha-bot/current -type f -exec chmod 644 {} \;
-sudo find /var/www/saas-keuangan-waha-bot/current -type d -exec chmod 755 {} \;
-sudo chmod -R 775 /var/www/saas-keuangan-waha-bot/current/storage
-sudo chmod -R 775 /var/www/saas-keuangan-waha-bot/current/bootstrap/cache
+grep -n "^DB_" .env
+grep -n "^WAHA_" .env
+grep -n "^APP_KEY" .env
+```
+
+## 6. Generate `APP_KEY`
+
+Ini wajib. Tanpa `APP_KEY`, Laravel akan error meskipun web server dan database sudah benar.
+
+Jalankan:
+
+```bash
+cd /var/www/macau
+php artisan key:generate
+```
+
+Jika `artisan` gagal karena cache lama atau konfigurasi lama, hapus dulu cache bootstrap:
+
+```bash
+rm -f bootstrap/cache/*.php
+php artisan key:generate
+```
+
+## 7. Permission storage dan bootstrap cache
+
+```bash
+cd /var/www/macau
+sudo chown -R www-data:www-data storage bootstrap/cache
+sudo chmod -R 775 storage bootstrap/cache
 php artisan storage:link
 ```
 
-## 6. Migration, cache, dan seed awal
+Kalau mau ketat tapi aman:
 
 ```bash
-cd /var/www/saas-keuangan-waha-bot/current
+sudo find /var/www/macau -type f -exec chmod 644 {} \;
+sudo find /var/www/macau -type d -exec chmod 755 {} \;
+sudo chmod -R 775 /var/www/macau/storage
+sudo chmod -R 775 /var/www/macau/bootstrap/cache
+```
+
+## 8. Bersihkan cache Laravel sebelum migrate
+
+Saat setup real, cache config lama bisa tetap terbaca walaupun `.env` sudah benar. Karena itu, sebelum migrate lakukan:
+
+```bash
+cd /var/www/macau
+rm -f bootstrap/cache/*.php
+php artisan optimize:clear
+```
+
+Jika `optimize:clear` gagal saat app belum sehat, minimal:
+
+```bash
+rm -f bootstrap/cache/*.php
+```
+
+## 9. Verifikasi koneksi database dari PHP
+
+Sebelum migrate, cek dulu koneksi DB langsung dari PHP:
+
+```bash
+cd /var/www/macau
+php -r "new PDO('mysql:host=127.0.0.1;port=3306;dbname=wamaca','FrostyVanguard','TempPass12345'); echo 'ok'.PHP_EOL;"
+```
+
+Kalau hasilnya `ok`, berarti user DB, password, grant, dan extension PHP MySQL sudah benar.
+
+## 10. Jalankan migration dan seed awal
+
+```bash
+cd /var/www/macau
 php artisan migrate --force
 php artisan db:seed --force
+```
+
+Setelah itu cache ulang:
+
+```bash
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 ```
 
-Seeder default akan membuat akun demo. Untuk alpha real, segera ganti password akun production atau buat akun admin baru lalu hapus data demo bila tidak dibutuhkan.
+Seeder default membuat data demo. Untuk alpha real:
 
-## 7. Nginx
+- ganti password akun demo atau buat akun production baru
+- hapus data demo jika tidak ingin tercampur dengan user alpha
 
-Copy contoh config dari repo:
+## 11. Siapkan Nginx
+
+Copy file contoh dari repo:
 
 ```bash
 sudo cp deploy/nginx/macau.mcdigits.com.conf /etc/nginx/sites-available/macau.mcdigits.com
 sudo ln -s /etc/nginx/sites-available/macau.mcdigits.com /etc/nginx/sites-enabled/macau.mcdigits.com
+```
+
+Untuk setup final `/var/www/macau`, pastikan `root` di config Nginx menunjuk ke:
+
+```nginx
+root /var/www/macau/public;
+```
+
+Nonaktifkan default site agar request ke domain tidak jatuh ke halaman default Nginx:
+
+```bash
+sudo rm -f /etc/nginx/sites-enabled/default
+```
+
+Lalu verifikasi:
+
+```bash
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-## 8. SSL
+Tes cepat:
+
+```bash
+curl -I http://macau.mcdigits.com
+```
+
+## 12. Pasang SSL
+
+Pastikan record DNS `A` untuk `macau.mcdigits.com` sudah mengarah ke IP VPS.
+
+Kalau Cloudflare dipakai:
+
+- sementara set `DNS only` dulu saat menjalankan Certbot
+- pastikan domain yang dipakai benar-benar `macau.mcdigits.com`
+- jangan typo menjadi `macau.digits.com` atau `macau.mcdigit.com`
+
+Jalankan:
 
 ```bash
 sudo certbot --nginx -d macau.mcdigits.com
 ```
 
-Jika domain Cloudflare masih diproxy dan challenge gagal, nonaktifkan proxy sementara atau pakai DNS challenge Cloudflare.
+Tes cepat:
 
-## 9. Queue worker dan scheduler
+```bash
+curl -I https://macau.mcdigits.com
+```
 
-Copy unit dari repo:
+## 13. Pasang queue worker dan scheduler
+
+Copy unit file dari repo:
 
 ```bash
 sudo cp deploy/systemd/saas-keuangan-waha-bot-queue.service /etc/systemd/system/
 sudo cp deploy/systemd/saas-keuangan-waha-bot-scheduler.service /etc/systemd/system/
 sudo cp deploy/systemd/saas-keuangan-waha-bot-scheduler.timer /etc/systemd/system/
+```
+
+Karena app final ada di `/var/www/macau`, ubah `WorkingDirectory` di file service agar menunjuk ke:
+
+```text
+/var/www/macau
+```
+
+Lalu:
+
+```bash
 sudo systemctl daemon-reload
 sudo systemctl enable --now saas-keuangan-waha-bot-queue.service
 sudo systemctl enable --now saas-keuangan-waha-bot-scheduler.timer
@@ -170,41 +367,84 @@ systemctl status saas-keuangan-waha-bot-queue.service
 systemctl status saas-keuangan-waha-bot-scheduler.timer
 ```
 
-## 10. WAHA integration
+## 14. Hubungkan session dan webhook WAHA
 
-App ini mengirim invite WhatsApp dan aktivasi lewat service WAHA, jadi sebelum smoke test pastikan:
+Setelah WAHA hidup:
 
-- WAHA service hidup di VPS atau host private yang dapat diakses VPS.
-- `WAHA_BASE_URL` dan `WAHA_API_KEY` valid.
-- session `default` memang ada di WAHA.
-- webhook WAHA diarahkan ke `https://macau.mcdigits.com/webhooks/waha`.
-- ada `bot_instances` default aktif di database.
+1. pastikan `WAHA_API_KEY` di Laravel sama dengan container WAHA
+2. buat atau pakai session `default`
+3. login WhatsApp pada session itu sampai `connected`
+4. arahkan webhook ke `https://macau.mcdigits.com/webhooks/waha`
+5. pastikan `bot_instances.waha_instance_key` cocok dengan session yang dipakai
 
-Jika belum ada bot aktif, seeder membuat bot `default` dasar, tetapi koneksi WAHA tetap harus benar-benar dihubungkan dari sisi service WAHA.
+Kalau ingin verifikasi dashboard WAHA dari browser, gunakan kredensial dashboard WAHA, bukan `WAHA_API_KEY`.
 
-## 11. Smoke test alpha
+## 15. Checklist troubleshooting yang terbukti penting
+
+### Jika `php artisan migrate --force` gagal karena `Access denied`
+
+Urutan cek:
+
+```bash
+grep -n "^DB_" .env
+rm -f bootstrap/cache/*.php
+php -r "require 'vendor/autoload.php'; \$app=require 'bootstrap/app.php'; \$kernel=\$app->make(Illuminate\Contracts\Console\Kernel::class); \$kernel->bootstrap(); var_export(config('database.connections.mysql'));"
+php -r "new PDO('mysql:host=127.0.0.1;port=3306;dbname=wamaca','FrostyVanguard','TempPass12345'); echo 'ok'.PHP_EOL;"
+```
+
+Kalau `PDO` langsung `ok` tetapi Laravel gagal, hampir pasti cache config lama belum dibersihkan atau `.env` masih menyimpan nilai lama.
+
+### Jika domain malah menampilkan halaman default Nginx
+
+Biasanya:
+
+- site domain belum aktif
+- default site belum dimatikan
+- `root` masih salah
+
+### Jika browser menunjukkan `500 Server Error`
+
+Fokus ke log Laravel:
+
+```bash
+tail -n 100 storage/logs/laravel.log
+```
+
+### Jika browser timeout
+
+Fokus ke listener dan firewall:
+
+```bash
+sudo ss -tulpn | grep -E ':80|:443'
+sudo ufw status
+```
+
+## 16. Smoke test alpha
 
 Urutan cek minimum:
 
-1. Buka `https://macau.mcdigits.com`.
-2. Buka `https://macau.mcdigits.com/register`.
-3. Login internal di `https://macau.mcdigits.com/internal/login`.
-4. Buat invite owner dari dashboard internal.
-5. Uji kirim ulang invite WhatsApp.
-6. Selesaikan satu registrasi owner.
-7. Login tenant owner.
-8. Buka profile dan support page.
-9. Pastikan queue worker dan scheduler tetap hidup.
+1. buka `https://macau.mcdigits.com`
+2. buka `https://macau.mcdigits.com/register`
+3. login internal di `https://macau.mcdigits.com/internal/login`
+4. buat invite owner dari dashboard internal
+5. uji kirim ulang invite WhatsApp
+6. selesaikan satu registrasi owner
+7. login tenant owner
+8. buka profile dan support page
+9. cek queue worker dan scheduler tetap hidup
+10. cek WAHA session tetap connected
 
-## 12. Post-deploy setiap update
+## 17. Post-deploy untuk update berikutnya
 
 ```bash
-cd /var/www/saas-keuangan-waha-bot/current
+cd /var/www/macau
 git pull origin main
 composer install --no-dev --optimize-autoloader
 npm ci
 npm run build
+rm -f bootstrap/cache/*.php
 php artisan migrate --force
+php artisan optimize:clear
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
@@ -212,9 +452,12 @@ sudo systemctl restart php8.3-fpm
 sudo systemctl restart saas-keuangan-waha-bot-queue.service
 ```
 
-## Risiko yang perlu dijaga
+WAHA tidak perlu direstart pada setiap deploy Laravel jika konfigurasi WAHA tidak berubah.
 
-- Jangan biarkan akun demo dari seeder tetap dipakai di production.
-- Jangan aktifkan open signup; alpha ini masih invite-gated.
-- Jangan anggap WAHA sehat hanya karena app hidup; webhook dan session WAHA harus benar-benar aktif.
-- Jangan lupa backup database sebelum update schema berikutnya.
+## 18. Risiko operasional
+
+- jangan aktifkan open signup; alpha ini tetap invite-gated
+- jangan biarkan akun demo dari seeder dipakai mentah di production
+- jangan lupa backup database sebelum update schema
+- jangan expose port WAHA ke publik
+- jangan lupa samakan `WAHA_API_KEY` antara WAHA dan Laravel
