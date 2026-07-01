@@ -1,0 +1,10 @@
+[Unit]
+Description=Run SaaS Keuangan WAHA scheduler
+After=network.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/saas-keuangan-waha-bot/current
+ExecStart=/usr/bin/php artisan schedule:run

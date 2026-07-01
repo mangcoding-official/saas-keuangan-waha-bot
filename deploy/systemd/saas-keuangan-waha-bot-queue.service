@@ -1,0 +1,15 @@
+[Unit]
+Description=SaaS Keuangan WAHA queue worker
+After=network.target mariadb.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+Restart=always
+RestartSec=5
+WorkingDirectory=/var/www/saas-keuangan-waha-bot/current
+ExecStart=/usr/bin/php artisan queue:work --sleep=3 --tries=3 --timeout=90
+
+[Install]
+WantedBy=multi-user.target
