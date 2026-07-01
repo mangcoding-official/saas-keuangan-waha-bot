@@ -2,41 +2,37 @@
 
 ## Scope
 
-- Goal: Samakan UI tabel tenant transactions dengan pola accounts, tambahkan modal filter untuk range tanggal, tipe, kategori, dan akun, lalu rapikan trigger buka/tutup filter agar tidak reload halaman, sambil mempertahankan default tabel semua transaksi terbaru, overview month-over-month, serta flow void/export yang sudah dikerjakan.
+- Goal: Update UI `internal/users` agar mengikuti pola halaman user tenant, lalu tampilkan hanya fungsi manage user yang memang sudah ada di backend internal.
 - Type: implement
 - Mode: balanced
-- Allowed modules: `app/Http/Controllers/Tenant/TransactionController.php`, `resources/views/tenant/transactions/index.blade.php`, test feature transaksi yang paling dekat, `.ai-context/CURRENT-TASK.md`
-- Explicit exclusions: tidak redesign layout Figma, tidak mengubah enum/status transaksi, tidak menambah modul baru di luar kebutuhan flow transaksi
+- Allowed modules: `app/Http/Controllers/Internal/ResourcePageController.php`, `resources/views/internal/users/index.blade.php`, test feature internal users yang paling dekat, `.ai-context/CURRENT-TASK.md`
+- Explicit exclusions: tidak mengubah flow auth internal, tidak menambah route/action baru untuk activate/deactivate user, tidak redesign modul internal lain
 
 ## Evidence and checkpoint
 
-- Confirmed facts: summary cards memang harus tetap memakai perbandingan bulan berjalan vs bulan sebelumnya.
-- Confirmed facts: tabel transaksi saat ini masih terfilter `this_month` secara default karena `applyFilters()` memberi default period meski user tidak mengirim query period.
-- Confirmed facts: struktur visual `accounts-table-head` + icon tool di page accounts adalah referensi paling dekat untuk header tabel transaksi yang diminta user.
-- Confirmed facts: CSS transaksi sudah punya shell modal yang bisa direuse untuk filter form, sehingga tidak perlu membuat komponen modal baru di luar style system.
-- Confirmed facts: route backend untuk `tenant.transactions.void` sudah ada, tetapi belum ada jalur UI yang mengumpulkan `void_reason`.
-- Confirmed facts: CTA `Export` sudah tampil di header, tetapi belum ada handling `export` di controller.
-- Confirmed facts: setelah reread file penuh, handler close action menu untuk state normal sudah ada, sehingga bagian itu tidak perlu diubah.
-- Confirmed facts: `formatTrend()` saat ini bisa menghasilkan angka negatif seperti `-100,0%`, dan itu terasa buruk di UI overview.
-- Confirmed facts: query transaksi saat ini belum menerima `date_from` / `date_to` eksplisit, jadi UI filter range tanggal belum bisa disambungkan langsung.
-- Confirmed facts: trigger filter saat ini masih memakai query `filter=1`, jadi buka/tutup modal selalu memicu request baru meski user hanya ingin menampilkan shell modal.
-- Root cause or hypothesis: filter modal seharusnya menjadi state lokal di blade agar toggle open/close tidak bergantung pada query string, sementara submit filter tetap request normal untuk refresh tabel.
-- Next verification: review diff, jalankan test feature transaksi terfokus, validasi sintaks PHP, lalu cek render transaksi tanpa query `filter`.
+- Confirmed facts: `internal/users` masih memakai `internal.resource-index` generik sehingga tampilannya belum selaras dengan page tenant members/accounts.
+- Confirmed facts: action backend internal yang benar-benar tersedia untuk manage user saat ini adalah inspect user, buka tenant detail, resend activation code, dan regenerate activation code.
+- Confirmed facts: route resend/regenerate hanya tersedia di `internal.verification.*`, jadi halaman users harus reuse kontrak itu, bukan membuat endpoint baru.
+- Confirmed facts: style tenant yang paling dekat untuk user management ada di `resources/views/tenant/members/index.blade.php` dengan `members-*` table shell dan `accounts-action-menu`.
+- Confirmed facts: CSS untuk summary card, table shell, action menu, pagination, dan modal detail sudah ada, jadi tidak perlu membuat style system baru.
+- Root cause or hypothesis: halaman users internal terlalu generik untuk kebutuhan manage user; solusi paling kecil adalah view khusus users dengan data/controller yang sama, ditambah action pending-verification yang memang sudah didukung service.
+- Next verification: review diff, jalankan test feature internal users terfokus, validasi sintaks PHP controller, lalu cek route internal users/verifikasi tetap terbaca.
 
 ## Read ledger
 
 | Path | Purpose / symbols | Changed since read? |
 |---|---|---|
-| `app/Http/Controllers/Tenant/TransactionController.php` | index, filters, selected/edit state, export branch | re-read |
-| `resources/views/tenant/transactions/index.blade.php` | action menu, detail drawer, edit modal, export CTA | re-read |
-| `app/Http/Requests/UpdateTransactionRequest.php` | edit validation contract | re-read |
-| `app/Http/Requests/VoidTransactionRequest.php` | void validation contract | re-read |
-| `app/Services/TransactionManagementService.php` | update/void service behavior | re-read |
-| `tests/Feature/TenantProfilePageTest.php` | tenant feature test style | re-read |
-| `tests/Feature/TenantSupportPageTest.php` | helper pattern for tenant feature setup | re-read |
+| `routes/internal.php` | `internal.users.index`, `internal.verification.*` | re-read |
+| `app/Http/Controllers/Internal/ResourcePageController.php` | `showUsers()`, `buildUserDetail()` | re-read |
+| `app/Http/Controllers/Internal/VerificationController.php` | resend/regenerate contract dan redirect | re-read |
+| `resources/views/internal/resource-index.blade.php` | view generik lama untuk internal users | re-read |
+| `resources/views/tenant/members/index.blade.php` | referensi UI manage user tenant | re-read |
+| `resources/views/tenant/accounts/index.blade.php` | referensi pagination dan action menu | re-read |
+| `tests/Feature/InternalOwnerRegistrationInviteTest.php` | pola setup auth internal | re-read |
+| `tests/Feature/InternalWahaActionTest.php` | pola feature test internal lain | re-read |
 
 ## Change plan
 
-- Files allowed to change: `.ai-context/CURRENT-TASK.md`, `app/Http/Controllers/Tenant/TransactionController.php`, `resources/views/tenant/transactions/index.blade.php`, `tests/Feature/TenantTransactionsPageTest.php`
-- Contracts to preserve: transaksi member tetap dibatasi ke transaksi miliknya, void hanya untuk owner, update tetap memakai service yang ada, card overview tetap berbasis bulan berjalan vs bulan sebelumnya, default tabel tetap latest-first, export tetap mengikuti filter aktif
-- Verification plan: review `git diff`, jalankan `php artisan test --filter=TenantTransactionsPageTest`, `php -l` untuk controller transaksi, dan `php artisan route:list --name=tenant.transactions`
+- Files allowed to change: `.ai-context/CURRENT-TASK.md`, `app/Http/Controllers/Internal/ResourcePageController.php`, `resources/views/internal/users/index.blade.php`, `tests/Feature/InternalUsersPageTest.php`
+- Contracts to preserve: daftar user tetap latest-first, detail tenant tetap lewat route existing, resend/regenerate tetap memakai route verifikasi existing, user verified tidak ditampilkan seolah bisa diregenerate
+- Verification plan: review `git diff`, jalankan `php artisan test --filter=InternalUsersPageTest`, `php -l` untuk controller internal resource page, dan `php artisan route:list --name=internal.users`

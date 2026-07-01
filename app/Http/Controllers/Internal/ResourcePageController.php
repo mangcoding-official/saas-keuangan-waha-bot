@@ -345,15 +345,28 @@ class ResourcePageController extends Controller
 
     private function showUsers(Request $request): View
     {
+        $search = trim((string) $request->query('search', ''));
+        $summaryBaseQuery = DB::table('tenant_users');
+
         $rows = DB::table('tenant_users')
             ->join('tenants', 'tenants.id', '=', 'tenant_users.tenant_id')
             ->leftJoin('activation_codes', function ($join): void {
                 $join->on('activation_codes.tenant_user_id', '=', 'tenant_users.id')
                     ->where('activation_codes.active_lock', '=', 1);
-            })
+            });
+
+        if ($search !== '') {
+            $rows->where(function ($query) use ($search): void {
+                $query
+                    ->where('tenant_users.name', 'like', '%'.$search.'%')
+                    ->orWhere('tenants.name', 'like', '%'.$search.'%')
+                    ->orWhere('tenant_users.whatsapp_number', 'like', '%'.$search.'%');
+            });
+        }
+
+        $rows = $rows
             ->orderByDesc('tenant_users.created_at')
-            ->limit(40)
-            ->get([
+            ->paginate(10, [
                 'tenant_users.id',
                 'tenant_users.tenant_id',
                 'tenant_users.name',
@@ -366,63 +379,52 @@ class ResourcePageController extends Controller
                 'tenants.name as tenant_name',
                 'activation_codes.code_last4',
                 'activation_codes.expires_at as activation_expires_at',
-            ]);
+            ])
+            ->withQueryString();
 
         $showId = (int) $request->query('show', 0);
         $detail = $showId > 0 ? $this->buildUserDetail($showId) : null;
 
-        return $this->renderResourceIndex($request, [
+        return view('internal.users.index', [
+            ...$this->baseViewData($request),
             'page' => [
-                'title' => 'Users',
-                'description' => 'Lihat user lintas tenant, status akses, verifikasi, dan code aktif.',
+                'title' => 'Manajemen User Tenant',
+                'description' => 'Pantau user lintas tenant, status akses, dan activation code dari satu halaman yang lebih operasional.',
                 'eyebrow' => 'Internal Module',
             ],
-            'toolbar' => [
-                'search_label' => 'Cari user atau nomor WhatsApp',
-                'search_placeholder' => 'Search user, tenant, or WhatsApp number',
-            ],
             'summary' => [
-                ['label' => 'Visible users', 'value' => (string) $rows->count(), 'note' => '40 user terbaru', 'tone' => 'neutral'],
-                ['label' => 'Owners', 'value' => (string) $rows->where('role', 'owner')->count(), 'note' => 'Pengelola tenant', 'tone' => 'neutral'],
-                ['label' => 'Pending verification', 'value' => (string) $rows->where('verification_status', 'pending_verification')->count(), 'note' => 'Belum aktif penuh', 'tone' => 'alert'],
-                ['label' => 'Inactive users', 'value' => (string) $rows->where('user_status', 'inactive')->count(), 'note' => 'Akses diblokir', 'tone' => 'alert'],
+                'total_users' => (int) (clone $summaryBaseQuery)->count(),
+                'owner_count' => (int) (clone $summaryBaseQuery)->where('role', 'owner')->count(),
+                'member_count' => (int) (clone $summaryBaseQuery)->where('role', 'member')->count(),
+                'pending_count' => (int) (clone $summaryBaseQuery)->where('verification_status', 'pending_verification')->count(),
             ],
-            'table' => [
-                'headers' => ['Tenant / User', 'Role', 'Verification', 'WhatsApp', 'Code', 'Action'],
-                'rows' => $rows->map(fn (object $row): array => [
-                    'cells' => [
-                        [
-                            'primary' => $row->tenant_name.' / '.$row->name,
-                            'lines' => [
-                                'Created: '.$this->formatDateTime($row->created_at),
-                                'Last login: '.$this->formatDateTime($row->last_login_at),
-                            ],
-                        ],
-                        [
-                            'badges' => [
-                                ['label' => strtoupper((string) $row->role), 'tone' => $row->role === 'owner' ? 'neutral' : 'success'],
-                                ['label' => (string) $row->user_status, 'tone' => $row->user_status === 'active' ? 'success' : 'warning'],
-                            ],
-                        ],
-                        [
-                            'badges' => [
-                                ['label' => (string) $row->verification_status, 'tone' => $row->verification_status === 'verified' ? 'success' : 'warning'],
-                            ],
-                        ],
-                        [
-                            'primary' => $row->whatsapp_number,
-                        ],
-                        [
-                            'primary' => $row->code_last4 ? 'KAS-'.$row->code_last4 : '-',
-                            'lines' => [$row->activation_expires_at ? 'Expires: '.$this->formatDateTime($row->activation_expires_at) : 'No active code'],
-                        ],
-                    ],
-                    'actions' => [
-                        ['label' => 'Inspect', 'href' => route('internal.users.index', ['show' => $row->id]), 'variant' => 'secondary'],
-                        ['label' => 'Tenant', 'href' => route('internal.tenants.show', $row->tenant_id), 'variant' => 'ghost'],
-                    ],
-                ])->all(),
-            ],
+            'search' => $search,
+            'users' => $rows->through(fn (object $row): array => [
+                'id' => (int) $row->id,
+                'tenant_id' => (int) $row->tenant_id,
+                'name' => $row->name,
+                'tenant_name' => $row->tenant_name,
+                'initials' => Str::of((string) $row->name)
+                    ->explode(' ')
+                    ->filter()
+                    ->take(2)
+                    ->map(fn (string $segment): string => Str::upper(Str::substr($segment, 0, 1)))
+                    ->implode(''),
+                'role_key' => (string) $row->role,
+                'role_label' => strtoupper((string) $row->role),
+                'user_status_key' => (string) $row->user_status,
+                'user_status_label' => $row->user_status === 'active' ? 'Aktif' : 'Nonaktif',
+                'verification_status_key' => (string) $row->verification_status,
+                'verification_status_label' => $row->verification_status === 'verified' ? 'Terverifikasi' : 'Menunggu',
+                'whatsapp_number' => $row->whatsapp_number,
+                'last_active_at' => $this->formatDateTime($row->last_login_at),
+                'created_at' => $this->formatDateTime($row->created_at),
+                'activation_code' => $row->code_last4 ? 'KAS-'.$row->code_last4 : '-',
+                'activation_note' => $row->activation_expires_at
+                    ? 'Berlaku sampai '.$this->formatDateTime($row->activation_expires_at)
+                    : 'Tidak ada code aktif',
+                'can_manage_verification' => $row->verification_status === 'pending_verification',
+            ]),
             'detail' => $detail,
         ]);
     }
@@ -986,11 +988,15 @@ class ResourcePageController extends Controller
         $transactionCount = (int) DB::table('transactions')->where('recorded_by_user_id', $userId)->count();
 
         return [
-            'title' => $user->tenant_name.' / '.$user->name,
+            'title' => $user->name,
+            'subtitle' => $user->tenant_name,
             'badges' => [
                 ['label' => strtoupper((string) $user->role), 'tone' => $user->role === 'owner' ? 'neutral' : 'success'],
+                ['label' => (string) $user->user_status, 'tone' => $user->user_status === 'active' ? 'success' : 'warning'],
                 ['label' => (string) $user->verification_status, 'tone' => $user->verification_status === 'verified' ? 'success' : 'warning'],
             ],
+            'can_manage_verification' => $user->verification_status === 'pending_verification',
+            'tenant_href' => route('internal.tenants.show', $user->tenant_id),
             'sections' => [
                 [
                     'title' => 'Identity',
@@ -1014,9 +1020,6 @@ class ResourcePageController extends Controller
                         'Last login: '.$this->formatDateTime($user->last_login_at),
                         'Sessions: '.$sessionCount,
                         'Transactions: '.$transactionCount,
-                    ],
-                    'links' => [
-                        ['label' => 'Open tenant detail', 'href' => route('internal.tenants.show', $user->tenant_id)],
                     ],
                 ],
             ],

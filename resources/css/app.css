@@ -1411,6 +1411,71 @@ span.tenant-sidebar-link-icon.is-members{
     padding: 22px;
 }
 
+.internal-user-modal-head-copy {
+    display: grid;
+    gap: 6px;
+}
+
+.internal-user-modal-body {
+    display: grid;
+    gap: 18px;
+    padding: 24px;
+}
+
+.internal-user-modal-badges {
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.internal-user-modal-sections {
+    display: grid;
+    gap: 14px;
+}
+
+.internal-user-modal-section {
+    border: 1px solid #e4e7f2;
+    border-radius: 14px;
+    background: #f8faff;
+    padding: 14px 16px;
+}
+
+.internal-user-modal-section .dashboard-section-title {
+    margin-bottom: 10px;
+}
+
+.internal-user-modal-lines {
+    gap: 10px;
+}
+
+.internal-user-modal-lines p {
+    line-height: 1.55;
+}
+
+.internal-user-modal-section-actions {
+    background: #ffffff;
+}
+
+.internal-user-modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.internal-user-modal-actions form {
+    margin: 0;
+}
+
+.internal-user-modal-actions .button,
+.internal-user-modal-actions .button-compact {
+    min-height: 40px;
+    border-radius: 999px;
+    padding-inline: 16px;
+}
+
+.internal-user-modal-action-wide {
+    min-width: 180px;
+}
+
 .account-popover-option {
     min-height: 38px;
     border: 1px solid transparent;
@@ -3575,6 +3640,20 @@ span.tenant-sidebar-link-icon.is-members{
     }
 
     .transactions-detail-foot .transactions-button {
+        width: 100%;
+    }
+
+    .internal-user-modal-body {
+        padding: 18px;
+    }
+
+    .internal-user-modal-actions {
+        flex-direction: column;
+    }
+
+    .internal-user-modal-actions form,
+    .internal-user-modal-actions a,
+    .internal-user-modal-actions button {
         width: 100%;
     }
 }
