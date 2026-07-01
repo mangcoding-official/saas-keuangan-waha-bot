@@ -9,7 +9,7 @@
         ->sort()
         ->values()
         ->all();
-    $isModalOpen = $editingTransaction !== null || $voidingTransaction !== null || $isCreateModal;
+    $isModalOpen = $editingTransaction !== null || $voidingTransaction !== null || $isCreateModal || $isFilterModal;
     $modalType = old('transaction_type', $editingTransaction['type_value'] ?? 'expense');
 @endphp
 
@@ -58,118 +58,138 @@
         </section>
 
         <section class="transactions-table-card">
-                <table class="transactions-table">
-                    <thead>
-                        <tr>
-                            <th>TANGGAL</th>
-                            <th>DESKRIPSI</th>
-                            <th>TIPE</th>
-                            <th>KATEGORI</th>
-                            <th>AKUN</th>
-                            <th>PENCATAT</th>
-                            <th>NOMINAL</th>
-                            <th>STATUS</th>
-                            <th>AKSI</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($transactions as $transaction)
-                            <tr class="{{ $selectedTransaction && $selectedTransaction['id'] === $transaction['id'] ? 'is-selected' : '' }}">
-                                <td class="transactions-date-cell">
-                                    <strong>{{ $transaction['date_short'] }} {{ $transaction['date_year'] }}</strong>
-                                    {{-- <span>{{ $transaction['logged_time'] }}</span> --}}
-                                </td>
-                                <td class="transactions-description-cell">
-                                    <strong>{{ $transaction['description'] }}</strong>
-                                    <span>{{ $transaction['reference'] }}</span>
-                                </td>
-                                <td>
-                                    <span class="transactions-type-pill {{ $transaction['type_value'] }}">
-                                        {{ $transaction['type_value'] === 'income' ? 'Pemasukan' : ($transaction['type_value'] === 'expense' ? 'Pengeluaran' : 'Transfer') }}
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="transactions-category-pill">
-                                        <span
-                                            class="category-visual-badge category-visual-badge--xs"
-                                            style="--category-bg: {{ $transaction['category_bg_color'] }}; --category-icon: {{ $transaction['category_icon_color'] }}; --category-mask: url('{{ $transaction['category_icon_mask_asset'] }}');"
-                                            aria-hidden="true"
-                                        >
-                                            <span class="category-visual-badge__glyph"></span>
-                                        </span>
-                                        <span>{{ $transaction['category'] }}</span>
-                                    </span>
-                                </td>
-                                <td class="transactions-account-cell">
-                                    @if ($transaction['type_value'] === 'transfer')
-                                        <span>{{ $transaction['source_account'] }}</span>
-                                        <span>{{ $transaction['destination_account'] }}</span>
-                                    @else
-                                        <span>{{ $transaction['source_account'] !== '-' ? $transaction['source_account'] : $transaction['destination_account'] }}</span>
-                                    @endif
-                                </td>
-                                <td class="transactions-recorder-cell">
-                                    <span class="transactions-recorder-avatar">{{ $transaction['recorder_initials'] }}</span>
-                                    <span>{{ $transaction['recorder'] }}</span>
-                                </td>
-                                <td class="transactions-amount-cell {{ $transaction['type_value'] === 'expense' ? 'is-expense' : ($transaction['type_value'] === 'income' ? 'is-income' : 'is-transfer') }}">
-                                    <strong>Rp. {{ number_format((float) $transaction['amount_value'], 0, ',', '.') }}</strong>
-                                </td>
-                                <td>
-                                    <span class="transactions-status-pill is-{{ $transaction['status_key'] }}">{{ strtoupper($transaction['status_label']) }}</span>
-                                </td>
-                                <td class="transactions-action-menu-cell">
-                                    <details class="transactions-action-menu" data-transaction-action-menu>
-                                        <summary aria-label="Aksi transaksi">
-                                            <img src="{{ asset('images/figma/accounts/kebab.svg') }}" alt="">
-                                        </summary>
-                                        <div class="transactions-action-popover">
-                                            <a href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['show' => $transaction['id']])) }}">Detail</a>
-                                            @if ($authUser->role->value === 'owner')
-                                                <a href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['show' => $transaction['id'], 'edit' => $transaction['id']])) }}">Edit</a>
-                                                <a href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['show' => $transaction['id'], 'void' => $transaction['id']])) }}">Void</a>
-                                            @endif
-                                        </div>
-                                    </details>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="9" class="transactions-empty-cell">Belum ada transaksi pada filter yang dipilih.</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-
-                <div class="transactions-pagination">
-                    <p>Menampilkan {{ $transactionPaginator->firstItem() ?? 0 }}-{{ $transactionPaginator->lastItem() ?? 0 }} dari {{ $transactionPaginator->total() }} transaksi</p>
-                    <div>
-                        @if ($transactionPaginator->onFirstPage())
-                            <span class="transactions-page is-prev disabled" aria-hidden="true">
-                                <img src="{{ asset('images/figma/accounts/page-prev.svg') }}" alt="">
-                            </span>
-                        @else
-                            <a href="{{ $transactionPaginator->previousPageUrl() }}" class="transactions-page is-prev" aria-label="Halaman sebelumnya">
-                                <img src="{{ asset('images/figma/accounts/page-prev.svg') }}" alt="">
-                            </a>
-                        @endif
-                        @foreach ($visiblePages as $page)
-                            @if ($loop->index > 0 && $page - $visiblePages[$loop->index - 1] > 1)
-                                <span class="transactions-page-gap">...</span>
-                            @endif
-                            <a href="{{ $transactionPaginator->url($page) }}" class="transactions-page {{ $page === $currentPage ? 'active' : '' }}">{{ $page }}</a>
-                        @endforeach
-                        @if ($transactionPaginator->hasMorePages())
-                            <a href="{{ $transactionPaginator->nextPageUrl() }}" class="transactions-page is-next" aria-label="Halaman berikutnya">
-                                <img src="{{ asset('images/figma/accounts/page-next.svg') }}" alt="">
-                            </a>
-                        @else
-                            <span class="transactions-page is-next disabled" aria-hidden="true">
-                                <img src="{{ asset('images/figma/accounts/page-next.svg') }}" alt="">
-                            </span>
-                        @endif
-                    </div>
+            <div class="transactions-table-head">
+                <div>
+                    <h3>Data Transaksi</h3>
+                    @if ($activeFilterCount > 0)
+                        <p>{{ $activeFilterCount }} filter aktif</p>
+                    @endif
                 </div>
+                <div class="transactions-table-tools">
+                    <a
+                        href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['filter' => 1])) }}"
+                        class="transactions-table-tool {{ $activeFilterCount > 0 ? 'is-active' : '' }}"
+                        aria-label="Filter transaksi"
+                    >
+                        <img src="{{ asset('images/figma/accounts/table-list.svg') }}" alt="">
+                        @if ($activeFilterCount > 0)
+                            <span>{{ $activeFilterCount }}</span>
+                        @endif
+                    </a>
+                </div>
+            </div>
+
+            <table class="transactions-table">
+                <thead>
+                    <tr>
+                        <th>TANGGAL</th>
+                        <th>DESKRIPSI</th>
+                        <th>TIPE</th>
+                        <th>KATEGORI</th>
+                        <th>AKUN</th>
+                        <th>PENCATAT</th>
+                        <th>NOMINAL</th>
+                        <th>STATUS</th>
+                        <th>AKSI</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($transactions as $transaction)
+                        <tr class="{{ $selectedTransaction && $selectedTransaction['id'] === $transaction['id'] ? 'is-selected' : '' }}">
+                            <td class="transactions-date-cell">
+                                <strong>{{ $transaction['date_short'] }} {{ $transaction['date_year'] }}</strong>
+                            </td>
+                            <td class="transactions-description-cell">
+                                <strong>{{ $transaction['description'] }}</strong>
+                                <span>{{ $transaction['reference'] }}</span>
+                            </td>
+                            <td>
+                                <span class="transactions-type-pill {{ $transaction['type_value'] }}">
+                                    {{ $transaction['type_value'] === 'income' ? 'Pemasukan' : ($transaction['type_value'] === 'expense' ? 'Pengeluaran' : 'Transfer') }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="transactions-category-pill">
+                                    <span
+                                        class="category-visual-badge category-visual-badge--xs"
+                                        style="--category-bg: {{ $transaction['category_bg_color'] }}; --category-icon: {{ $transaction['category_icon_color'] }}; --category-mask: url('{{ $transaction['category_icon_mask_asset'] }}');"
+                                        aria-hidden="true"
+                                    >
+                                        <span class="category-visual-badge__glyph"></span>
+                                    </span>
+                                    <span>{{ $transaction['category'] }}</span>
+                                </span>
+                            </td>
+                            <td class="transactions-account-cell">
+                                @if ($transaction['type_value'] === 'transfer')
+                                    <span>{{ $transaction['source_account'] }}</span>
+                                    <span>{{ $transaction['destination_account'] }}</span>
+                                @else
+                                    <span>{{ $transaction['source_account'] !== '-' ? $transaction['source_account'] : $transaction['destination_account'] }}</span>
+                                @endif
+                            </td>
+                            <td class="transactions-recorder-cell">
+                                <span class="transactions-recorder-avatar">{{ $transaction['recorder_initials'] }}</span>
+                                <span>{{ $transaction['recorder'] }}</span>
+                            </td>
+                            <td class="transactions-amount-cell {{ $transaction['type_value'] === 'expense' ? 'is-expense' : ($transaction['type_value'] === 'income' ? 'is-income' : 'is-transfer') }}">
+                                <strong>Rp. {{ number_format((float) $transaction['amount_value'], 0, ',', '.') }}</strong>
+                            </td>
+                            <td>
+                                <span class="transactions-status-pill is-{{ $transaction['status_key'] }}">{{ strtoupper($transaction['status_label']) }}</span>
+                            </td>
+                            <td class="transactions-action-menu-cell">
+                                <details class="transactions-action-menu" data-transaction-action-menu>
+                                    <summary aria-label="Aksi transaksi">
+                                        <img src="{{ asset('images/figma/accounts/kebab.svg') }}" alt="">
+                                    </summary>
+                                    <div class="transactions-action-popover">
+                                        <a href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['show' => $transaction['id']])) }}">Detail</a>
+                                        @if ($authUser->role->value === 'owner')
+                                            <a href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['show' => $transaction['id'], 'edit' => $transaction['id']])) }}">Edit</a>
+                                            <a href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['show' => $transaction['id'], 'void' => $transaction['id']])) }}">Void</a>
+                                        @endif
+                                    </div>
+                                </details>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="9" class="transactions-empty-cell">Belum ada transaksi pada filter yang dipilih.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+
+            <div class="transactions-pagination">
+                <p>Menampilkan {{ $transactionPaginator->firstItem() ?? 0 }}-{{ $transactionPaginator->lastItem() ?? 0 }} dari {{ $transactionPaginator->total() }} transaksi</p>
+                <div>
+                    @if ($transactionPaginator->onFirstPage())
+                        <span class="transactions-page is-prev disabled" aria-hidden="true">
+                            <img src="{{ asset('images/figma/accounts/page-prev.svg') }}" alt="">
+                        </span>
+                    @else
+                        <a href="{{ $transactionPaginator->previousPageUrl() }}" class="transactions-page is-prev" aria-label="Halaman sebelumnya">
+                            <img src="{{ asset('images/figma/accounts/page-prev.svg') }}" alt="">
+                        </a>
+                    @endif
+                    @foreach ($visiblePages as $page)
+                        @if ($loop->index > 0 && $page - $visiblePages[$loop->index - 1] > 1)
+                            <span class="transactions-page-gap">...</span>
+                        @endif
+                        <a href="{{ $transactionPaginator->url($page) }}" class="transactions-page {{ $page === $currentPage ? 'active' : '' }}">{{ $page }}</a>
+                    @endforeach
+                    @if ($transactionPaginator->hasMorePages())
+                        <a href="{{ $transactionPaginator->nextPageUrl() }}" class="transactions-page is-next" aria-label="Halaman berikutnya">
+                            <img src="{{ asset('images/figma/accounts/page-next.svg') }}" alt="">
+                        </a>
+                    @else
+                        <span class="transactions-page is-next disabled" aria-hidden="true">
+                            <img src="{{ asset('images/figma/accounts/page-next.svg') }}" alt="">
+                        </span>
+                    @endif
+                </div>
+            </div>
         </section>
     </section>
 
@@ -287,16 +307,18 @@
             <div class="transactions-modal-card">
                 <div class="transactions-modal-head">
                     <div>
-                        <h3>{{ $editingTransaction ? 'Edit Transaksi' : ($voidingTransaction ? 'Void Transaksi' : 'Tambah Transaksi') }}</h3>
+                        <h3>{{ $editingTransaction ? 'Edit Transaksi' : ($voidingTransaction ? 'Void Transaksi' : ($isFilterModal ? 'Filter Transaksi' : 'Tambah Transaksi')) }}</h3>
                         <p>
                             {{ $editingTransaction
                                 ? 'ID: TRN-'.$editingTransaction['id']
                                 : ($voidingTransaction
                                     ? 'ID: TRN-'.$voidingTransaction['id']
-                                    : 'Input transaksi baru menggunakan format yang konsisten.') }}
+                                    : ($isFilterModal
+                                        ? 'Saring data transaksi berdasarkan periode, tipe, kategori, dan akun.'
+                                        : 'Input transaksi baru menggunakan format yang konsisten.')) }}
                         </p>
                     </div>
-                    <a href="{{ route('tenant.transactions.index', request()->except(['edit', 'void', 'create'])) }}">&times;</a>
+                    <a href="{{ route('tenant.transactions.index', request()->except(['edit', 'void', 'create', 'filter'])) }}">&times;</a>
                 </div>
 
                 @if ($editingTransaction)
@@ -362,6 +384,71 @@
                         <div class="transactions-modal-actions">
                             <a href="{{ route('tenant.transactions.index', request()->except(['void', 'create'])) }}" class="transactions-button secondary">Batal</a>
                             <button type="submit" class="transactions-button primary">Void transaksi</button>
+                        </div>
+                    </form>
+                @elseif ($isFilterModal)
+                    <form action="{{ route('tenant.transactions.index') }}" method="get" class="transactions-modal-form">
+                        @if ($activeFilters['search'] !== '')
+                            <input type="hidden" name="search" value="{{ $activeFilters['search'] }}">
+                        @endif
+                        <div class="transactions-modal-note">
+                            Filter diterapkan ke tabel transaksi dan juga ke hasil export, sementara card overview tetap membandingkan bulan ini dengan bulan sebelumnya.
+                        </div>
+                        <div class="transactions-modal-grid-2">
+                            <label>
+                                <span>Tanggal Mulai</span>
+                                <input type="date" name="date_from" value="{{ $activeFilters['date_from'] }}">
+                            </label>
+                            <label>
+                                <span>Tanggal Selesai</span>
+                                <input type="date" name="date_to" value="{{ $activeFilters['date_to'] }}">
+                            </label>
+                        </div>
+                        <div class="transactions-modal-grid-2">
+                            <label>
+                                <span>Tipe Transaksi</span>
+                                <select name="type">
+                                    @foreach ($transactionTypes as $typeOption)
+                                        <option value="{{ $typeOption['value'] }}" @selected($activeFilters['type'] === $typeOption['value'])>{{ $typeOption['label'] }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                            <label>
+                                <span>Akun</span>
+                                <select name="account_id">
+                                    <option value="">Semua Akun</option>
+                                    @foreach ($activeAccounts as $account)
+                                        <option value="{{ $account['id'] }}" @selected($activeFilters['account_id'] === (string) $account['id'])>{{ $account['name'] }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                        </div>
+                        <label>
+                            <span>Kategori</span>
+                            <select name="category_id">
+                                <option value="">Semua Kategori</option>
+                                @if (count($incomeCategories) > 0)
+                                    <optgroup label="Pemasukan">
+                                        @foreach ($incomeCategories as $category)
+                                            <option value="{{ $category['id'] }}" @selected($activeFilters['category_id'] === (string) $category['id'])>{{ $category['name'] }}</option>
+                                        @endforeach
+                                    </optgroup>
+                                @endif
+                                @if (count($expenseCategories) > 0)
+                                    <optgroup label="Pengeluaran">
+                                        @foreach ($expenseCategories as $category)
+                                            <option value="{{ $category['id'] }}" @selected($activeFilters['category_id'] === (string) $category['id'])>{{ $category['name'] }}</option>
+                                        @endforeach
+                                    </optgroup>
+                                @endif
+                            </select>
+                        </label>
+                        <div class="transactions-modal-actions is-between">
+                            <a href="{{ route('tenant.transactions.index', collect(request()->only(['search']))->filter(fn ($value) => filled($value))->all()) }}" class="transactions-button secondary">Reset Filter</a>
+                            <div class="transactions-modal-actions-group">
+                                <a href="{{ route('tenant.transactions.index', request()->except(['filter'])) }}" class="transactions-button secondary">Batal</a>
+                                <button type="submit" class="transactions-button primary">Terapkan Filter</button>
+                            </div>
                         </div>
                     </form>
                 @else

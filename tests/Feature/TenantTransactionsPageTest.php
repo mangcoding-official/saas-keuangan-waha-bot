@@ -122,6 +122,123 @@ class TenantTransactionsPageTest extends TestCase
         $response->assertDontSee('-100,0%');
     }
 
+    public function test_filter_modal_can_be_opened_from_transactions_page(): void
+    {
+        $owner = $this->createTenantUser();
+
+        $response = $this
+            ->actingAs($owner, 'web')
+            ->get(route('tenant.transactions.index', ['filter' => 1]));
+
+        $response->assertOk();
+        $response->assertSee('Filter Transaksi');
+        $response->assertSee('Terapkan Filter');
+        $response->assertSee('Tanggal Mulai');
+        $response->assertSee('Tanggal Selesai');
+    }
+
+    public function test_transactions_filter_supports_date_range_type_category_and_account(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 7, 15, 9, 0, 0, 'Asia/Jakarta'));
+
+        $owner = $this->createTenantUser();
+        [$primaryAccount, $expenseCategory] = $this->createExpenseCatalog($owner->tenant_id);
+        $secondaryAccount = Account::query()->create([
+            'tenant_id' => $owner->tenant_id,
+            'name' => 'BCA Operasional',
+            'account_type' => AccountType::BANK,
+            'is_default' => false,
+            'opening_balance' => 500000,
+            'is_active' => true,
+        ]);
+        $otherExpenseCategory = Category::query()->create([
+            'tenant_id' => $owner->tenant_id,
+            'type' => CategoryType::EXPENSE,
+            'key' => 'transportasi',
+            'name' => 'Transportasi',
+            'visual_preset_key' => 'expense-default',
+            'icon_key' => 'receipt',
+            'color_preset_key' => 'expense-default',
+            'keywords' => ['transport'],
+            'is_system' => false,
+            'is_active' => true,
+        ]);
+        $incomeCategory = Category::query()->create([
+            'tenant_id' => $owner->tenant_id,
+            'type' => CategoryType::INCOME,
+            'key' => 'penjualan',
+            'name' => 'Penjualan',
+            'visual_preset_key' => 'income-default',
+            'icon_key' => 'receipt',
+            'color_preset_key' => 'income-default',
+            'keywords' => ['sales'],
+            'is_system' => false,
+            'is_active' => true,
+        ]);
+
+        $matchingTransaction = $this->createTransaction($owner, [
+            'type' => TransactionType::EXPENSE,
+            'amount' => 180000,
+            'description' => 'Belanja operasional cocok',
+            'transaction_date' => '2026-07-10',
+            'category_id' => $expenseCategory->id,
+            'source_account_id' => $primaryAccount->id,
+        ]);
+
+        $this->createTransaction($owner, [
+            'type' => TransactionType::EXPENSE,
+            'amount' => 90000,
+            'description' => 'Kategori berbeda',
+            'transaction_date' => '2026-07-12',
+            'category_id' => $otherExpenseCategory->id,
+            'source_account_id' => $primaryAccount->id,
+        ]);
+
+        $this->createTransaction($owner, [
+            'type' => TransactionType::EXPENSE,
+            'amount' => 110000,
+            'description' => 'Akun berbeda',
+            'transaction_date' => '2026-07-11',
+            'category_id' => $expenseCategory->id,
+            'source_account_id' => $secondaryAccount->id,
+        ]);
+
+        $this->createTransaction($owner, [
+            'type' => TransactionType::INCOME,
+            'amount' => 200000,
+            'description' => 'Tipe berbeda',
+            'transaction_date' => '2026-07-10',
+            'category_id' => $incomeCategory->id,
+            'destination_account_id' => $primaryAccount->id,
+        ]);
+
+        $this->createTransaction($owner, [
+            'type' => TransactionType::EXPENSE,
+            'amount' => 150000,
+            'description' => 'Di luar range tanggal',
+            'transaction_date' => '2026-06-29',
+            'category_id' => $expenseCategory->id,
+            'source_account_id' => $primaryAccount->id,
+        ]);
+
+        $response = $this
+            ->actingAs($owner, 'web')
+            ->get(route('tenant.transactions.index', [
+                'date_from' => '2026-07-01',
+                'date_to' => '2026-07-15',
+                'type' => TransactionType::EXPENSE->value,
+                'category_id' => $expenseCategory->id,
+                'account_id' => $primaryAccount->id,
+            ]));
+
+        $response->assertOk();
+        $response->assertSee($matchingTransaction->description);
+        $response->assertDontSee('Kategori berbeda');
+        $response->assertDontSee('Akun berbeda');
+        $response->assertDontSee('Tipe berbeda');
+        $response->assertDontSee('Di luar range tanggal');
+    }
+
     public function test_export_query_downloads_transactions_csv(): void
     {
         Carbon::setTestNow(Carbon::create(2026, 7, 1, 9, 0, 0, 'Asia/Jakarta'));
@@ -257,5 +374,24 @@ class TenantTransactionsPageTest extends TestCase
             'category_id' => $category->id,
             'source_account_id' => $account->id,
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function createTransaction(TenantUser $owner, array $overrides = []): Transaction
+    {
+        return Transaction::query()->create(array_merge([
+            'tenant_id' => $owner->tenant_id,
+            'recorded_by_user_id' => $owner->id,
+            'type' => TransactionType::EXPENSE,
+            'amount' => 150000,
+            'description' => 'Transaksi umum',
+            'transaction_date' => '2026-07-01',
+            'status' => TransactionStatus::COMPLETED,
+            'category_id' => null,
+            'source_account_id' => null,
+            'destination_account_id' => null,
+        ], $overrides));
     }
 }

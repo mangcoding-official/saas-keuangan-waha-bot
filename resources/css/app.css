@@ -2647,6 +2647,76 @@ span.tenant-sidebar-link-icon.is-members{
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
+.transactions-table-head {
+    min-height: 78px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 24px;
+    border-bottom: 1px solid #c4c5d5;
+}
+
+.transactions-table-head h3 {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #1a1b22;
+    font-weight: 400;
+}
+
+.transactions-table-head p {
+    margin: 4px 0 0;
+    color: #6a6d81;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+}
+
+.transactions-table-tools {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.transactions-table-tool {
+    width: 34px;
+    height: 34px;
+    border: 1px solid #d6d8e5;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #444653;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.transactions-table-tool img {
+    display: block;
+    width: 18px;
+    height: 18px;
+}
+
+.transactions-table-tool.is-active {
+    border-color: #00288e;
+    background: #eef3ff;
+}
+
+.transactions-table-tool span {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #00288e;
+    color: #ffffff;
+    font-size: 0.6875rem;
+    line-height: 18px;
+    text-align: center;
+    position: absolute;
+    top: -7px;
+    right: -7px;
+}
+
 .transactions-filter-grid select,
 .transactions-filter-grid input,
 .transactions-modal-form input,
@@ -3102,6 +3172,18 @@ span.tenant-sidebar-link-icon.is-members{
     gap: 10px;
 }
 
+.transactions-modal-actions.is-between {
+    justify-content: space-between;
+    align-items: center;
+}
+
+.transactions-modal-actions-group {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
 .transactions-modal-help {
     margin: 0;
     padding-left: 18px;
@@ -3381,6 +3463,10 @@ span.tenant-sidebar-link-icon.is-members{
         overflow-x: auto;
     }
 
+    .transactions-table-head {
+        min-width: 1000px;
+    }
+
     .transactions-table {
         min-width: 1000px;
     }
@@ -3449,6 +3535,18 @@ span.tenant-sidebar-link-icon.is-members{
     .transactions-page-actions {
         width: 100%;
         flex-direction: column;
+    }
+
+    .transactions-table-head,
+    .transactions-modal-actions.is-between,
+    .transactions-modal-actions-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .transactions-table-tools {
+        width: 100%;
+        justify-content: flex-end;
     }
 
     .transactions-summary-grid,

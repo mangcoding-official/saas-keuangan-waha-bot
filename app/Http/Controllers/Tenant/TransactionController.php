@@ -137,6 +137,7 @@ class TransactionController extends Controller
         $selectedTransaction = $this->resolveSelectedTransaction($request, $user, $baseQuery);
         $editingTransaction = $this->resolveEditingTransaction($request, $user, $baseQuery);
         $voidingTransaction = $this->resolveVoidingTransaction($request, $user, $baseQuery);
+        $isFilterModal = $request->boolean('filter');
         $activeAccounts = Account::query()
             ->where('tenant_id', $tenantId)
             ->where('is_active', true)
@@ -197,6 +198,7 @@ class TransactionController extends Controller
             'selectedTransaction' => $selectedTransaction,
             'editingTransaction' => $editingTransaction,
             'voidingTransaction' => $voidingTransaction,
+            'isFilterModal' => $isFilterModal,
             'isCreateModal' => $request->boolean('create') && $user->role === UserRole::OWNER,
             'activeAccounts' => $activeAccounts,
             'incomeCategories' => $incomeCategories,
@@ -204,13 +206,21 @@ class TransactionController extends Controller
             'recorders' => $recorders,
             'transactionTypes' => $transactionTypes,
             'activeFilters' => [
-                'period' => (string) $request->query('period', ''),
+                'date_from' => (string) $request->query('date_from', ''),
+                'date_to' => (string) $request->query('date_to', ''),
                 'type' => (string) $request->query('type', ''),
                 'category_id' => (string) $request->query('category_id', ''),
                 'account_id' => (string) $request->query('account_id', ''),
                 'recorder_id' => (string) $request->query('recorder_id', ''),
                 'search' => (string) $request->query('search', ''),
             ],
+            'activeFilterCount' => collect([
+                (string) $request->query('date_from', ''),
+                (string) $request->query('date_to', ''),
+                (string) $request->query('type', ''),
+                (string) $request->query('category_id', ''),
+                (string) $request->query('account_id', ''),
+            ])->filter(fn (string $value): bool => trim($value) !== '')->count(),
             'usageExamples' => [
                 'masuk 15000 bonus',
                 'keluar 20rb makan',
@@ -358,14 +368,27 @@ class TransactionController extends Controller
             $query->where('transactions.recorded_by_user_id', (int) $request->query('recorder_id'));
         }
 
+        $dateFrom = (string) $request->query('date_from', '');
+        $dateTo = (string) $request->query('date_to', '');
         $period = (string) $request->query('period', '');
-        if ($period === 'last_30_days') {
-            $query->whereDate('transactions.transaction_date', '>=', $now->copy()->subDays(30)->toDateString());
-        } elseif ($period === 'this_month') {
+
+        if ($dateFrom !== '') {
+            $query->whereDate('transactions.transaction_date', '>=', $dateFrom);
+        }
+
+        if ($dateTo !== '') {
+            $query->whereDate('transactions.transaction_date', '<=', $dateTo);
+        }
+
+        if ($dateFrom === '' && $dateTo === '') {
+            if ($period === 'last_30_days') {
+                $query->whereDate('transactions.transaction_date', '>=', $now->copy()->subDays(30)->toDateString());
+            } elseif ($period === 'this_month') {
             $query->whereBetween('transactions.transaction_date', [
                 $now->copy()->startOfMonth()->toDateString(),
                 $now->copy()->endOfMonth()->toDateString(),
             ]);
+            }
         }
 
         if ($request->filled('search')) {
