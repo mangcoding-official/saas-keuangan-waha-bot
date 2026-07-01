@@ -250,7 +250,7 @@ class DashboardController extends Controller
                 ],
                 [
                     'label' => 'Pemasukan Bulan Ini',
-                    'icon' => asset('images/icon-income.png'),
+                    'icon' => asset('images/Icon-income.png'),
                     'value_prefix' => 'Rp',
                     'value_main' => number_format($monthlyIncome, 0, ',', '.'),
                     'note' => $incomeTrend['text'],
@@ -259,7 +259,7 @@ class DashboardController extends Controller
                 ],
                 [
                     'label' => 'Pengeluaran Bulan Ini',
-                    'icon' => asset('images/icon-expanse.png'),
+                    'icon' => asset('images/Icon-expanse.png'),
                     'value_prefix' => 'Rp',
                     'value_main' => number_format($monthlyExpense, 0, ',', '.'),
                     'note' => $expenseTrend['text'],
