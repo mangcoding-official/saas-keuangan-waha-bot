@@ -388,7 +388,7 @@ class ResourcePageController extends Controller
         return view('internal.users.index', [
             ...$this->baseViewData($request),
             'page' => [
-                'title' => 'Manajemen User Tenant',
+                'title' => 'Manajemen User',
                 'description' => 'Pantau user lintas tenant, status akses, dan activation code dari satu halaman yang lebih operasional.',
                 'eyebrow' => 'Internal Module',
             ],

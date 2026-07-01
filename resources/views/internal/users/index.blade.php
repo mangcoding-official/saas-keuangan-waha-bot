@@ -85,7 +85,7 @@
 
         <section class="members-table-card">
             <div class="members-table-head">
-                <h2>Daftar User Tenant</h2>
+                <h2>Daftar User</h2>
                 <div class="members-table-tools">
                     @if ($search !== '')
                         <x-ui.badge tone="neutral">Filter: {{ $search }}</x-ui.badge>

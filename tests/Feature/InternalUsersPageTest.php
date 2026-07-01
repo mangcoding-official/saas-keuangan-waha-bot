@@ -75,7 +75,7 @@ class InternalUsersPageTest extends TestCase
             ->get(route('internal.users.index'));
 
         $response->assertOk();
-        $response->assertSee('Manajemen User Tenant');
+        $response->assertSee('Manajemen User');
         $response->assertSee('Budi Pending');
         $response->assertSee('Sari Verified');
         $response->assertSee(route('internal.verification.resend', $pendingUserId), false);
