@@ -40,7 +40,7 @@ class ProfileController extends Controller
                 'initials' => $this->memberInitials($user->name),
                 'role' => $user->role === UserRole::OWNER ? 'Owner' : 'Member',
                 'email' => $user->email ?: 'Belum ada email',
-                'whatsapp_number' => $user->whatsapp_number,
+                'whatsapp_number' => $this->maskWhatsappNumber((string) $user->whatsapp_number),
                 'user_status_label' => $user->user_status->value === 'active' ? 'Akun aktif' : 'Akun nonaktif',
                 'verification_status_label' => $user->verification_status === VerificationStatus::VERIFIED ? 'WhatsApp terverifikasi' : 'Menunggu verifikasi WhatsApp',
                 'joined_at' => $this->formatDateTime($user->created_at, $tenant->timezone),
@@ -73,6 +73,25 @@ class ProfileController extends Controller
             ->implode('');
 
         return $initials !== '' ? $initials : 'U';
+    }
+
+    private function maskWhatsappNumber(string $whatsappNumber): string
+    {
+        $digitsOnly = preg_replace('/\D+/', '', $whatsappNumber) ?? '';
+
+        if ($digitsOnly === '') {
+            return $whatsappNumber;
+        }
+
+        if (strlen($digitsOnly) <= 6) {
+            return $digitsOnly;
+        }
+
+        $prefix = substr($digitsOnly, 0, 4);
+        $suffix = substr($digitsOnly, -4);
+        $maskedLength = max(2, strlen($digitsOnly) - 8);
+
+        return $prefix.str_repeat('*', $maskedLength).$suffix;
     }
 
     private function formatDateTime(Carbon $value, string $timezone): string

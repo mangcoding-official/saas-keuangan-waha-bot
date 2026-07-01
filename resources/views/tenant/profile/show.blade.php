@@ -10,7 +10,7 @@
                     <div class="profile-hero-head">
                         <p class="profile-eyebrow">AKUN TENANT</p>
                         <h1>{{ $profile['name'] }}</h1>
-                        <p>{{ $workspace['name'] }} • {{ $profile['role'] }}</p>
+                        <p>{{ $workspace['name'] }} &bull; {{ $profile['role'] }}</p>
                     </div>
 
                     <div class="profile-pill-row">

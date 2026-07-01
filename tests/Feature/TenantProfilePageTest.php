@@ -63,7 +63,8 @@ class TenantProfilePageTest extends TestCase
         $response->assertSee('Profil Saya');
         $response->assertSee('Budi Member');
         $response->assertSee('budi@example.com');
-        $response->assertSee('081299999999');
+        $response->assertSee('0812****9999');
+        $response->assertDontSee('081299999999');
         $response->assertSee('Tim Finance Alpha');
         $response->assertSee('Rina Owner');
         $response->assertSee('TEAM');
