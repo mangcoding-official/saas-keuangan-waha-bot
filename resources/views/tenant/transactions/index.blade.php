@@ -9,7 +9,7 @@
         ->sort()
         ->values()
         ->all();
-    $isModalOpen = $editingTransaction !== null || $isCreateModal;
+    $isModalOpen = $editingTransaction !== null || $voidingTransaction !== null || $isCreateModal;
     $modalType = old('transaction_type', $editingTransaction['type_value'] ?? 'expense');
 @endphp
 
@@ -127,6 +127,7 @@
                                             <a href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['show' => $transaction['id']])) }}">Detail</a>
                                             @if ($authUser->role->value === 'owner')
                                                 <a href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['show' => $transaction['id'], 'edit' => $transaction['id']])) }}">Edit</a>
+                                                <a href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['show' => $transaction['id'], 'void' => $transaction['id']])) }}">Void</a>
                                             @endif
                                         </div>
                                     </details>
@@ -274,6 +275,7 @@
                     <a href="{{ $detailCloseUrl }}" class="transactions-button secondary">Tutup</a>
                     @if ($authUser->role->value === 'owner')
                         <a href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['edit' => $selectedTransaction['id']])) }}" class="transactions-button primary">Edit transaksi</a>
+                        <a href="{{ route('tenant.transactions.index', array_merge(request()->query(), ['void' => $selectedTransaction['id']])) }}" class="transactions-button secondary">Void transaksi</a>
                     @endif
                 </footer>
             </aside>
@@ -285,10 +287,16 @@
             <div class="transactions-modal-card">
                 <div class="transactions-modal-head">
                     <div>
-                        <h3>{{ $editingTransaction ? 'Edit Transaksi' : 'Tambah Transaksi' }}</h3>
-                        <p>{{ $editingTransaction ? 'ID: TRN-'.$editingTransaction['id'] : 'Input transaksi baru menggunakan format yang konsisten.' }}</p>
+                        <h3>{{ $editingTransaction ? 'Edit Transaksi' : ($voidingTransaction ? 'Void Transaksi' : 'Tambah Transaksi') }}</h3>
+                        <p>
+                            {{ $editingTransaction
+                                ? 'ID: TRN-'.$editingTransaction['id']
+                                : ($voidingTransaction
+                                    ? 'ID: TRN-'.$voidingTransaction['id']
+                                    : 'Input transaksi baru menggunakan format yang konsisten.') }}
+                        </p>
                     </div>
-                    <a href="{{ route('tenant.transactions.index', request()->except(['edit', 'create'])) }}">&times;</a>
+                    <a href="{{ route('tenant.transactions.index', request()->except(['edit', 'void', 'create'])) }}">&times;</a>
                 </div>
 
                 @if ($editingTransaction)
@@ -339,6 +347,21 @@
                         <div class="transactions-modal-actions">
                             <a href="{{ route('tenant.transactions.index', request()->except(['edit', 'create'])) }}" class="transactions-button secondary">Batal</a>
                             <button type="submit" class="transactions-button primary">Simpan Perubahan</button>
+                        </div>
+                    </form>
+                @elseif ($voidingTransaction)
+                    <form action="{{ route('tenant.transactions.void', $voidingTransaction['id']) }}" method="post" class="transactions-modal-form">
+                        @csrf
+                        <div class="transactions-modal-note">
+                            Transaksi <strong>{{ $voidingTransaction['reference'] }}</strong> akan dipindahkan dari daftar completed dan alasan void disimpan di audit log.
+                        </div>
+                        <label>
+                            <span>Alasan void</span>
+                            <textarea name="void_reason" required>{{ old('void_reason') }}</textarea>
+                        </label>
+                        <div class="transactions-modal-actions">
+                            <a href="{{ route('tenant.transactions.index', request()->except(['void', 'create'])) }}" class="transactions-button secondary">Batal</a>
+                            <button type="submit" class="transactions-button primary">Void transaksi</button>
                         </div>
                     </form>
                 @else

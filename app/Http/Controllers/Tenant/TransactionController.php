@@ -20,6 +20,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Support\Carbon;
 
 class TransactionController extends Controller
@@ -29,7 +30,7 @@ class TransactionController extends Controller
     ) {
     }
 
-    public function index(Request $request): View
+    public function index(Request $request): View|StreamedResponse
     {
         /** @var TenantUser $user */
         $user = auth('web')->user();
@@ -118,7 +119,13 @@ class TransactionController extends Controller
             ],
         ];
 
-        $filteredQuery = $this->applyFilters((clone $baseQuery), $request);
+        $filterNow = $now->copy();
+        $filteredQuery = $this->applyFilters((clone $baseQuery), $request, $filterNow);
+
+        if ($request->boolean('export')) {
+            return $this->exportTransactions((clone $filteredQuery), $user, $filterNow);
+        }
+
         $transactionPaginator = $filteredQuery
             ->orderByDesc('transaction_date')
             ->orderByDesc('id')
@@ -129,6 +136,7 @@ class TransactionController extends Controller
             ->all();
         $selectedTransaction = $this->resolveSelectedTransaction($request, $user, $baseQuery);
         $editingTransaction = $this->resolveEditingTransaction($request, $user, $baseQuery);
+        $voidingTransaction = $this->resolveVoidingTransaction($request, $user, $baseQuery);
         $activeAccounts = Account::query()
             ->where('tenant_id', $tenantId)
             ->where('is_active', true)
@@ -188,6 +196,7 @@ class TransactionController extends Controller
             'transactionPaginator' => $transactionPaginator,
             'selectedTransaction' => $selectedTransaction,
             'editingTransaction' => $editingTransaction,
+            'voidingTransaction' => $voidingTransaction,
             'isCreateModal' => $request->boolean('create') && $user->role === UserRole::OWNER,
             'activeAccounts' => $activeAccounts,
             'incomeCategories' => $incomeCategories,
@@ -195,7 +204,7 @@ class TransactionController extends Controller
             'recorders' => $recorders,
             'transactionTypes' => $transactionTypes,
             'activeFilters' => [
-                'period' => (string) $request->query('period', 'this_month'),
+                'period' => (string) $request->query('period', ''),
                 'type' => (string) $request->query('type', ''),
                 'category_id' => (string) $request->query('category_id', ''),
                 'account_id' => (string) $request->query('account_id', ''),
@@ -315,7 +324,18 @@ class TransactionController extends Controller
         return $transaction ? $this->mapTransaction($transaction, $user) : null;
     }
 
-    private function applyFilters(Builder $query, Request $request): Builder
+    private function resolveVoidingTransaction(Request $request, TenantUser $user, Builder $baseQuery): ?array
+    {
+        if ($user->role !== UserRole::OWNER || $request->integer('void') <= 0) {
+            return null;
+        }
+
+        $transaction = (clone $baseQuery)->find($request->integer('void'));
+
+        return $transaction ? $this->mapTransaction($transaction, $user) : null;
+    }
+
+    private function applyFilters(Builder $query, Request $request, Carbon $now): Builder
     {
         if ($request->filled('type')) {
             $query->where('transactions.type', (string) $request->query('type'));
@@ -338,13 +358,13 @@ class TransactionController extends Controller
             $query->where('transactions.recorded_by_user_id', (int) $request->query('recorder_id'));
         }
 
-        $period = (string) $request->query('period', 'this_month');
+        $period = (string) $request->query('period', '');
         if ($period === 'last_30_days') {
-            $query->whereDate('transactions.transaction_date', '>=', now()->subDays(30)->toDateString());
+            $query->whereDate('transactions.transaction_date', '>=', $now->copy()->subDays(30)->toDateString());
         } elseif ($period === 'this_month') {
             $query->whereBetween('transactions.transaction_date', [
-                now()->startOfMonth()->toDateString(),
-                now()->endOfMonth()->toDateString(),
+                $now->copy()->startOfMonth()->toDateString(),
+                $now->copy()->endOfMonth()->toDateString(),
             ]);
         }
 
@@ -359,6 +379,45 @@ class TransactionController extends Controller
         }
 
         return $query;
+    }
+
+    private function exportTransactions(Builder $query, TenantUser $user, Carbon $now): StreamedResponse
+    {
+        $fileName = 'transactions-'.$now->format('Y-m-d').'.csv';
+        $rows = $query
+            ->orderByDesc('transaction_date')
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn (Transaction $transaction): array => $this->mapTransaction($transaction, $user));
+
+        return response()->streamDownload(function () use ($rows): void {
+            $handle = fopen('php://output', 'wb');
+
+            if ($handle === false) {
+                return;
+            }
+
+            fputcsv($handle, ['ID', 'Tanggal', 'Deskripsi', 'Tipe', 'Kategori', 'Akun Sumber', 'Akun Tujuan', 'Pencatat', 'Nominal', 'Status']);
+
+            foreach ($rows as $row) {
+                fputcsv($handle, [
+                    $row['id'],
+                    $row['date'],
+                    $row['description'],
+                    $row['type'],
+                    $row['category'],
+                    $row['source_account'],
+                    $row['destination_account'],
+                    $row['recorder'],
+                    $row['amount'],
+                    strtoupper($row['status_label']),
+                ]);
+            }
+
+            fclose($handle);
+        }, $fileName, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
     }
 
     private function findOwnerTransaction(TenantUser $owner, int $transactionId): Transaction
@@ -381,6 +440,7 @@ class TransactionController extends Controller
         }
 
         $change = (($currentValue - $previousValue) / $previousValue) * 100;
+        $change = max(0.0, $change);
         $prefix = $change > 0 ? '+' : '';
 
         return $prefix.number_format($change, 1, ',', '').'%';
