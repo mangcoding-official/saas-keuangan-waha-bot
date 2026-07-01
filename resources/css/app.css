@@ -5353,6 +5353,15 @@ h3.register-kicker {
     gap: 24px;
 }
 
+.register-fieldset-group {
+    display: grid;
+    gap: 24px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-inline-size: 0;
+}
+
 .register-section-card {
     display: grid;
     gap: 24px;
@@ -5474,6 +5483,10 @@ h3.register-kicker {
     gap: 24px;
     width: min(100%, 600px);
     margin: 0 auto;
+}
+
+.register-fieldset-group > .register-consent {
+    width: min(100%, 600px);
 }
 
 .register-consent-row {

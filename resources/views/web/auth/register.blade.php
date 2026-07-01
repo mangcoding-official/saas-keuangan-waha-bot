@@ -43,7 +43,7 @@
                     </p>
                 </section>
 
-                <fieldset @disabled(! $inviteGate['is_access_granted'])>
+                <fieldset class="register-fieldset-group" @disabled(! $inviteGate['is_access_granted'])>
                     <section class="register-section-card">
                         <header class="register-section-head">
                             <img src="{{ asset('images/register/section-workspace.svg') }}" alt="" aria-hidden="true">
