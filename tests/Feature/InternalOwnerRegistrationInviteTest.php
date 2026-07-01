@@ -14,6 +14,49 @@ class InternalOwnerRegistrationInviteTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_internal_invites_page_shows_only_pending_actions_for_pending_invites(): void
+    {
+        $admin = PlatformAdminUser::query()->create([
+            'name' => 'Super Admin',
+            'email' => 'admin@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'super_admin',
+            'user_status' => 'active',
+        ]);
+
+        $pendingInvite = OwnerRegistrationInvite::query()->create([
+            'code' => 'ALPHA-PEND-AAAA',
+            'code_normalized' => 'ALPHAPENDAAAA',
+            'status' => InviteStatus::PENDING,
+            'invited_email' => 'pending@example.com',
+            'invited_whatsapp_number' => '081298765432',
+            'invited_whatsapp_number_normalized' => '6281298765432',
+            'created_by_platform_admin_user_id' => $admin->id,
+        ]);
+
+        $usedInvite = OwnerRegistrationInvite::query()->create([
+            'code' => 'ALPHA-USED-BBBB',
+            'code_normalized' => 'ALPHAUSEDBBBB',
+            'status' => InviteStatus::USED,
+            'invited_email' => 'used@example.com',
+            'created_by_platform_admin_user_id' => $admin->id,
+            'used_at' => now(),
+        ]);
+
+        $response = $this
+            ->actingAs($admin, 'platform_admin')
+            ->get(route('internal.invites.index'));
+
+        $response->assertOk();
+        $response->assertSee('Invite Owner Alpha');
+        $response->assertSee('pending@example.com');
+        $response->assertSee('used@example.com');
+        $response->assertSee(route('internal.invites.send-whatsapp', $pendingInvite->id), false);
+        $response->assertSee(route('internal.invites.revoke', $pendingInvite->id), false);
+        $response->assertDontSee(route('internal.invites.send-whatsapp', $usedInvite->id), false);
+        $response->assertDontSee(route('internal.invites.revoke', $usedInvite->id), false);
+    }
+
     public function test_super_admin_can_create_owner_registration_invite(): void
     {
         config()->set('services.waha.base_url', 'https://waha.test');

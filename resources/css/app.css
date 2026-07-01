@@ -4979,7 +4979,7 @@ img {
 
 .invite-layout-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: 16px;
     margin-bottom: 16px;
 }
@@ -4991,16 +4991,89 @@ img {
     gap: 16px;
 }
 
+.invite-panel-head {
+    display: grid;
+    gap: 8px;
+}
+
+.invite-panel-head p {
+    margin: 0;
+    color: #616784;
+    line-height: 1.55;
+}
+
+.invite-inline-note {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: #f5f7ff;
+    color: #42507a;
+    font-size: 0.875rem;
+}
+
+.invite-inline-note strong {
+    color: #1a1b22;
+}
+
 .invite-form-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px 16px;
 }
 
+.invite-form-grid-polished {
+    gap: 18px 18px;
+}
+
+.invite-form-grid-polished .field {
+    align-content: start;
+}
+
+.invite-form-caption {
+    margin: 0;
+    padding: 12px 14px;
+    border: 1px solid #dce3f8;
+    border-radius: 14px;
+    background: #f8faff;
+}
+
+.invite-form-caption p {
+    margin: 0;
+    color: #51607f;
+    font-size: 0.9rem;
+    line-height: 1.55;
+}
+
+.invite-form-grid-polished .field-help,
+.invite-form-grid-polished .field-error {
+    line-height: 1.5;
+}
+
+.invite-form-actions {
+    padding-top: 4px;
+    align-items: center;
+}
+
 .invite-share-stack,
 .invite-revoke-form {
     display: grid;
     gap: 10px;
+}
+
+.invite-table td strong {
+    display: block;
+    color: #1a1b22;
+    font-weight: 600;
+}
+
+.invite-table td span {
+    display: flex;
+    margin-top: 4px;
+    color: #757684;
+    font-size: 0.875rem;
+    line-height: 1.5;
 }
 
 .input.input-compact {

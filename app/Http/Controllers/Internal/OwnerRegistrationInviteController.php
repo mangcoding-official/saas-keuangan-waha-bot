@@ -14,6 +14,7 @@ use App\Services\OwnerRegistrationInviteWhatsappService;
 use App\Support\Navigation\PlatformAdminNavigation;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 class OwnerRegistrationInviteController extends Controller
 {
@@ -24,14 +25,15 @@ class OwnerRegistrationInviteController extends Controller
     ) {
     }
 
-    public function index(): View
+    public function index(Request $request): View
     {
         $activeBotTarget = $this->activeBotTargetService->resolve();
+        $summaryBaseQuery = OwnerRegistrationInvite::query();
         $rows = OwnerRegistrationInvite::query()
             ->leftJoin('platform_admin_users as creators', 'creators.id', '=', 'owner_registration_invites.created_by_platform_admin_user_id')
             ->leftJoin('tenants', 'tenants.id', '=', 'owner_registration_invites.used_by_tenant_id')
             ->orderByDesc('owner_registration_invites.id')
-            ->get([
+            ->paginate(10, [
                 'owner_registration_invites.id',
                 'owner_registration_invites.code',
                 'owner_registration_invites.status',
@@ -46,7 +48,8 @@ class OwnerRegistrationInviteController extends Controller
                 'creators.name as creator_name',
                 'tenants.name as used_tenant_name',
             ])
-            ->map(function (OwnerRegistrationInvite $invite): array {
+            ->withQueryString()
+            ->through(function (OwnerRegistrationInvite $invite): array {
                 if ($invite->status === InviteStatus::PENDING && $invite->expires_at !== null && $invite->expires_at->isPast()) {
                     $invite->status = InviteStatus::EXPIRED;
                 }
@@ -54,7 +57,13 @@ class OwnerRegistrationInviteController extends Controller
                 return [
                     'id' => $invite->id,
                     'code' => $invite->code,
-                    'status' => $invite->status->value,
+                    'status_key' => $invite->status->value,
+                    'status_label' => match ($invite->status) {
+                        InviteStatus::PENDING => 'Pending',
+                        InviteStatus::USED => 'Used',
+                        InviteStatus::EXPIRED => 'Expired',
+                        InviteStatus::REVOKED => 'Revoked',
+                    },
                     'invited_email' => $invite->invited_email,
                     'invited_whatsapp_number' => $invite->invited_whatsapp_number,
                     'invited_whatsapp_number_normalized' => $invite->invited_whatsapp_number_normalized,
@@ -66,36 +75,37 @@ class OwnerRegistrationInviteController extends Controller
                     'creator_name' => $invite->creator_name,
                     'used_tenant_name' => $invite->used_tenant_name,
                     'share_url' => route('tenant.register.create', ['invite' => $invite->code]),
+                    'can_send_whatsapp' => $invite->status === InviteStatus::PENDING && $invite->invited_whatsapp_number_normalized !== null,
+                    'can_revoke' => $invite->status === InviteStatus::PENDING,
                 ];
-            })
-            ->all();
+            });
+
+        $showId = (int) $request->query('show', 0);
+        $detail = $showId > 0 ? $this->buildInviteDetail($showId) : null;
 
         return view('internal.invites.index', [
             'page' => [
-                'title' => 'Invite Management',
-                'description' => 'Super admin mengontrol siapa yang boleh mendaftar owner saat alpha release.',
+                'title' => 'Invite User',
+                'description' => 'Kelola invite user onboarding, pengiriman WhatsApp, dan status pemakaian kode dari satu halaman.',
                 'eyebrow' => 'Internal Module',
             ],
             'toolbar' => [
-                'search_label' => 'Kelola onboarding alpha',
-                'search_placeholder' => 'Search invite code or target email',
-                'secondary_action' => [
-                    'label' => 'Back to overview',
-                    'href' => route('internal.dashboard'),
-                    'variant' => 'secondary',
-                ],
+                'search_label' => 'Onboarding user',
+                'search_placeholder' => 'Cari kode invite, email, atau nomor WhatsApp target',
+                'secondary_action' => null,
                 'primary_action' => null,
             ],
             'navigation' => PlatformAdminNavigation::items(),
             'authUser' => auth('platform_admin')->user(),
             'summary' => [
-                'total' => count($rows),
-                'pending' => count(array_filter($rows, fn (array $row): bool => $row['status'] === InviteStatus::PENDING->value)),
-                'used' => count(array_filter($rows, fn (array $row): bool => $row['status'] === InviteStatus::USED->value)),
-                'blocked' => count(array_filter($rows, fn (array $row): bool => in_array($row['status'], [InviteStatus::EXPIRED->value, InviteStatus::REVOKED->value], true))),
+                'total' => (int) (clone $summaryBaseQuery)->count(),
+                'pending' => (int) (clone $summaryBaseQuery)->where('status', InviteStatus::PENDING->value)->count(),
+                'used' => (int) (clone $summaryBaseQuery)->where('status', InviteStatus::USED->value)->count(),
+                'blocked' => (int) (clone $summaryBaseQuery)->whereIn('status', [InviteStatus::EXPIRED->value, InviteStatus::REVOKED->value])->count(),
             ],
             'activeBotDisplayNumber' => $activeBotTarget['display_number'] ?? null,
             'rows' => $rows,
+            'detail' => $detail,
         ]);
     }
 
@@ -165,5 +175,87 @@ class OwnerRegistrationInviteController extends Controller
             'title' => 'Invite dicabut',
             'message' => 'Invite '.$invite->code.' tidak lagi bisa dipakai untuk registrasi.',
         ]);
+    }
+
+    private function buildInviteDetail(int $inviteId): ?array
+    {
+        $invite = OwnerRegistrationInvite::query()
+            ->leftJoin('platform_admin_users as creators', 'creators.id', '=', 'owner_registration_invites.created_by_platform_admin_user_id')
+            ->leftJoin('tenants', 'tenants.id', '=', 'owner_registration_invites.used_by_tenant_id')
+            ->where('owner_registration_invites.id', $inviteId)
+            ->first([
+                'owner_registration_invites.id',
+                'owner_registration_invites.code',
+                'owner_registration_invites.status',
+                'owner_registration_invites.invited_email',
+                'owner_registration_invites.invited_whatsapp_number',
+                'owner_registration_invites.invited_whatsapp_number_normalized',
+                'owner_registration_invites.note',
+                'owner_registration_invites.expires_at',
+                'owner_registration_invites.used_at',
+                'owner_registration_invites.revoked_at',
+                'owner_registration_invites.created_at',
+                'creators.name as creator_name',
+                'tenants.name as used_tenant_name',
+            ]);
+
+        if ($invite === null) {
+            return null;
+        }
+
+        if ($invite->status === InviteStatus::PENDING && $invite->expires_at !== null && $invite->expires_at->isPast()) {
+            $invite->status = InviteStatus::EXPIRED;
+        }
+
+        return [
+            'id' => $invite->id,
+            'code' => $invite->code,
+            'title' => 'Invite '.$invite->code,
+            'subtitle' => $invite->invited_email ?: ($invite->invited_whatsapp_number ?: 'Tanpa target spesifik'),
+            'badges' => [
+                [
+                    'label' => match ($invite->status) {
+                        InviteStatus::PENDING => 'Pending',
+                        InviteStatus::USED => 'Used',
+                        InviteStatus::EXPIRED => 'Expired',
+                        InviteStatus::REVOKED => 'Revoked',
+                    },
+                    'tone' => match ($invite->status) {
+                        InviteStatus::PENDING => 'success',
+                        InviteStatus::USED => 'neutral',
+                        InviteStatus::EXPIRED, InviteStatus::REVOKED => 'warning',
+                    },
+                ],
+            ],
+            'share_url' => route('tenant.register.create', ['invite' => $invite->code]),
+            'can_send_whatsapp' => $invite->status === InviteStatus::PENDING && $invite->invited_whatsapp_number_normalized !== null,
+            'can_revoke' => $invite->status === InviteStatus::PENDING,
+            'sections' => [
+                [
+                    'title' => 'Target owner',
+                    'lines' => [
+                        'Email target: '.($invite->invited_email ?: 'Tidak dibatasi'),
+                        'WhatsApp target: '.($invite->invited_whatsapp_number ?: 'Belum diisi'),
+                        'Catatan: '.($invite->note ?: '-'),
+                    ],
+                ],
+                [
+                    'title' => 'Status invite',
+                    'lines' => [
+                        'Dibuat: '.($invite->created_at?->format('d M Y H:i') ?: '-'),
+                        'Dibuat oleh: '.($invite->creator_name ?: 'System'),
+                        'Berlaku sampai: '.($invite->expires_at?->format('d M Y H:i') ?: 'Tanpa batas waktu'),
+                    ],
+                ],
+                [
+                    'title' => 'Progress onboarding',
+                    'lines' => [
+                        'Dipakai tenant: '.($invite->used_tenant_name ?: 'Belum dipakai'),
+                        'Waktu dipakai: '.($invite->used_at?->format('d M Y H:i') ?: '-'),
+                        'Waktu revoke: '.($invite->revoked_at?->format('d M Y H:i') ?: '-'),
+                    ],
+                ],
+            ],
+        ];
     }
 }
