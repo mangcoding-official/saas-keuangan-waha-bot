@@ -18,7 +18,7 @@
                 <p class="landing-hero-description">{{ $page['description'] }}</p>
 
                 <div class="landing-hero-actions">
-                    <a href="{{ route('tenant.register.create') }}" class="landing-button landing-button-primary">
+                    <a href="{{ $supportWhatsappUrl }}" class="landing-button landing-button-primary" target="_blank" rel="noreferrer">
                         <span>Daftar Sekarang</span>
                         <img src="{{ asset('images/landing/arrow-right.svg') }}" alt="" aria-hidden="true">
                     </a>
@@ -154,7 +154,7 @@
                 </div>
 
                 <div class="landing-cta-actions">
-                    <a href="{{ route('tenant.register.create') }}" class="landing-button landing-button-light">Daftar Gratis Sekarang</a>
+                    <a href="{{ $supportWhatsappUrl }}" class="landing-button landing-button-light" target="_blank" rel="noreferrer">Daftar Gratis Sekarang</a>
                 </div>
 
                 <div class="landing-cta-benefits">

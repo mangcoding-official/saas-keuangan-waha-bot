@@ -15,7 +15,7 @@
 
         <div class="landing-nav-actions">
             <a href="{{ route('tenant.login.create') }}" class="landing-button landing-button-secondary">Masuk</a>
-            <a href="{{ route('tenant.register.create') }}" class="landing-button landing-button-primary">
+            <a href="{{ $supportWhatsappUrl }}" class="landing-button landing-button-primary" target="_blank" rel="noreferrer">
                 <span>Daftar Sekarang</span>
                 <img src="{{ asset('images/landing/arrow-right.svg') }}" alt="" aria-hidden="true">
             </a>

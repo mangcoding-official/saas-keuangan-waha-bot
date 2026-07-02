@@ -79,8 +79,6 @@ class HomeController extends Controller
                     ],
                 ],
                 'ctaBenefits' => [
-                    'Gratis 14 Hari',
-                    'Batal Kapan Saja',
                     'Dukungan 24/7',
                 ],
                 'footer' => [

@@ -114,7 +114,7 @@
 
                         <p class="login-register-link">
                             Belum punya akun?
-                            <a href="{{ route('tenant.register.create') }}">Daftar sekarang</a>
+                            <a href="{{ $supportWhatsappUrl }}" target="_blank" rel="noreferrer">Daftar sekarang</a>
                         </p>
                     </article>
 

@@ -7290,6 +7290,10 @@ h3.register-kicker {
         padding-bottom: 24px;
     }
 
+    .header-wrapper {
+        padding-inline: 32px;
+    }
+
     .landing-hero {
         grid-template-columns: 1fr;
     }
@@ -7308,6 +7312,15 @@ h3.register-kicker {
 
     .feature-card-art {
         min-height: 240px;
+    }
+
+    .feature-card>img.feature-card-art {
+        position: relative;
+        right: auto;
+        bottom: auto;
+        width: min(100%, 260px);
+        height: auto;
+        margin-left: auto;
     }
 
     .feature-card-art img {
@@ -7459,6 +7472,10 @@ h3.register-kicker {
         padding: 16px;
     }
 
+    .feature-grid.feature-grid__reverse {
+        grid-template-columns: 1fr;
+    }
+
     .invite-share-stack,
     .invite-revoke-form,
     .field-grid,
@@ -7533,12 +7550,23 @@ h3.register-kicker {
         flex-wrap: wrap;
     }
 
+    .header-wrapper {
+        flex-wrap: wrap;
+        align-items: flex-start;
+        padding: 20px;
+    }
+
     .landing-nav-actions,
     .landing-hero-actions,
     .landing-cta-actions {
         width: 100%;
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .landing-proof,
+    .landing-footer-bottom div {
+        flex-wrap: wrap;
     }
 
     .landing-button {
@@ -7549,14 +7577,23 @@ h3.register-kicker {
         padding-top: 40px;
         padding-bottom: 80px;
         gap: 40px;
+        overflow: hidden;
     }
 
     .landing-hero-description {
         font-size: 1rem;
     }
 
+    .landing-hero-copy {
+        gap: 24px;
+    }
+
     .landing-hero-visual {
-        min-height: 420px;
+        order: 0;
+        min-height: auto;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
     }
 
     .whatsapp-card {
@@ -7572,8 +7609,9 @@ h3.register-kicker {
         position: relative;
         left: 0;
         bottom: auto;
-        margin-top: -40px;
-        margin-right: auto;
+        width: min(100%, 220px);
+        margin-top: 0;
+        margin-left: auto;
     }
 
     .landing-section {
@@ -7593,6 +7631,10 @@ h3.register-kicker {
     .feature-card-plain h3,
     .feature-card-tall h3 {
         font-size: 1.5rem;
+    }
+
+    .feature-card>img.feature-card-art {
+        width: min(100%, 220px);
     }
 
     .landing-cta h2 {
