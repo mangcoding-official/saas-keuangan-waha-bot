@@ -10,11 +10,48 @@ class HomeController extends Controller
     public function __invoke(): View
     {
         $brandName = 'MACAU';
+        $canonicalUrl = url('/');
+        $seoTitle = 'Macau Bot: Pencatatan Keuangan via WhatsApp untuk Rumah Tangga & Bisnis Kecil';
+        $seoDescription = 'MACAU membantu mencatat pemasukan, pengeluaran, dan transfer lewat WhatsApp, lalu merapikannya ke dashboard laporan keuangan yang mudah dipantau.';
+        $seoImage = asset('images/macau-bot.png');
 
         return view('web.home', [
             'page' => [
                 'title' => 'Catat keuangan lebih praktis lewat WhatsApp',
+                'html_title' => 'Macau Bot - Pencatatan Keuangan via WhatsApp',
                 'description' => 'Catat pemasukan, pengeluaran, dan transfer melalui percakapan WhatsApp. Semua transaksi tersusun rapi dan dapat dipantau melalui dashboard yang intuitif.',
+                'seo' => [
+                    'title' => $seoTitle,
+                    'description' => $seoDescription,
+                    'canonical' => $canonicalUrl,
+                    'image' => $seoImage,
+                    'robots' => 'index,follow',
+                    'type' => 'website',
+                    'structured_data' => [
+                        [
+                            '@context' => 'https://schema.org',
+                            '@type' => 'WebSite',
+                            'name' => config('app.name'),
+                            'url' => $canonicalUrl,
+                            'description' => $seoDescription,
+                        ],
+                        [
+                            '@context' => 'https://schema.org',
+                            '@type' => 'SoftwareApplication',
+                            'name' => 'Macau Bot',
+                            'applicationCategory' => 'FinanceApplication',
+                            'operatingSystem' => 'Web Browser',
+                            'url' => $canonicalUrl,
+                            'image' => $seoImage,
+                            'description' => $seoDescription,
+                            'featureList' => [
+                                'Pencatatan pemasukan dan pengeluaran via WhatsApp',
+                                'Pantau saldo dan riwayat transaksi',
+                                'Dashboard laporan keuangan untuk rumah tangga dan bisnis kecil',
+                            ],
+                        ],
+                    ],
+                ],
                 'eyebrow' => 'Terpercaya & aman',
                 'brand' => $brandName,
                 'nav' => [

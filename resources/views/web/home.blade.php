@@ -33,7 +33,7 @@
                     </a>
                 </div>
 
-                <div class="landing-proof">
+                {{-- <div class="landing-proof">
                     <div class="landing-proof-avatars" aria-hidden="true">
                         <img src="{{ asset('images/landing/avatar-1.png') }}" alt="">
                         <img src="{{ asset('images/landing/avatar-2.png') }}" alt="">
@@ -43,7 +43,7 @@
                         <strong>{{ $page['heroStats']['value'] }}</strong>
                         {{ $page['heroStats']['label'] }}
                     </p>
-                </div>
+                </div> --}}
             </div>
 
             <div class="landing-hero-visual" aria-label="Preview percakapan dan saldo">
