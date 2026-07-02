@@ -302,8 +302,8 @@ span.tenant-sidebar-link-icon.is-members{
 }
 
 .tenant-topbar-avatar {
-    width: 40px;
-    height: 40px;
+    width: 52px;
+    height: 52px;
     border-radius: 999px;
     border: 2px solid #b8c4ff;
     background: linear-gradient(135deg, #e8d1b0, #b57b37);
@@ -312,6 +312,7 @@ span.tenant-sidebar-link-icon.is-members{
     align-items: center;
     justify-content: center;
     font-weight: 700;
+    font-size: 20px;
 }
 
 .tenant-topbar-account-popover {
@@ -783,8 +784,8 @@ span.tenant-sidebar-link-icon.is-members{
     --category-bg: #eef2ff;
     --category-icon: #1e40af;
     --category-mask: none;
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border-radius: 999px;
     background: var(--category-bg);
     display: inline-flex;
@@ -798,19 +799,9 @@ span.tenant-sidebar-link-icon.is-members{
     height: 56px;
 }
 
-.category-visual-badge--sm {
-    width: 40px;
-    height: 40px;
-}
-
-.category-visual-badge--xs {
-    width: 28px;
-    height: 28px;
-}
-
 .category-visual-badge__glyph {
-    width: 52%;
-    height: 52%;
+    width: 38px;
+    height: 38px;
     background: var(--category-icon);
     -webkit-mask-image: var(--category-mask);
     mask-image: var(--category-mask);
@@ -2073,6 +2064,7 @@ span.tenant-sidebar-link-icon.is-members{
 .categories-summary-glyph.is-expense {
     width: 40px;
     height: 40px;
+    border-radius: 8px;
 }
 
 
@@ -5348,12 +5340,6 @@ img {
     background: #ffffff;
 }
 
-
-.page-home .tenant-topbar-avatar {
-    width: 52px;
-    height: 52px;
-    font-size: 20px;
-}
 
 .landing-main section {
     width: min(100%, 1440px);

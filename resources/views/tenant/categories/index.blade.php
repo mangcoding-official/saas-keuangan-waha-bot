@@ -104,7 +104,7 @@
                         <td class="accounts-name-cell categories-name-cell">
                             <span class="accounts-name-icon categories-name-icon">
                                 <span
-                                    class="category-visual-badge category-visual-badge--sm"
+                                    class="category-visual-badge"
                                     style="--category-bg: {{ $category['bg_color'] }}; --category-icon: {{ $category['icon_color'] }}; --category-mask: url('{{ $category['icon_mask_asset'] }}');"
                                     aria-hidden="true"
                                 >
@@ -296,7 +296,7 @@
                                                 >
                                                 <span class="categories-preset-card categories-icon-card">
                                                     <span
-                                                        class="category-visual-badge category-visual-badge--sm"
+                                                        class="category-visual-badge"
                                                         style="--category-bg: #eef2ff; --category-icon: #1e40af; --category-mask: url('{{ asset($icon['asset_path']) }}');"
                                                         aria-hidden="true"
                                                     >

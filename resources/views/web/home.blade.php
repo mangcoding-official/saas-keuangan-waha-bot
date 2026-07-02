@@ -1,6 +1,9 @@
 @extends('layouts.base', ['bodyClass' => 'page-home'])
 
 @section('body')
+@php
+    $authUser = auth('web')->user();
+@endphp
 <div class="landing-page">
     @include('web.partials.landing-header')
 
@@ -18,11 +21,16 @@
                 <p class="landing-hero-description">{{ $page['description'] }}</p>
 
                 <div class="landing-hero-actions">
-                    <a href="{{ $supportWhatsappUrl }}" class="landing-button landing-button-primary" target="_blank" rel="noreferrer">
-                        <span>Daftar Sekarang</span>
-                        <img src="{{ asset('images/landing/arrow-right.svg') }}" alt="" aria-hidden="true">
+                    @unless ($authUser)
+                        <a href="{{ $supportWhatsappUrl }}" class="landing-button landing-button-primary" target="_blank" rel="noreferrer">
+                            <span>Daftar Sekarang</span>
+                            <img src="{{ asset('images/landing/arrow-right.svg') }}" alt="" aria-hidden="true">
+                        </a>
+                    @endunless
+
+                    <a href="{{ $authUser ? route('tenant.dashboard') : route('tenant.login.create') }}" class="landing-button landing-button-secondary">
+                        Masuk ke Dashboard
                     </a>
-                    <a href="{{ route('tenant.login.create') }}" class="landing-button landing-button-secondary">Masuk ke Dashboard</a>
                 </div>
 
                 <div class="landing-proof">
@@ -154,7 +162,13 @@
                 </div>
 
                 <div class="landing-cta-actions">
-                    <a href="{{ $supportWhatsappUrl }}" class="landing-button landing-button-light" target="_blank" rel="noreferrer">Daftar Gratis Sekarang</a>
+                    <a
+                        href="{{ $authUser ? route('tenant.dashboard') : $supportWhatsappUrl }}"
+                        class="landing-button landing-button-light"
+                        @unless ($authUser) target="_blank" rel="noreferrer" @endunless
+                    >
+                        {{ $authUser ? 'Buka Dashboard' : 'Daftar Gratis Sekarang' }}
+                    </a>
                 </div>
 
                 <div class="landing-cta-benefits">

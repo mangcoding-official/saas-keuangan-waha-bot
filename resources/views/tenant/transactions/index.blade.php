@@ -114,7 +114,7 @@
                             <td>
                                 <span class="transactions-category-pill">
                                     <span
-                                        class="category-visual-badge category-visual-badge--xs"
+                                        class="category-visual-badge"
                                         style="--category-bg: {{ $transaction['category_bg_color'] }}; --category-icon: {{ $transaction['category_icon_color'] }}; --category-mask: url('{{ $transaction['category_icon_mask_asset'] }}');"
                                         aria-hidden="true"
                                     >
@@ -248,7 +248,7 @@
                         <small>Kategori</small>
                         <strong class="transactions-detail-category">
                             <span
-                                class="category-visual-badge category-visual-badge--xs"
+                                class="category-visual-badge"
                                 style="--category-bg: {{ $selectedTransaction['category_bg_color'] }}; --category-icon: {{ $selectedTransaction['category_icon_color'] }}; --category-mask: url('{{ $selectedTransaction['category_icon_mask_asset'] }}');"
                                 aria-hidden="true"
                             >

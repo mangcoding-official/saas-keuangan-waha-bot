@@ -68,7 +68,7 @@
                                     <td>
                                         <span class="tenant-category-pill">
                                             <span
-                                                class="category-visual-badge category-visual-badge--xs"
+                                                class="category-visual-badge"
                                                 style="--category-bg: {{ $row['category_bg_color'] }}; --category-icon: {{ $row['category_icon_color'] }}; --category-mask: url('{{ $row['category_icon_mask_asset'] }}');"
                                                 aria-hidden="true"
                                             >
