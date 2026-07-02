@@ -1211,6 +1211,12 @@ span.tenant-sidebar-link-icon.is-members{
 }
 
 @media (max-width: 720px) {
+
+    .landing-hero-visual .balance-card{
+        margin-top: -50px;
+        margin-right: 32px;
+    }
+
     .tenant-content-shell {
         padding: 0 12px 20px;
     }
@@ -5342,6 +5348,12 @@ img {
     background: #ffffff;
 }
 
+
+.page-home .tenant-topbar-avatar {
+    width: 52px;
+    height: 52px;
+    font-size: 20px;
+}
 
 .landing-main section {
     width: min(100%, 1440px);
