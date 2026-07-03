@@ -54,12 +54,35 @@ class ConversationSessionService
 
     public function findActiveSession(TenantUser $tenantUser): ?ConversationSession
     {
-        return ConversationSession::query()
+        $session = ConversationSession::query()
             ->where('tenant_user_id', $tenantUser->id)
             ->where('status', ConversationSessionStatus::ACTIVE)
             ->whereNotNull('active_lock')
             ->latest('id')
             ->first();
+
+        if ($session !== null) {
+            return $session;
+        }
+
+        $recoverableSession = ConversationSession::query()
+            ->where('tenant_user_id', $tenantUser->id)
+            ->where('status', ConversationSessionStatus::ACTIVE)
+            ->latest('id')
+            ->first();
+
+        if ($recoverableSession === null) {
+            return null;
+        }
+
+        if ($recoverableSession->active_lock === null) {
+            $recoverableSession->forceFill([
+                'active_lock' => 1,
+                'updated_at' => now(),
+            ])->save();
+        }
+
+        return $recoverableSession->fresh();
     }
 
     public function acceptsAttachment(ConversationSession $session): bool

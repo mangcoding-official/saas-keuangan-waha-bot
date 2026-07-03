@@ -2,34 +2,30 @@
 
 ## Scope
 
-- Goal: Perbaiki stabilitas WAHA webhook agar duplicate delivery dan event webhook yang noisy tidak membuat flow guided transaksi keluar ke menu umum saat user mengirim kategori.
+- Goal: Perbaiki guided chat agar input lanjutan seperti nominal tidak jatuh ke menu umum ketika session aktif masih ada tetapi lock/session marker bermasalah di runtime live.
 - Type: debug
 - Mode: low
-- Allowed modules: `app/Services/Waha/WahaWebhookService.php`, `app/Services/Waha/WahaAccessGateService.php`, test webhook WAHA yang paling dekat, `.ai-context/CURRENT-TASK.md`
-- Explicit exclusions: tidak mengubah parsing guided category itu sendiri bila tidak ada bukti bug di sana, tidak mengubah format reply bisnis, tidak menambah flow produk baru, tidak mengubah modul invite/internal UI
+- Allowed modules: `app/Services/ConversationSessionService.php`, test guided/session terdekat, `.ai-context/CURRENT-TASK.md`
+- Explicit exclusions: tidak menambah fuzzy matching baru, tidak mengubah format reply bisnis, tidak mengubah flow produk baru, tidak mengubah modul invite/internal UI
 
 ## Evidence and checkpoint
 
-- Confirmed facts: reproduksi lokal `keluar -> nominal -> deskripsi -> Pengeluaran Lainnya` berhasil maju normal ke `guided_expense_source_account`, jadi guided category path di `ConversationSessionService` tidak menunjukkan bug fungsional dari current code.
-- Confirmed facts: balasan daftar perintah umum seperti pada screenshot hanya muncul bila message diproses tanpa active conversation session, karena jalur parser normal untuk plain text tanpa command akan jatuh ke `helpText()`.
-- Confirmed facts: dokumentasi WAHA menyarankan webhook event `message` untuk menerima pesan masuk, sedangkan `message.any` dipicu untuk semua pembuatan pesan termasuk pesan milik bot sendiri.
-- Confirmed facts: code saat ini masih menormalisasi dan mencatat event `message.any` ke jalur webhook yang sama, sehingga event noisy berpotensi ikut memengaruhi dedupe atau state walau bot hanya butuh inbound user message.
-- Root cause or hypothesis: gejala “keluar ke menu umum setelah kategori” lebih mungkin dipicu event webhook yang tidak perlu (`message.any`) atau delivery ganda dari WAHA, bukan dari guided category resolver itu sendiri.
-- Next verification: review `git diff`, lint PHP, lalu verifikasi runtime bahwa `message.any` diabaikan sebelum dedupe/DB dan flow kategori tetap maju ke prompt akun.
+- Confirmed facts: reproduksi lokal `Pengeluaran lainnya` dan `Hari ini` berhasil lanjut normal, jadi exact-match/case sensitivity bukan akar masalah.
+- Confirmed facts: ketika user membalas `100000` lalu bot menampilkan menu umum, jalur code yang terjadi berarti `TransactionMessageService` tidak menemukan active session dan jatuh ke parser umum.
+- Confirmed facts: `ConversationSessionService::findActiveSession()` saat ini hanya mengembalikan row `ACTIVE` yang masih memiliki `active_lock` non-null.
+- Root cause or hypothesis: di runtime live ada anomali di mana session masih `ACTIVE` tetapi `active_lock` tidak terbaca/terset sebagaimana mestinya, sehingga continuation message tidak lagi dianggap bagian dari guided flow.
+- Next verification: review `git diff`, lint PHP, lalu verifikasi bahwa session `ACTIVE` dengan `active_lock = null` tetap bisa dipulihkan dan melanjutkan guided flow.
 
 ## Read ledger
 
 | Path | Purpose / symbols | Changed since read? |
 |---|---|---|
-| `app/Http/Controllers/Webhook/WahaWebhookController.php` | entrypoint `/webhooks/waha` | current |
-| `app/Services/Waha/WahaWebhookService.php` | duplicate guard, pending insert, reply send | current |
-| `app/Services/Waha/WahaAccessGateService.php` | accepted event names | current |
-| `app/Services/Waha/WahaWebhookPayloadNormalizer.php` | source message normalization | current |
-| `app/Services/ConversationSessionService.php` | guided expense category -> account transition | current |
-| `database/migrations/2026_06_19_220100_create_domain_tables.php` | `incoming_messages` schema | current |
+| `app/Services/ConversationSessionService.php` | active session lookup and guided continuation | current |
+| `app/Services/TransactionMessageService.php` | fallback to parser umum saat active session null | current |
+| `app/Models/ConversationSession.php` | session fields and casts | current |
 
 ## Change plan
 
-- Files allowed to change: `.ai-context/CURRENT-TASK.md`, `app/Services/Waha/WahaWebhookService.php`, `app/Services/Waha/WahaAccessGateService.php`, test webhook WAHA terdekat
-- Contracts to preserve: event inbound `message` valid tetap menghasilkan reply yang sama seperti sebelumnya; event `message.any` tidak boleh mengganggu dedupe atau state; guided category tetap maju ke prompt akun
+- Files allowed to change: `.ai-context/CURRENT-TASK.md`, `app/Services/ConversationSessionService.php`, test guided/session terdekat
+- Contracts to preserve: guided flow normal tetap sama; jika ada session `ACTIVE` yang lock-nya hilang/null, input lanjutan harus tetap melanjutkan flow, bukan jatuh ke menu umum
 - Verification plan: review `git diff`, `php -l` file PHP yang diubah, dan verifikasi runtime terfokus di environment MySQL aktif
