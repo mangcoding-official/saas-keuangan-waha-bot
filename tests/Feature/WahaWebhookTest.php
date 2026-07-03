@@ -114,6 +114,43 @@ class WahaWebhookTest extends TestCase
         }
     }
 
+    public function test_webhook_ignores_message_any_before_message_deduplication_runs(): void
+    {
+        $transactionService = Mockery::mock(TransactionMessageService::class);
+        $transactionService->shouldReceive('handle')->never();
+        $transactionService->shouldReceive('handleAttachment')->never();
+        $this->instance(TransactionMessageService::class, $transactionService);
+
+        $wahaClient = Mockery::mock(WahaClient::class);
+        $wahaClient->shouldReceive('sendText')->never();
+        $this->instance(WahaClient::class, $wahaClient);
+
+        $response = $this->postJson(route('webhooks.waha'), [
+            'event' => 'message.any',
+            'session' => 'default',
+            'payload' => [
+                'id' => 'msg-any-1',
+                'from' => '6281211112222@c.us',
+                'fromMe' => false,
+                'body' => 'Pengeluaran Lainnya',
+                'timestamp' => 1719792000,
+                'hasMedia' => false,
+            ],
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJson([
+                'status' => 'ignored',
+                'route' => 'ignored',
+                'should_reply' => false,
+                'reply_text' => null,
+                'side_effects' => ['unsupported_event_ignored'],
+            ]);
+
+        $this->assertDatabaseCount('incoming_messages', 0);
+    }
+
     /**
      * @return array<string, mixed>
      */

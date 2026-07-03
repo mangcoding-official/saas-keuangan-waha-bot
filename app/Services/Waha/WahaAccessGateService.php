@@ -32,7 +32,7 @@ class WahaAccessGateService
      */
     public function evaluate(array $message): array
     {
-        if (! in_array($message['event_name'], ['message', 'message.any'], true)) {
+        if ($message['event_name'] !== 'message') {
             return $this->ignored(IncomingMessageIgnoredReason::OTHER);
         }
 

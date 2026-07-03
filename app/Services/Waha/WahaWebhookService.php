@@ -42,6 +42,10 @@ class WahaWebhookService
             return $this->ignoredResponse('ignored', ['invalid_payload']);
         }
 
+        if ($message['event_name'] !== 'message') {
+            return $this->ignoredResponse('ignored', ['unsupported_event_ignored']);
+        }
+
         $lock = Cache::lock($this->messageLockKey($message['source_message_id']), 30);
 
         if (! $lock->get()) {

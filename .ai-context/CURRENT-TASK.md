@@ -2,20 +2,20 @@
 
 ## Scope
 
-- Goal: Perbaiki bug WAHA webhook agar satu `source_message_id` tidak bisa diproses dan dibalas dua kali saat request duplicate masuk paralel.
+- Goal: Perbaiki stabilitas WAHA webhook agar duplicate delivery dan event webhook yang noisy tidak membuat flow guided transaksi keluar ke menu umum saat user mengirim kategori.
 - Type: debug
 - Mode: low
-- Allowed modules: `app/Services/Waha/WahaWebhookService.php`, test webhook WAHA yang paling dekat, `.ai-context/CURRENT-TASK.md`
-- Explicit exclusions: tidak mengubah parsing transaksi, tidak mengubah format reply, tidak menambah flow produk baru, tidak mengubah modul invite/internal UI
+- Allowed modules: `app/Services/Waha/WahaWebhookService.php`, `app/Services/Waha/WahaAccessGateService.php`, test webhook WAHA yang paling dekat, `.ai-context/CURRENT-TASK.md`
+- Explicit exclusions: tidak mengubah parsing guided category itu sendiri bila tidak ada bukti bug di sana, tidak mengubah format reply bisnis, tidak menambah flow produk baru, tidak mengubah modul invite/internal UI
 
 ## Evidence and checkpoint
 
-- Confirmed facts: route webhook WAHA hanya masuk lewat `POST /webhooks/waha` dan diteruskan langsung ke `WahaWebhookService::handle()`.
-- Confirmed facts: `incoming_messages.source_message_id` sudah unique, tetapi guard duplicate saat ini hanya berhenti jika row lama sudah punya `processed_at`.
-- Confirmed facts: ketika insert pending row terkena unique collision, service saat ini mengambil `existingId` lalu tetap lanjut ke jalur business logic dan `attemptReply()`.
-- Confirmed facts: pola ini masih membuka race condition bila dua request webhook dengan `source_message_id` yang sama masuk hampir bersamaan, karena request kedua bisa ikut lanjut sebelum request pertama selesai mengisi `processed_at`.
-- Root cause or hypothesis: bug duplicate reply paling mungkin berasal dari tidak adanya claim/lock idempotency sebelum processing dan reply dijalankan.
-- Next verification: review `git diff`, jalankan lint PHP pada file yang diubah, lalu jalankan test webhook terfokus bila environment mengizinkan.
+- Confirmed facts: reproduksi lokal `keluar -> nominal -> deskripsi -> Pengeluaran Lainnya` berhasil maju normal ke `guided_expense_source_account`, jadi guided category path di `ConversationSessionService` tidak menunjukkan bug fungsional dari current code.
+- Confirmed facts: balasan daftar perintah umum seperti pada screenshot hanya muncul bila message diproses tanpa active conversation session, karena jalur parser normal untuk plain text tanpa command akan jatuh ke `helpText()`.
+- Confirmed facts: dokumentasi WAHA menyarankan webhook event `message` untuk menerima pesan masuk, sedangkan `message.any` dipicu untuk semua pembuatan pesan termasuk pesan milik bot sendiri.
+- Confirmed facts: code saat ini masih menormalisasi dan mencatat event `message.any` ke jalur webhook yang sama, sehingga event noisy berpotensi ikut memengaruhi dedupe atau state walau bot hanya butuh inbound user message.
+- Root cause or hypothesis: gejala “keluar ke menu umum setelah kategori” lebih mungkin dipicu event webhook yang tidak perlu (`message.any`) atau delivery ganda dari WAHA, bukan dari guided category resolver itu sendiri.
+- Next verification: review `git diff`, lint PHP, lalu verifikasi runtime bahwa `message.any` diabaikan sebelum dedupe/DB dan flow kategori tetap maju ke prompt akun.
 
 ## Read ledger
 
@@ -23,12 +23,13 @@
 |---|---|---|
 | `app/Http/Controllers/Webhook/WahaWebhookController.php` | entrypoint `/webhooks/waha` | current |
 | `app/Services/Waha/WahaWebhookService.php` | duplicate guard, pending insert, reply send | current |
+| `app/Services/Waha/WahaAccessGateService.php` | accepted event names | current |
 | `app/Services/Waha/WahaWebhookPayloadNormalizer.php` | source message normalization | current |
-| `app/Services/Waha/WahaAccessGateService.php` | access decision for webhook payload | current |
+| `app/Services/ConversationSessionService.php` | guided expense category -> account transition | current |
 | `database/migrations/2026_06_19_220100_create_domain_tables.php` | `incoming_messages` schema | current |
 
 ## Change plan
 
-- Files allowed to change: `.ai-context/CURRENT-TASK.md`, `app/Services/Waha/WahaWebhookService.php`, test webhook WAHA terdekat
-- Contracts to preserve: satu message valid tetap menghasilkan reply yang sama seperti sebelumnya; duplicate event harus diabaikan tanpa side effect kedua
-- Verification plan: review `git diff`, `php -l` file PHP yang diubah, dan `php artisan test --filter=WahaWebhook`
+- Files allowed to change: `.ai-context/CURRENT-TASK.md`, `app/Services/Waha/WahaWebhookService.php`, `app/Services/Waha/WahaAccessGateService.php`, test webhook WAHA terdekat
+- Contracts to preserve: event inbound `message` valid tetap menghasilkan reply yang sama seperti sebelumnya; event `message.any` tidak boleh mengganggu dedupe atau state; guided category tetap maju ke prompt akun
+- Verification plan: review `git diff`, `php -l` file PHP yang diubah, dan verifikasi runtime terfokus di environment MySQL aktif
