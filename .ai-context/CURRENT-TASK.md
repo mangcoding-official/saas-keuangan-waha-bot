@@ -2,34 +2,33 @@
 
 ## Scope
 
-- Goal: Perbaiki UX tabel `internal/invites` agar tidak memunculkan scroll internal yang janggal dan popover aksi tampil rapi tanpa terpotong.
-- Type: implement
-- Mode: balanced
-- Allowed modules: `app/Http/Controllers/Internal/OwnerRegistrationInviteController.php`, `resources/views/internal/invites/index.blade.php`, CSS invite/internal modal yang relevan, test feature invite internal yang paling dekat, `.ai-context/CURRENT-TASK.md`
-- Explicit exclusions: tidak menambah backend baru untuk invite member tenant, tidak mengubah lifecycle invite, tidak mengubah flow registrasi public invite-gated
+- Goal: Perbaiki bug WAHA webhook agar satu `source_message_id` tidak bisa diproses dan dibalas dua kali saat request duplicate masuk paralel.
+- Type: debug
+- Mode: low
+- Allowed modules: `app/Services/Waha/WahaWebhookService.php`, test webhook WAHA yang paling dekat, `.ai-context/CURRENT-TASK.md`
+- Explicit exclusions: tidak mengubah parsing transaksi, tidak mengubah format reply, tidak menambah flow produk baru, tidak mengubah modul invite/internal UI
 
 ## Evidence and checkpoint
 
-- Confirmed facts: route `internal.invites.*` saat ini khusus untuk `owner_registration_invites`, bukan invite member tenant lintas workspace.
-- Confirmed facts: aksi backend yang benar-benar tersedia hanya create invite, kirim ulang via WhatsApp, revoke invite, dan konsumsi invite di halaman register owner.
-- Confirmed facts: topbar search di layout internal masih visual-only dan belum tersambung ke query controller, jadi tidak layak dipakai sebagai fitur sungguhan di patch ini.
-- Confirmed facts: tabel invite saat ini masih dioverride dengan `min-width: 760px` dan dibungkus `overflow-x: auto`, sehingga pada card kanan muncul perilaku scroll yang buruk meski data sedikit.
-- Confirmed facts: popover aksi invite terbuka di dalam konteks tabel yang bisa discroll, jadi UX terasa patah dan area kanan bawah card terlihat janggal.
-- Confirmed facts: pattern visual paling dekat untuk dirapikan ada di `members-*`, `accounts-action-menu`, dan modal detail yang baru dipakai di halaman internal users.
-- Confirmed facts: user sekarang minta menghapus elemen filler yang ditandai merah, jadi kartu "workflow", badge "fungsi aktif", dan presentasi status yang terasa kurang pas perlu disederhanakan.
-- Root cause or hypothesis: masalah utama bukan pada data atau backend, tetapi pada strategi layout tabel yang memaksa lebar minimum; solusi terkecil adalah membuat tabel invite memakai kolom fixed/wrapping yang muat dalam card dan memisahkan popover dari wrapper scroll.
-- Next verification: review diff, jalankan `php artisan view:cache`, dan `npm run build`.
+- Confirmed facts: route webhook WAHA hanya masuk lewat `POST /webhooks/waha` dan diteruskan langsung ke `WahaWebhookService::handle()`.
+- Confirmed facts: `incoming_messages.source_message_id` sudah unique, tetapi guard duplicate saat ini hanya berhenti jika row lama sudah punya `processed_at`.
+- Confirmed facts: ketika insert pending row terkena unique collision, service saat ini mengambil `existingId` lalu tetap lanjut ke jalur business logic dan `attemptReply()`.
+- Confirmed facts: pola ini masih membuka race condition bila dua request webhook dengan `source_message_id` yang sama masuk hampir bersamaan, karena request kedua bisa ikut lanjut sebelum request pertama selesai mengisi `processed_at`.
+- Root cause or hypothesis: bug duplicate reply paling mungkin berasal dari tidak adanya claim/lock idempotency sebelum processing dan reply dijalankan.
+- Next verification: review `git diff`, jalankan lint PHP pada file yang diubah, lalu jalankan test webhook terfokus bila environment mengizinkan.
 
 ## Read ledger
 
 | Path | Purpose / symbols | Changed since read? |
 |---|---|---|
-| `routes/internal.php` | `internal.invites.*` | re-read |
-| `resources/views/internal/invites/index.blade.php` | current invite UI and actions | re-read |
-| `resources/css/app.css` | invite table layout, scroll, and popover behavior | re-read |
+| `app/Http/Controllers/Webhook/WahaWebhookController.php` | entrypoint `/webhooks/waha` | current |
+| `app/Services/Waha/WahaWebhookService.php` | duplicate guard, pending insert, reply send | current |
+| `app/Services/Waha/WahaWebhookPayloadNormalizer.php` | source message normalization | current |
+| `app/Services/Waha/WahaAccessGateService.php` | access decision for webhook payload | current |
+| `database/migrations/2026_06_19_220100_create_domain_tables.php` | `incoming_messages` schema | current |
 
 ## Change plan
 
-- Files allowed to change: `.ai-context/CURRENT-TASK.md`, `resources/views/internal/invites/index.blade.php`, `resources/css/app.css`
-- Contracts to preserve: action invite tetap `detail`, `copy code`, `copy link`, `send-whatsapp`, `revoke`; tidak mengubah backend atau pagination
-- Verification plan: review `git diff`, jalankan `php artisan view:cache`, dan `npm run build`
+- Files allowed to change: `.ai-context/CURRENT-TASK.md`, `app/Services/Waha/WahaWebhookService.php`, test webhook WAHA terdekat
+- Contracts to preserve: satu message valid tetap menghasilkan reply yang sama seperti sebelumnya; duplicate event harus diabaikan tanpa side effect kedua
+- Verification plan: review `git diff`, `php -l` file PHP yang diubah, dan `php artisan test --filter=WahaWebhook`

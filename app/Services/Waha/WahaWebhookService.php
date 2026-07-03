@@ -7,6 +7,7 @@ use App\Enums\IncomingMessageIgnoredReason;
 use App\Models\TenantUser;
 use App\Services\TransactionMessageService;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
@@ -38,27 +39,54 @@ class WahaWebhookService
         try {
             $message = $this->payloadNormalizer->normalize($payload);
         } catch (InvalidArgumentException $exception) {
-            return [
-                'status' => 'ignored',
-                'route' => 'ignored',
-                'should_reply' => false,
-                'reply_text' => null,
-                'side_effects' => ['invalid_payload'],
-            ];
+            return $this->ignoredResponse('ignored', ['invalid_payload']);
         }
 
+        $lock = Cache::lock($this->messageLockKey($message['source_message_id']), 30);
+
+        if (! $lock->get()) {
+            return $this->duplicateResponse();
+        }
+
+        try {
+            return $this->handleClaimedMessage($message);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * @param  array{
+     *     source_message_id: string,
+     *     bot_instance_key: string,
+     *     event_name: string,
+     *     from_me: bool,
+     *     chat_type: string,
+     *     sender_raw: ?string,
+     *     sender_normalized: ?string,
+     *     chat_id: ?string,
+     *     message_text: ?string,
+     *     has_media: bool,
+     *     media: ?array{url:string,mime_type:?string,file_name:?string,file_size:?int,width:?int,height:?int},
+     *     message_timestamp: \Illuminate\Support\Carbon,
+     *     raw_payload: array<string, mixed>
+     * }  $message
+     * @return array{
+     *     status: string,
+     *     route: string,
+     *     should_reply: bool,
+     *     reply_text: ?string,
+     *     side_effects: array<int, string>
+     * }
+     */
+    private function handleClaimedMessage(array $message): array
+    {
         $existing = DB::table('incoming_messages')
             ->where('source_message_id', $message['source_message_id'])
             ->first(['id', 'processed_at']);
 
         if ($existing && $existing->processed_at !== null) {
-            return [
-                'status' => 'ok',
-                'route' => 'duplicate_ignored',
-                'should_reply' => false,
-                'reply_text' => null,
-                'side_effects' => ['duplicate_ignored'],
-            ];
+            return $this->duplicateResponse();
         }
 
         $botInstance = $this->resolveBotInstance($message['bot_instance_key']);
@@ -173,6 +201,46 @@ class WahaWebhookService
             'reply_text' => $replyText,
             'side_effects' => array_values(array_unique($sideEffects)),
         ];
+    }
+
+    /**
+     * @return array{
+     *     status: string,
+     *     route: string,
+     *     should_reply: bool,
+     *     reply_text: null,
+     *     side_effects: array<int, string>
+     * }
+     */
+    private function duplicateResponse(): array
+    {
+        return $this->ignoredResponse('duplicate_ignored', ['duplicate_ignored']);
+    }
+
+    /**
+     * @param  array<int, string>  $sideEffects
+     * @return array{
+     *     status: string,
+     *     route: string,
+     *     should_reply: bool,
+     *     reply_text: null,
+     *     side_effects: array<int, string>
+     * }
+     */
+    private function ignoredResponse(string $route, array $sideEffects): array
+    {
+        return [
+            'status' => $route === 'ignored' ? 'ignored' : 'ok',
+            'route' => $route,
+            'should_reply' => false,
+            'reply_text' => null,
+            'side_effects' => $sideEffects,
+        ];
+    }
+
+    private function messageLockKey(string $sourceMessageId): string
+    {
+        return 'waha:webhook:message:'.$sourceMessageId;
     }
 
     private function resolveBotInstance(string $sessionKey): ?object
