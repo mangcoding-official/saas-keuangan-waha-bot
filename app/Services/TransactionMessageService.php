@@ -93,6 +93,19 @@ class TransactionMessageService
             ), $expiredSession);
         }
 
+        $recoveredSession = $this->conversationSessionService->recoverRecentSession($tenantUser, $messageTimestamp);
+
+        if ($recoveredSession) {
+            return $this->withExpiredNotice($this->conversationSessionService->handleActiveSession(
+                $recoveredSession,
+                $tenantUser,
+                $messageText,
+                $messageTimestamp,
+                $sourceMessageId,
+                fn (TenantUser $user, string $text, Carbon $timestamp): array => $this->parser->parse($user, $text, $timestamp),
+            ), $expiredSession);
+        }
+
         $parsed = $this->parser->parse($tenantUser, $messageText, $messageTimestamp);
 
         if ($parsed['status'] === 'failed') {

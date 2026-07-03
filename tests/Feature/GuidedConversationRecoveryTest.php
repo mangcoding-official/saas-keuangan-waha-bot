@@ -42,6 +42,36 @@ class GuidedConversationRecoveryTest extends TestCase
         $this->assertSame(100000.0, data_get($session->draft_payload, 'items.0.amount'));
     }
 
+    public function test_guided_flow_recovers_recently_expired_session_for_next_input(): void
+    {
+        $tenantUser = $this->createTenantUser();
+        $service = app(TransactionMessageService::class);
+        $startedAt = now();
+
+        $firstStep = $service->handle($tenantUser, 'keluar', $startedAt, 'guided-start-expired');
+
+        $this->assertSame('guided_expense_amount', $firstStep['route']);
+
+        $session = ConversationSession::query()->where('tenant_user_id', $tenantUser->id)->latest('id')->firstOrFail();
+
+        $session->forceFill([
+            'status' => \App\Enums\ConversationSessionStatus::EXPIRED,
+            'active_lock' => null,
+            'expired_at' => $startedAt->copy()->addSecond(),
+        ])->save();
+
+        $secondStep = $service->handle($tenantUser, '100000', $startedAt->copy()->addSeconds(2), 'guided-amount-expired');
+
+        $session->refresh();
+
+        $this->assertSame('guided_expense_description', $secondStep['route']);
+        $this->assertSame(\App\Enums\ConversationSessionStatus::ACTIVE, $session->status);
+        $this->assertSame('guided_expense_description', $session->current_state);
+        $this->assertSame(1, $session->active_lock);
+        $this->assertNull($session->expired_at);
+        $this->assertSame(100000.0, data_get($session->draft_payload, 'items.0.amount'));
+    }
+
     private function createTenantUser(): TenantUser
     {
         $tenant = Tenant::query()->create([

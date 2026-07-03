@@ -2,19 +2,19 @@
 
 ## Scope
 
-- Goal: Perbaiki guided chat agar input lanjutan seperti nominal tidak jatuh ke menu umum ketika session aktif masih ada tetapi lock/session marker bermasalah di runtime live.
+- Goal: Perbaiki guided chat agar input lanjutan tidak jatuh ke menu umum ketika session guided terakhir hilang dari jalur normal akibat anomali runtime live.
 - Type: debug
 - Mode: low
-- Allowed modules: `app/Services/ConversationSessionService.php`, test guided/session terdekat, `.ai-context/CURRENT-TASK.md`
+- Allowed modules: `app/Services/ConversationSessionService.php`, `app/Services/TransactionMessageService.php`, test guided/session terdekat, `.ai-context/CURRENT-TASK.md`
 - Explicit exclusions: tidak menambah fuzzy matching baru, tidak mengubah format reply bisnis, tidak mengubah flow produk baru, tidak mengubah modul invite/internal UI
 
 ## Evidence and checkpoint
 
-- Confirmed facts: reproduksi lokal `Pengeluaran lainnya` dan `Hari ini` berhasil lanjut normal, jadi exact-match/case sensitivity bukan akar masalah.
-- Confirmed facts: ketika user membalas `100000` lalu bot menampilkan menu umum, jalur code yang terjadi berarti `TransactionMessageService` tidak menemukan active session dan jatuh ke parser umum.
-- Confirmed facts: `ConversationSessionService::findActiveSession()` saat ini hanya mengembalikan row `ACTIVE` yang masih memiliki `active_lock` non-null.
-- Root cause or hypothesis: di runtime live ada anomali di mana session masih `ACTIVE` tetapi `active_lock` tidak terbaca/terset sebagaimana mestinya, sehingga continuation message tidak lagi dianggap bagian dari guided flow.
-- Next verification: review `git diff`, lint PHP, lalu verifikasi bahwa session `ACTIVE` dengan `active_lock = null` tetap bisa dipulihkan dan melanjutkan guided flow.
+- Confirmed facts: reproduksi lokal `Pengeluaran lainnya`, `Hari ini`, dan `100000` berhasil lanjut normal, jadi exact-match/case sensitivity bukan akar masalah.
+- Confirmed facts: ketika user membalas `100000` lalu bot menampilkan menu umum, jalur code yang terjadi berarti `TransactionMessageService` tidak menemukan session lanjutan yang bisa dipakai lalu jatuh ke parser umum.
+- Confirmed facts: recovery sebelumnya baru menangani `ACTIVE` session dengan `active_lock = null`; itu belum cukup bila session live sempat berubah menjadi `EXPIRED` secara anomali sangat dekat dengan pesan lanjutan.
+- Root cause or hypothesis: di runtime live ada anomali session continuity yang lebih luas daripada sekadar `active_lock`, sehingga perlu fallback untuk memulihkan guided session terakhir yang masih sangat baru.
+- Next verification: review `git diff`, lint PHP, lalu verifikasi bahwa session guided yang baru saja `EXPIRED` tetap dapat dipulihkan untuk melanjutkan input berikutnya.
 
 ## Read ledger
 
@@ -26,6 +26,6 @@
 
 ## Change plan
 
-- Files allowed to change: `.ai-context/CURRENT-TASK.md`, `app/Services/ConversationSessionService.php`, test guided/session terdekat
-- Contracts to preserve: guided flow normal tetap sama; jika ada session `ACTIVE` yang lock-nya hilang/null, input lanjutan harus tetap melanjutkan flow, bukan jatuh ke menu umum
+- Files allowed to change: `.ai-context/CURRENT-TASK.md`, `app/Services/ConversationSessionService.php`, `app/Services/TransactionMessageService.php`, test guided/session terdekat
+- Contracts to preserve: guided flow normal tetap sama; jika ada session guided sangat baru yang hilang dari jalur normal, input lanjutan harus tetap melanjutkan flow, bukan jatuh ke menu umum
 - Verification plan: review `git diff`, `php -l` file PHP yang diubah, dan verifikasi runtime terfokus di environment MySQL aktif

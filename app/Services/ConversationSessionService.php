@@ -85,6 +85,32 @@ class ConversationSessionService
         return $recoverableSession->fresh();
     }
 
+    public function recoverRecentSession(TenantUser $tenantUser, Carbon $now): ?ConversationSession
+    {
+        $recoverableSession = ConversationSession::query()
+            ->where('tenant_user_id', $tenantUser->id)
+            ->whereIn('status', [
+                ConversationSessionStatus::ACTIVE,
+                ConversationSessionStatus::EXPIRED,
+            ])
+            ->latest('last_message_at')
+            ->latest('id')
+            ->first();
+
+        if ($recoverableSession === null || ! $this->canRecoverRecentSession($recoverableSession, $now)) {
+            return null;
+        }
+
+        $recoverableSession->forceFill([
+            'status' => ConversationSessionStatus::ACTIVE,
+            'active_lock' => 1,
+            'expired_at' => null,
+            'updated_at' => $now,
+        ])->save();
+
+        return $recoverableSession->fresh();
+    }
+
     public function acceptsAttachment(ConversationSession $session): bool
     {
         return in_array($session->intent_type, [
@@ -1295,6 +1321,27 @@ class ConversationSessionService
     private function nextExpiry(Carbon $messageTimestamp): Carbon
     {
         return $messageTimestamp->copy()->addMinutes((int) config('platform.timeouts.conversation_session_minutes'));
+    }
+
+    private function canRecoverRecentSession(ConversationSession $session, Carbon $now): bool
+    {
+        if (! in_array($session->status, [ConversationSessionStatus::ACTIVE, ConversationSessionStatus::EXPIRED], true)) {
+            return false;
+        }
+
+        if (! $this->isRecoverableState($session->current_state)) {
+            return false;
+        }
+
+        return $session->last_message_at !== null
+            && $session->last_message_at->gte($now->copy()->subMinutes(5));
+    }
+
+    private function isRecoverableState(string $state): bool
+    {
+        return str_starts_with($state, 'guided_')
+            || str_starts_with($state, 'clarify_')
+            || in_array($state, ['review_confirm', 'awaiting_interrupt_confirmation'], true);
     }
 
     private function normalizeIntentType(?string $type): ?ConversationIntentType
