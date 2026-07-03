@@ -168,7 +168,52 @@ class TransactionMessageService
         $expiredSession = $this->conversationSessionService->expireStaleSessions($tenantUser, $messageTimestamp);
         $activeSession = $this->conversationSessionService->findActiveSession($tenantUser);
 
-        if (! $activeSession || ! $this->conversationSessionService->acceptsAttachment($activeSession)) {
+        if ($activeSession && $this->conversationSessionService->acceptsAttachment($activeSession)) {
+            Log::info('WAHA attachment matched active session', [
+                'tenant_user_id' => $tenantUser->id,
+                'source_message_id' => $sourceMessageId,
+                'session_id' => $activeSession->id,
+                'session_status' => $activeSession->status,
+                'current_state' => $activeSession->current_state,
+                'active_lock' => $activeSession->active_lock,
+            ]);
+        } else {
+            $latestSession = $this->conversationSessionService->latestSessionSummary($tenantUser);
+            $recoveredSession = $this->conversationSessionService->recoverRecentSession($tenantUser, $messageTimestamp);
+
+            if ($recoveredSession && $this->conversationSessionService->acceptsAttachment($recoveredSession)) {
+                Log::info('WAHA attachment recovered recent session', [
+                    'tenant_user_id' => $tenantUser->id,
+                    'source_message_id' => $sourceMessageId,
+                    'recovered_session_id' => $recoveredSession->id,
+                    'recovered_status' => $recoveredSession->status,
+                    'recovered_state' => $recoveredSession->current_state,
+                    'latest_session_before_recovery' => $latestSession,
+                ]);
+
+                $activeSession = $recoveredSession;
+            } else {
+                Log::info('WAHA attachment rejected because no active attachment flow', [
+                    'tenant_user_id' => $tenantUser->id,
+                    'source_message_id' => $sourceMessageId,
+                    'active_session_id' => $activeSession?->id,
+                    'active_session_state' => $activeSession?->current_state,
+                    'active_session_accepts_attachment' => $activeSession
+                        ? $this->conversationSessionService->acceptsAttachment($activeSession)
+                        : false,
+                    'latest_session' => $latestSession,
+                ]);
+
+                return $this->withExpiredNotice([
+                    'route' => 'attachment_not_expected',
+                    'should_reply' => true,
+                    'reply_text' => 'Lampiran hanya dapat dikirim saat bot meminta bukti transaksi atau saat review transaksi income/expense masih aktif.',
+                    'side_effects' => ['attachment_rejected_no_active_flow'],
+                ], $expiredSession);
+            }
+        }
+
+        if (! $activeSession) {
             return $this->withExpiredNotice([
                 'route' => 'attachment_not_expected',
                 'should_reply' => true,

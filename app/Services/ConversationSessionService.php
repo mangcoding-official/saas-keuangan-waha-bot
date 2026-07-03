@@ -11,6 +11,7 @@ use App\Models\Category;
 use App\Models\ConversationSession;
 use App\Models\TenantUser;
 use App\Support\CategoryCatalog;
+use BackedEnum;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -146,7 +147,7 @@ class ConversationSessionService
 
         return [
             'id' => (int) $session->id,
-            'status' => (string) $session->status,
+            'status' => $this->normalizeSummaryScalar($session->status),
             'current_state' => $session->current_state,
             'active_lock' => $session->active_lock,
             'source_message_id' => $session->source_message_id,
@@ -154,6 +155,15 @@ class ConversationSessionService
             'expires_at' => $session->expires_at?->toIso8601String(),
             'expired_at' => $session->expired_at?->toIso8601String(),
         ];
+    }
+
+    private function normalizeSummaryScalar(mixed $value): string
+    {
+        if ($value instanceof BackedEnum) {
+            return (string) $value->value;
+        }
+
+        return (string) $value;
     }
 
     public function acceptsAttachment(ConversationSession $session): bool
