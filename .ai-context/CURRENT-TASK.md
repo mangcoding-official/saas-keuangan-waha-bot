@@ -2,30 +2,33 @@
 
 ## Scope
 
-- Goal: Perbaiki guided chat agar input lanjutan tidak jatuh ke menu umum ketika session guided terakhir hilang dari jalur normal akibat anomali runtime live.
+- Goal: Tambahkan diagnostik terarah untuk membuktikan apakah runtime server gagal di identitas pengirim (`@c.us` vs `@lid`) atau di continuity guided session saat input lanjutan jatuh ke menu umum.
 - Type: debug
 - Mode: low
-- Allowed modules: `app/Services/ConversationSessionService.php`, `app/Services/TransactionMessageService.php`, test guided/session terdekat, `.ai-context/CURRENT-TASK.md`
-- Explicit exclusions: tidak menambah fuzzy matching baru, tidak mengubah format reply bisnis, tidak mengubah flow produk baru, tidak mengubah modul invite/internal UI
+- Allowed modules: `app/Services/Waha/WahaWebhookService.php`, `app/Services/TransactionMessageService.php`, `app/Services/ConversationSessionService.php`, `.ai-context/CURRENT-TASK.md`
+- Explicit exclusions: tidak mengubah aturan bisnis guided flow, tidak menambah parser/fuzzy matching baru, tidak mengubah format reply bisnis, tidak mengubah modul invite/internal UI
 
 ## Evidence and checkpoint
 
-- Confirmed facts: reproduksi lokal `Pengeluaran lainnya`, `Hari ini`, dan `100000` berhasil lanjut normal, jadi exact-match/case sensitivity bukan akar masalah.
-- Confirmed facts: ketika user membalas `100000` lalu bot menampilkan menu umum, jalur code yang terjadi berarti `TransactionMessageService` tidak menemukan session lanjutan yang bisa dipakai lalu jatuh ke parser umum.
-- Confirmed facts: recovery sebelumnya baru menangani `ACTIVE` session dengan `active_lock = null`; itu belum cukup bila session live sempat berubah menjadi `EXPIRED` secara anomali sangat dekat dengan pesan lanjutan.
-- Root cause or hypothesis: di runtime live ada anomali session continuity yang lebih luas daripada sekadar `active_lock`, sehingga perlu fallback untuk memulihkan guided session terakhir yang masih sangat baru.
-- Next verification: review `git diff`, lint PHP, lalu verifikasi bahwa session guided yang baru saja `EXPIRED` tetap dapat dipulihkan untuk melanjutkan input berikutnya.
+- Confirmed facts: `app/Services/Waha/WahaWebhookPayloadNormalizer.php` sudah menganggap `@c.us`, `@lid`, dan digit polos sebagai chat personal, lalu mencoba mengubah semuanya ke nomor normalisasi internal.
+- Confirmed facts: untuk identifier `@lid`, code memanggil WAHA API agar memperoleh nomor telepon asli; jika lookup ini gagal maka `sender_normalized` akan `null` dan pesan akan berhenti di access gate sebagai `unknown_sender`.
+- Confirmed facts: gejala user saat ini adalah bot tetap membalas menu umum, jadi ada indikasi pesan lolos access gate dan masalahnya lebih dekat ke continuity session daripada sekadar suffix identifier.
+- Root cause or hypothesis: perbedaan `@c.us` vs `@lid` bisa menjadi faktor hanya bila lookup nomor dari `@lid` gagal, tetapi untuk kasus yang jatuh ke menu umum masih perlu bukti log apakah identifier sukses dinormalisasi dan session guided apa yang ditemukan tepat sebelum fallback parser umum.
+- Next verification: review `git diff`, lint PHP, lalu uji di server sambil melihat log identifier masuk, hasil normalisasi sender, active/recovered session, dan kondisi fallback parser.
 
 ## Read ledger
 
 | Path | Purpose / symbols | Changed since read? |
 |---|---|---|
+| `app/Services/Waha/WahaWebhookService.php` | webhook entry, lock, access evaluation, processing log | current |
+| `app/Services/Waha/WahaWebhookPayloadNormalizer.php` | `@c.us` / `@lid` normalization path | current |
+| `app/Services/Waha/WahaClient.php` | lookup nomor untuk `@lid` | current |
+| `app/Services/Waha/WahaAccessGateService.php` | tenant user lookup by `sender_normalized` | current |
 | `app/Services/ConversationSessionService.php` | active session lookup and guided continuation | current |
 | `app/Services/TransactionMessageService.php` | fallback to parser umum saat active session null | current |
-| `app/Models/ConversationSession.php` | session fields and casts | current |
 
 ## Change plan
 
-- Files allowed to change: `.ai-context/CURRENT-TASK.md`, `app/Services/ConversationSessionService.php`, `app/Services/TransactionMessageService.php`, test guided/session terdekat
-- Contracts to preserve: guided flow normal tetap sama; jika ada session guided sangat baru yang hilang dari jalur normal, input lanjutan harus tetap melanjutkan flow, bukan jatuh ke menu umum
-- Verification plan: review `git diff`, `php -l` file PHP yang diubah, dan verifikasi runtime terfokus di environment MySQL aktif
+- Files allowed to change: `.ai-context/CURRENT-TASK.md`, `app/Services/Waha/WahaWebhookService.php`, `app/Services/TransactionMessageService.php`, `app/Services/ConversationSessionService.php`
+- Contracts to preserve: perilaku bisnis existing tetap sama; perubahan hanya menambah observability untuk webhook sender normalization dan guided-session lookup/fallback
+- Verification plan: review `git diff`, `php -l` file PHP yang diubah, lalu uji di server dan baca `storage/logs/laravel.log` untuk event identifier/session yang baru

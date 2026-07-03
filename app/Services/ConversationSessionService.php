@@ -111,6 +111,51 @@ class ConversationSessionService
         return $recoverableSession->fresh();
     }
 
+    /**
+     * @return array{
+     *     id:int,
+     *     status:string,
+     *     current_state:?string,
+     *     active_lock:mixed,
+     *     source_message_id:?string,
+     *     last_message_at:?string,
+     *     expires_at:?string,
+     *     expired_at:?string
+     * }|null
+     */
+    public function latestSessionSummary(TenantUser $tenantUser): ?array
+    {
+        $session = ConversationSession::query()
+            ->where('tenant_user_id', $tenantUser->id)
+            ->latest('last_message_at')
+            ->latest('id')
+            ->first([
+                'id',
+                'status',
+                'current_state',
+                'active_lock',
+                'source_message_id',
+                'last_message_at',
+                'expires_at',
+                'expired_at',
+            ]);
+
+        if ($session === null) {
+            return null;
+        }
+
+        return [
+            'id' => (int) $session->id,
+            'status' => (string) $session->status,
+            'current_state' => $session->current_state,
+            'active_lock' => $session->active_lock,
+            'source_message_id' => $session->source_message_id,
+            'last_message_at' => $session->last_message_at?->toIso8601String(),
+            'expires_at' => $session->expires_at?->toIso8601String(),
+            'expired_at' => $session->expired_at?->toIso8601String(),
+        ];
+    }
+
     public function acceptsAttachment(ConversationSession $session): bool
     {
         return in_array($session->intent_type, [

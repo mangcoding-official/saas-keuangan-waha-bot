@@ -10,6 +10,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Throwable;
 
@@ -41,6 +42,18 @@ class WahaWebhookService
         } catch (InvalidArgumentException $exception) {
             return $this->ignoredResponse('ignored', ['invalid_payload']);
         }
+
+        Log::info('WAHA webhook received', [
+            'source_message_id' => $message['source_message_id'],
+            'event_name' => $message['event_name'],
+            'bot_instance_key' => $message['bot_instance_key'],
+            'chat_id' => $message['chat_id'],
+            'chat_type' => $message['chat_type'],
+            'from_me' => $message['from_me'],
+            'sender_raw' => $message['sender_raw'],
+            'sender_normalized' => $message['sender_normalized'],
+            'message_preview' => $message['message_text'] !== null ? Str::limit($message['message_text'], 80) : null,
+        ]);
 
         if ($message['event_name'] !== 'message') {
             return $this->ignoredResponse('ignored', ['unsupported_event_ignored']);
@@ -96,6 +109,17 @@ class WahaWebhookService
         $botInstance = $this->resolveBotInstance($message['bot_instance_key']);
         $incomingMessageId = $existing?->id ?? $this->createPendingIncomingMessage($message, $botInstance?->id);
         $access = $this->accessGateService->evaluate($message);
+
+        Log::info('WAHA webhook access evaluated', [
+            'source_message_id' => $message['source_message_id'],
+            'sender_normalized' => $message['sender_normalized'],
+            'access_decision' => $access['access_decision'],
+            'ignored_reason' => $access['ignored_reason'],
+            'route' => $access['route'],
+            'tenant_id' => $access['tenant_id'],
+            'tenant_user_id' => $access['tenant_user']?->id,
+        ]);
+
         $replyText = null;
         $sideEffects = ['incoming_message_logged'];
 

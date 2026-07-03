@@ -6,6 +6,7 @@ use App\Exceptions\AttachmentException;
 use App\Models\TenantUser;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 class TransactionMessageService
@@ -38,6 +39,16 @@ class TransactionMessageService
         $activeSession = $this->conversationSessionService->findActiveSession($tenantUser);
 
         if ($activeSession) {
+            Log::info('WAHA guided session matched active session', [
+                'tenant_user_id' => $tenantUser->id,
+                'source_message_id' => $sourceMessageId,
+                'session_id' => $activeSession->id,
+                'session_status' => $activeSession->status,
+                'current_state' => $activeSession->current_state,
+                'active_lock' => $activeSession->active_lock,
+                'message_preview' => Str::limit($messageText, 80),
+            ]);
+
             return $this->withExpiredNotice($this->conversationSessionService->handleActiveSession(
                 $activeSession,
                 $tenantUser,
@@ -93,9 +104,20 @@ class TransactionMessageService
             ), $expiredSession);
         }
 
+        $latestSession = $this->conversationSessionService->latestSessionSummary($tenantUser);
         $recoveredSession = $this->conversationSessionService->recoverRecentSession($tenantUser, $messageTimestamp);
 
         if ($recoveredSession) {
+            Log::info('WAHA guided session recovered recent session', [
+                'tenant_user_id' => $tenantUser->id,
+                'source_message_id' => $sourceMessageId,
+                'recovered_session_id' => $recoveredSession->id,
+                'recovered_status' => $recoveredSession->status,
+                'recovered_state' => $recoveredSession->current_state,
+                'latest_session_before_recovery' => $latestSession,
+                'message_preview' => Str::limit($messageText, 80),
+            ]);
+
             return $this->withExpiredNotice($this->conversationSessionService->handleActiveSession(
                 $recoveredSession,
                 $tenantUser,
@@ -105,6 +127,14 @@ class TransactionMessageService
                 fn (TenantUser $user, string $text, Carbon $timestamp): array => $this->parser->parse($user, $text, $timestamp),
             ), $expiredSession);
         }
+
+        Log::info('WAHA guided session fell back to parser', [
+            'tenant_user_id' => $tenantUser->id,
+            'source_message_id' => $sourceMessageId,
+            'latest_session' => $latestSession,
+            'expired_session_notice' => $expiredSession,
+            'message_preview' => Str::limit($messageText, 80),
+        ]);
 
         $parsed = $this->parser->parse($tenantUser, $messageText, $messageTimestamp);
 
