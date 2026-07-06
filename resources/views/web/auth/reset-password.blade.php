@@ -51,12 +51,11 @@
 
                         @if ($isLinkValid)
                             <div class="login-card-note">
-                                <strong>Link siap dipakai</strong>
                                 <span>
                                     @if ($expiresAtIso)
                                         Link ini aktif sampai {{ \Illuminate\Support\Carbon::parse($expiresAtIso)->format('d M Y H:i') }}.
                                     @else
-                                        Link ini hanya bisa dipakai satu kali.
+                                        Link reset password tidak valid atau sudah kedaluwarsa.
                                     @endif
                                 </span>
                             </div>
