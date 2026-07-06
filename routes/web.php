@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Web\Auth\TenantRegistrationController;
+use App\Http\Controllers\Web\Auth\TenantPasswordResetController;
 use App\Http\Controllers\Web\Auth\TenantSessionController;
 use App\Http\Controllers\Web\HomeController;
 use App\Http\Controllers\Webhook\WahaWebhookController;
@@ -17,6 +18,10 @@ Route::middleware('guest:web')->group(function (): void {
 
     Route::get('/login', [TenantSessionController::class, 'create'])->name('tenant.login.create');
     Route::post('/login', [TenantSessionController::class, 'store'])->name('tenant.login.store');
+    Route::get('/forgot-password', [TenantPasswordResetController::class, 'create'])->name('tenant.password.request');
+    Route::post('/forgot-password', [TenantPasswordResetController::class, 'store'])->name('tenant.password.email');
+    Route::get('/reset-password/{lookup}', [TenantPasswordResetController::class, 'edit'])->name('tenant.password.reset.edit');
+    Route::post('/reset-password/{lookup}', [TenantPasswordResetController::class, 'update'])->name('tenant.password.reset.update');
 });
 
 Route::middleware('auth:web')->group(function (): void {

@@ -11,11 +11,6 @@
                 <div class="login-hero-overlay"></div>
 
                 <div class="login-hero-content">
-                    <span class="login-trust-badge">
-                        <img src="{{ asset('images/login/badge-check.svg') }}" alt="" aria-hidden="true">
-                        Terpercaya oleh 10,000+ Pengguna
-                    </span>
-
                     <div class="login-hero-copy">
                         <h1>Catat dan Kelola Keuangan Lebih Praktis</h1>
                         <p>Catat pemasukan, pengeluaran, dan transfer dengan lebih praktis melalui WhatsApp. Semua transaksi tersimpan rapi dan dapat dipantau kembali melalui dashboard. Mulai tata catatan keuangan Anda hari ini.</p>
@@ -78,7 +73,7 @@
                             <label class="login-field" for="password">
                                 <span class="login-field-head">
                                     <span class="login-label">Password</span>
-                                    <span class="login-inline-link is-disabled">Lupa password?</span>
+                                    <a href="{{ route('tenant.password.request') }}" class="login-inline-link">Lupa password?</a>
                                 </span>
                                 <span class="login-input-wrap">
                                     <img class="login-input-icon icon-lock" src="{{ asset('images/login/icon-lock.svg') }}" alt="" aria-hidden="true">
@@ -102,15 +97,6 @@
                                 <img width="12" height="12" src="{{ asset('images/login/icon-arrow-right.svg') }}" alt="" aria-hidden="true">
                             </button>
                         </form>
-
-                        <div class="login-divider">
-                            <span>atau masuk dengan</span>
-                        </div>
-
-                        <button type="button" class="login-google-button" disabled aria-disabled="true">
-                            <img width="20" height="20" src="{{ asset('images/login/icon-google.svg') }}" alt="" aria-hidden="true">
-                            <span>Google</span>
-                        </button>
 
                         <p class="login-register-link">
                             Belum punya akun?

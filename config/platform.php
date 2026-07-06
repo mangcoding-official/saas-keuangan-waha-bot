@@ -28,6 +28,12 @@ return [
         'conversation_session_minutes' => 30,
     ],
 
+    'password_resets' => [
+        'expire_minutes' => 20,
+        'max_attempts' => 3,
+        'decay_minutes' => 15,
+    ],
+
     'support' => [
         'whatsapp_number' => env('SUPPORT_WHATSAPP_NUMBER'),
         'whatsapp_message_template' => env(
