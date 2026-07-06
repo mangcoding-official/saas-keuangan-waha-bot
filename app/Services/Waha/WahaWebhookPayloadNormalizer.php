@@ -179,10 +179,11 @@ class WahaWebhookPayloadNormalizer
     {
         if (is_numeric($value)) {
             $timestamp = (string) $value;
+            $timezone = (string) config('app.timezone', 'UTC');
 
             return strlen($timestamp) > 10
-                ? Carbon::createFromTimestampMsUTC((int) $timestamp)
-                : Carbon::createFromTimestampUTC((int) $timestamp);
+                ? Carbon::createFromTimestampMs((int) $timestamp, $timezone)
+                : Carbon::createFromTimestamp((int) $timestamp, $timezone);
         }
 
         return now();

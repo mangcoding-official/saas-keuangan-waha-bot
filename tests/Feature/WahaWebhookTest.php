@@ -9,6 +9,7 @@ use App\Models\TenantUser;
 use App\Services\TransactionMessageService;
 use App\Services\Waha\WahaClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -42,7 +43,10 @@ class WahaWebhookTest extends TestCase
             ->withArgs(function (TenantUser $user, string $messageText, $timestamp, ?string $sourceMessageId) use ($tenantUser): bool {
                 return $user->is($tenantUser)
                     && $messageText === 'saldo'
-                    && $sourceMessageId === 'msg-1';
+                    && $sourceMessageId === 'msg-1'
+                    && $timestamp instanceof Carbon
+                    && $timestamp->timezoneName === config('app.timezone')
+                    && $timestamp->format('Y-m-d H:i:s') === Carbon::createFromTimestamp(1719792000, config('app.timezone'))->format('Y-m-d H:i:s');
             })
             ->andReturn([
                 'route' => 'command_balance',
